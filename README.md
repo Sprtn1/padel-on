@@ -1,3 +1,7 @@
+## Multi-person matchmaking and commissions
+
+The Matchmaking page now has a switchable per-person revenue ledger, independent monthly commissions, settlement statuses, CSV exports, and a per-person breakdown in Reports → Monthly. A one-time database migration plus separate private personnel setup are required. Follow [MULTI_MATCHMAKER_UPGRADE.md](MULTI_MATCHMAKER_UPGRADE.md). All existing Nazih records and previous paid/unpaid settlements are retained.
+
 ## Monthly training with Coach Khalil
 
 PADEL ON now has a **Monthly Training** page for Rising Stars. It records two-player (or reasoned solo-exception) completed sessions, one free session per member per month, previous months, and attendance CSV reports. **Run the new Supabase migration first:** see [MONTHLY_TRAINING_UPGRADE.md](MONTHLY_TRAINING_UPGRADE.md). All existing weekly counters and finances are independent.
