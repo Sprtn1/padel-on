@@ -134,6 +134,103 @@ function weekNavigator(selected,section){
  const current=weekStart(today());
  return `<div class="period-control"><div><strong>${icon('calendar')} ${weekLabel(selected)}</strong><small>${selected===current?'Current Monday–Sunday period':'Archived week · records are read-only'}</small></div><div class="period-buttons"><button class="btn btn-light" data-action="${section}-prev-week" aria-label="Previous week">${icon('chevronLeft')}</button><button class="btn btn-light" data-action="${section}-next-week" ${selected>=current?'disabled':''} aria-label="Next week">${icon('chevronRight')}</button></div></div>`;
 }
+// Load only the requested historical period. The dashboard keeps its lightweight 30-day refresh.
+async function fetchPeriod(start,end){
+ const dates=`played_on=gte.${start}&played_on=lte.${end}`;
+ const [matches,games,resets,specialGames]=await Promise.all([
+  api.listAll('team_matches',dates),
+  api.listAll('team_games',dates),
+  api.listAll('reset_events',`week_start=gte.${weekStart(start)}&week_start=lte.${weekStart(end)}`),
+  api.listAll('other_games',dates)
+ ]);
+ return {matches,games,resets,specialGames};
+}
+let historySeq=0,reportSeq=0;
+async function loadHistoryWeek(newWeek){
+ const current=weekStart(today()),candidate=weekStart(newWeek);
+ if(candidate>current)return;
+ const seq=++historySeq;
+ state.historyWeek=candidate;state.historyData=null;
+ state.historyLoading=candidate!==current;
+ render();
+ if(candidate===current)return;
+ try{const data=await fetchPeriod(candidate,addDays(candidate,6));if(seq!==historySeq)return;state.historyData=data;}
+ catch(e){if(seq===historySeq)toast('Could not load week: '+e.message,true)}
+ finally{if(seq===historySeq){state.historyLoading=false;render()}}
+}
+function reportRange(){
+ if(state.reportMode==='week')return [state.reportWeek,addDays(state.reportWeek,6)];
+ const first=state.reportMonth+'-01',last=addDays(shiftMonth(state.reportMonth,1)+'-01',-1);
+ return [first,last];
+}
+async function loadReport(){
+ const [start,end]=reportRange(),mode=state.reportMode;
+ const request=++reportSeq;
+ state.reportLoading=true;state.reportData=null;state.reportKey=`${mode}:${start}`;
+ render();
+ try{
+  const data=await fetchPeriod(start,end);
+  if(request===reportSeq)state.reportData=data;
+ }catch(e){if(request===reportSeq)toast('Could not load report: '+e.message,true)}
+ finally{if(request===reportSeq){state.reportLoading=false;render()}}
+}
+function reportMetrics(){
+ const data=state.reportData;
+ if(!data)return null;
+ const validMatches=data.matches.filter(m=>!m.voided_at);
+ const matchIDs=new Set(validMatches.map(m=>m.id));
+ const games=data.games.filter(g=>!g.voided_at&&matchIDs.has(g.match_id));
+ const free=games.filter(g=>g.benefit_type==='free').length,half=games.length-free;
+ const special=data.specialGames.length;
+ const rows=state.members.map(m=>{
+  const personal=games.filter(g=>g.member_id===m.id);
+  const opening=state.reportMode==='week'?(Number(state.balances.find(b=>b.member_id===m.id&&b.week_start===state.reportWeek)?.used||0)):0;
+  const st=state.reportMode==='week'?getWeeklyStatus(m,state.reportWeek,state.balances,games,data.resets):null;
+  return {member:m,played:personal.length,free:personal.filter(g=>g.benefit_type==='free').length,half:personal.filter(g=>g.benefit_type==='half').length,used:st?.used??personal.length,remaining:st?.remain,opening};
+ }).filter(r=>r.played||r.used).sort((a,b)=>b.used-a.used||a.member.name.localeCompare(b.member.name));
+ const weekUsed=state.reportMode==='week'?state.members.filter(m=>!m.unlimited).reduce((n,m)=>n+getWeeklyStatus(m,state.reportWeek,state.balances,games,data.resets).used,0):null;
+ const monthFinance=getMonthFinance(state.finance,state.reportMonth);
+ return {validMatches,games,rows,free,half,special,weekUsed,monthFinance};
+}
+function reportsPage(){
+ const [start,end]=reportRange();
+ const weekly=state.reportMode==='week',m=reportMetrics();
+ const title=weekly?weekLabel(state.reportWeek):monthLabel(state.reportMonth);
+ return `${heading('Operations overview','Weekly & Monthly Reports','Read-only reports from saved Supabase records.',btn(`${icon('download')} Export CSV`,'export-report','btn-primary',!m?'disabled':'')+btn('Print / Save PDF','print-report','btn-light',!m?'disabled':''))}
+<div class="report-mode"><button class="btn ${weekly?'btn-primary':'btn-light'}" data-action="report-mode-week">Weekly report</button><button class="btn ${!weekly?'btn-primary':'btn-light'}" data-action="report-mode-month">Monthly report</button></div>
+<div class="period-control"><div><strong>${icon('calendar')} ${title}</strong><small>${weekly?'Weekly benefits and records':'Monthly games and matchmaking revenue'} · Asia/Beirut dates</small></div><div class="period-buttons"><button class="btn btn-light" data-action="report-prev" aria-label="Previous ${weekly?'week':'month'}">${icon('chevronLeft')}</button><button class="btn btn-light" data-action="report-next" ${(weekly?state.reportWeek>=weekStart(today()):state.reportMonth>=monthKey(today()))?'disabled':''} aria-label="Next ${weekly?'week':'month'}">${icon('chevronRight')}</button></div></div>
+${!m?`<div class="panel-empty">${state.reportLoading?'Loading report from Supabase…':'No report loaded. Use the period arrows to retry.'}</div>`:`
+<section class="finance-grid">${summaryCard('Team matches',m.validMatches.length,'Matches recorded in selected period','calendar',true)}${summaryCard('Benefit uses',weekly?m.weekUsed:m.games.length,weekly?'Includes imported opening balances':'Dated transactions only','gift')}${summaryCard('Free / Half-price',`${m.free} / ${m.half}`,'Per-member benefit entries','activity')}</section>
+${weekly?`<div class="notice">Historical balances use the member's current configured allowance. Imported opening balances are counted as weekly usage; reset events are respected.</div>`:`<section class="finance-grid">${summaryCard('Nazih revenue',amount(m.monthFinance.total),'Collected this month','wallet',true)}${summaryCard('Nazih commission',amount(m.monthFinance.fee),'15% of monthly revenue','coins')}${summaryCard('Other benefit games',m.special,'Special-player entries this month','users')}</section>`}
+<article class="panel"><div class="panel-head"><div><h2>Team member breakdown</h2><p>${title} · ${m.rows.length} members with activity</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Member</th><th>Games logged</th><th>Free</th><th>Half-price</th><th>${weekly?'Week used':'Monthly total'}</th>${weekly?'<th>Remaining*</th>':''}</tr></thead><tbody>${m.rows.length?m.rows.map(r=>`<tr><td><strong>${esc(r.member.name)}</strong></td><td>${r.played}</td><td>${r.free}</td><td>${r.half}</td><td><strong>${r.used}</strong></td>${weekly?`<td>${r.member.unlimited?'Unlimited':r.remaining}</td>`:''}</tr>`).join(''):`<tr><td colspan="${weekly?6:5}" class="panel-empty">No benefits recorded for this period.</td></tr>`}</tbody></table></div></article>
+<div class="archive-note">${weekly?'* Remaining benefits use current allowances and historical reset events.':'Financial totals use permanent saved matchmaking records. The monthly game counts exclude imported balances.'} No report action edits any records.</div>
+`}`;
+}
+function exportReport(){
+ const m=reportMetrics();if(!m)throw Error('Load the report before exporting.');
+ const weekly=state.reportMode==='week',period=weekly?state.reportWeek:state.reportMonth;
+ const rows=[['PADEL ON',weekly?'Weekly Game Report':'Monthly Game Report',period],
+  ['Team matches',m.validMatches.length],['Logged benefit uses',m.games.length],
+  ['Free entries',m.free],['Half-price entries',m.half],['Other-player games',m.special]];
+ if(weekly)rows.push(['Weekly used (including opening balances)',m.weekUsed]);
+ else rows.push(['Nazih revenue USD',(m.monthFinance.total/100).toFixed(2)],['Nazih commission USD',(m.monthFinance.fee/100).toFixed(2)]);
+ rows.push([],['Member','Logged games','Free','Half-price',weekly?'Week used':'Monthly total',...(weekly?['Remaining*']:[])]);
+ for(const r of m.rows)rows.push([r.member.name,r.played,r.free,r.half,r.used,...(weekly?[r.member.unlimited?'Unlimited':r.remaining]:[])]);
+ rows.push([],['Date','Team members','Match benefit','Non-team players']);
+ for(const match of m.validMatches.sort((a,b)=>a.played_on.localeCompare(b.played_on))){
+  rows.push([match.played_on,m.games.filter(g=>g.match_id===match.id).map(g=>state.members.find(x=>x.id===g.member_id)?.name||'Unknown').join('; '),match.benefit_type,match.non_team_count??'Not recorded']);
+ }
+ downloadCSV(rows,`padel-on-${weekly?'week':'month'}-${period}.csv`);
+}
+function downloadCSV(rows,filename){
+ // Avoid formula execution when exports are opened in spreadsheet programs.
+ const safe=value=>{let text=String(value??'');if(/^[\s]*[=+@-]/.test(text))text="'"+text;return '"'+text.replaceAll('"','""')+'"';};
+ const csv=rows.map(row=>row.map(safe).join(',')).join('\r\n');
+ const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.append(a);a.click();
+ setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);
+}
+
 function otherPage(){return `${heading('Special arrangements','Other Benefits','Track free-game eligibility outside the regular team allowances.',state.staff?.role==='admin'?btn(`${icon('plus')} Add Player`,'new-other','btn-primary'):'')}
 <div class="other-grid">${state.special.filter(p=>p.active).map(p=>{const info=p.status==='next_free'?['Next Game Free','green']:p.status==='rule_not_configured'?['Rule Not Configured','gray']:p.status==='counting'?[p.threshold?`${Math.max(0,p.threshold-p.current_counter)} Until Free`:'Counting','amber']:['Needs Confirmation','amber'];return `<article class="other-card"><div class="member-top"><div class="player-avatar">${esc(initials(p.name))}</div><div class="player-title"><strong>${esc(p.name)}</strong><small>Special benefit</small></div></div>${tag(info[0],info[1])}<div class="other-note">${p.status==='next_free'?'This player has a free game waiting.':p.slug==='rami-al-rifai'&&p.status==='counting'?`${Math.max(0,5-p.current_counter)} more paid game(s) before a free game.`:p.status==='rule_not_configured'?'Eligibility conditions have not been set.':'Confirm the player’s next-game benefit.'}</div><div class="player-row" style="margin-bottom:18px"><span class="game-caption">Games counter</span><span class="other-count num">${p.current_counter}</span></div><div class="card-bottom">${btn(`${icon('plus')} Record Game`,'record-other','btn-soft',`data-id="${p.id}"`)}${state.staff?.role==='admin'?btn(icon('edit'),'edit-other','btn-light btn-icon history-button',`data-id="${p.id}" title="Edit player"`):''}</div></article>`}).join('')}</div>`}
 function financePage(){const f=financials(),sel=state.settlements.find(s=>s.month_key===state.month+'-01');const paid=sel?.status==='paid';const diff=Number(sel?.amount_paid_cents||0)-f.fee;return `${heading('Matchmaking / Nazih Sonbol','Revenue & Commission','Every matchmaking game is saved permanently. Monthly totals are kept separately.',btn(`${icon('plus')} Add Matchmaking Game`,'add-nazih','btn-primary'))}
