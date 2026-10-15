@@ -408,12 +408,13 @@ async function loadData(resetTab=false){if(state.loading)return;state.loading=tr
  if(!profiles.length){await api.signOut();throw Error('This login has no PADEL ON staff access. Ask the administrator to add your account in Supabase.');}
  state.staff=profiles[0];
  const since=addDays(today(),-30);
- const [members,balances,matches,games,resets,special,specialGames,finance,settlements]=await Promise.all([
-  api.listAll('team_members'),api.listAll('initial_balances'),api.listAll('team_matches',`played_on=gte.${since}`),api.listAll('team_games',`played_on=gte.${since}`),api.listAll('reset_events',`week_start=gte.${since}`),api.listAll('other_players'),api.listAll('other_games',`played_on=gte.${since}`),api.listAll('nazih_games'),api.listAll('nazih_settlements')
+ const [members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers]=await Promise.all([
+  api.listAll('team_members'),api.listAll('initial_balances'),api.listAll('team_matches',`played_on=gte.${since}`),api.listAll('team_games',`played_on=gte.${since}`),api.listAll('reset_events',`week_start=gte.${since}`),api.listAll('other_players'),api.listAll('other_games',`played_on=gte.${since}`),api.listAll('nazih_games'),api.listAll('nazih_settlements'),api.listAll('matchmakers').catch(()=>[])
  ]);
  // Do not redraw private data if this tab was signed out while requests were pending.
  if(!api.getSession()?.access_token || idleLogoutStarted)return;
- Object.assign(state,{members,balances,matches,games,resets,special,specialGames,finance,settlements});
+ Object.assign(state,{members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers});
+ if(matchmakers.length&&!matchmakers.some(p=>p.id===state.matchmakerId))state.matchmakerId=matchmakers[0].id;
  if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport(); if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth();
  }catch(e){if((idleLogoutStarted || !api.getSession()?.access_token) && !e.message.includes('no PADEL ON staff access'))return;if(e.message.includes('sign in')||e.message.includes('JWT')||e.message.includes('refresh token')){clearStaffActivity();await api.signOut();renderAuth(e.message)}else if(state.staff){toast(e.message,true)}else renderAuth(e.message)}finally{state.loading=false;}}
 let working=false;
