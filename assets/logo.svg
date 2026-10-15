@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="52" viewBox="0 0 200 52">
+ <rect x="0" y="2" width="46" height="46" rx="13" fill="#18A46D" />
+ <path d="M15 33 V17 h9.5c6.5 0 9 3.3 9 8s-2.5 8-9 8z" fill="none" stroke="white" stroke-width="3.4" stroke-linejoin="round"/>
+ <path d="M14.8 26h19.5" stroke="white" stroke-width="2.2"/>
+ <text x="56" y="24" fill="white" font-family="Arial,sans-serif" font-weight="800" font-size="20" letter-spacing=".7">PADEL</text>
+ <text x="56" y="42" fill="#55DEAD" font-family="Arial,sans-serif" font-weight="900" font-size="17" letter-spacing="4">ON</text>
+</svg>

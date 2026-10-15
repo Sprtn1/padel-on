@@ -1,0 +1,11 @@
+{
+  "name": "padel-on-team-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PADEL ON GitHub Pages + Supabase team game tracker",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "serve": "python3 -m http.server 8080"
+  }
+}
