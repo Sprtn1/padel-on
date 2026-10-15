@@ -481,7 +481,16 @@ async function saveForm(form){const f=new FormData(form),data=Object.fromEntries
  default:throw Error('Unknown form');
  }
 }
-function exportFinance(){const f=financials();const csv=[['Date','Players','Notes','Collected USD','Commission Share USD'],...f.rows.map(r=>[r.played_on,r.players,r.notes,(r.amount_cents/100).toFixed(2),(commission(r.amount_cents)/100).toFixed(2)]),['TOTAL','','',(f.total/100).toFixed(2),(f.fee/100).toFixed(2)]].map(a=>a.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`padel-on-nazih-${state.month}.csv`;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+function exportFinance(){
+ const f=financials(),person=selectedMatchmaker();
+ const rate=matchmakerRate(person)/100;
+ const name=person?.name||'Nazih Sonbol';
+ const rows=[['PADEL ON','Monthly Matchmaking Ledger'],['Matchmaker',name],['Month',monthLabel(state.month)],['Commission rate',rate+'%'],[],['Date','Other players','Notes','Collected USD','Illustrative share USD']];
+ for(const entry of f.rows)rows.push([entry.played_on,entry.players||'',entry.notes||'',(Number(entry.amount_cents)/100).toFixed(2),(matchmakingFee(entry.amount_cents,person)/100).toFixed(2)]);
+ rows.push([],['TOTAL','','',(f.total/100).toFixed(2),(f.fee/100).toFixed(2)]);
+ const slug=person?.name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'nazih';
+ downloadCSV(rows,`padel-on-matchmaking-${slug}-${state.month}.csv`);
+}
 async function handleAction(target){const act=target.dataset.action,id=target.dataset.id;
  switch(act){
  case 'refresh':await loadData();if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
