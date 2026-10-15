@@ -30,9 +30,9 @@ function btn(label,action,cls='btn-light',more=''){return `<button class="btn ${
 function toast(message,bad=false){const host=document.getElementById('toast-host');const node=document.createElement('div');node.className=`toast ${bad?'bad':''}`;node.textContent=message;host.append(node);setTimeout(()=>node.remove(),4100)}
 const tabs=[['dashboard','Overview','grid'],['team','Team Members','users'],['other','Other Benefits','gift'],['finance','Matchmaking','wallet'],['activity','Game Activity','list'],['settings','Settings','settings']];
 const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',activitySearch:'',loading:false,modal:null};
-// Staff inactivity policy: ten minutes without user interaction logs out every open tab.
+// Staff inactivity policy: thirty minutes without user interaction logs out every open tab.
 // Background database polling and token refreshes never extend this timer.
-const IDLE_LIMIT_MS=10*60*1000;
+const IDLE_LIMIT_MS=30*60*1000;
 const IDLE_ACTIVITY_KEY='padelon_staff_last_activity_v1';
 const AUTH_STORAGE_KEY='padelon_auth_v1';
 let lastActivityWrite=0;
@@ -58,12 +58,12 @@ async function autoSignOut(){
  state.modal=null;
  // api.signOut clears the local authentication token before contacting Supabase.
  const remoteLogout=api.signOut();
- renderAuth('Signed out after 10 minutes of inactivity. Please sign in again.');
+ renderAuth('Signed out after 30 minutes of inactivity. Please sign in again.');
  try{await remoteLogout}finally{idleLogoutStarted=false}
 }
 function activityFromStaff(){
  if(!api.getSession()?.access_token || idleLogoutStarted)return;
- // Coming back after ten minutes is not activity that can revive an expired session.
+ // Coming back after thirty minutes is not activity that can revive an expired session.
  if(idleExpired()){void autoSignOut();return}
  const now=Date.now();
  if(now-lastActivityWrite<2000)return;
