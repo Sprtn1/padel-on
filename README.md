@@ -1,3 +1,7 @@
+## Team categories (Top / Team / Rising Stars / Ladies)
+
+The Team Members page now groups players into four categories and lets administrators assign categories when adding or editing members. To activate this against an existing Supabase database, run the structural SQL migration and then the separate private roster assignment script. Details: [TEAM_CATEGORIES_UPGRADE.md](TEAM_CATEGORIES_UPGRADE.md). The **private** script should not be uploaded to GitHub.
+
 ## New features: Quick Match, Previous Weeks, Reports
 
 For the four-player Quick Match, browseable previous weeks, and CSV/printable reports, see **[FEATURE_UPGRADE.md](FEATURE_UPGRADE.md)**. **Required:** run [supabase/migrations/20261015_quick_match.sql](supabase/migrations/20261015_quick_match.sql) once in your PADEL ON project's Supabase SQL Editor before using Quick Match. The old Manual Entry function and records remain intact.
