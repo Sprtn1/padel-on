@@ -1,6 +1,8 @@
-import * as api from './lib/api.js';
-import {getWeeklyStatus,getMonthFinance} from './lib/logic.js';
-import {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD,commission} from './lib/date.js';
+// Each page load uses a fresh module graph to avoid stale GitHub Pages assets.
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || Date.now().toString(36);
+const api = await import(`./lib/api.js?v=${assetVersion}`);
+const {getWeeklyStatus,getMonthFinance} = await import(`./lib/logic.js?v=${assetVersion}`);
+const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD,commission} = await import(`./lib/date.js?v=${assetVersion}`);
 const app=document.getElementById('app');
 const icons={
  grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
