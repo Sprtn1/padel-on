@@ -416,7 +416,7 @@ async function loadData(resetTab=false){if(state.loading)return;state.loading=tr
  state.staff=profiles[0];
  const since=addDays(today(),-30);
  const [members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers]=await Promise.all([
-  api.listAll('team_members'),api.listAll('initial_balances'),api.listAll('team_matches',`played_on=gte.${since}`),api.listAll('team_games',`played_on=gte.${since}`),api.listAll('reset_events',`week_start=gte.${since}`),api.listAll('other_players'),api.listAll('other_games',`played_on=gte.${since}`),api.listAll('nazih_games'),api.listAll('nazih_settlements'),api.listAll('matchmakers').catch(()=>[])
+  api.listAll('team_members'),api.listAll('initial_balances'),api.listAll('team_matches',`played_on=gte.${since}`),api.listAll('team_games',`played_on=gte.${since}`),api.listAll('reset_events',`week_start=gte.${since}`),api.listAll('other_players'),api.listAll('other_games',`played_on=gte.${since}`),api.listAll('nazih_games'),api.listAll('nazih_settlements'),api.listAll('matchmakers').then(list=>list.sort((a,b)=>a.id.localeCompare(b.id))).catch(()=>[])
  ]);
  // Do not redraw private data if this tab was signed out while requests were pending.
  if(!api.getSession()?.access_token || idleLogoutStarted)return;
