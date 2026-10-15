@@ -46,3 +46,17 @@
  .data-table-wrap{overflow:visible}
  .data-table{font-size:11px}
 }
+
+/* Team categories: maintain the existing card aesthetic and mobile layout. */
+.team-sections{display:flex;flex-direction:column;gap:27px;margin-top:4px}
+.team-category-section{min-width:0}
+.team-category-heading{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin:0 2px 14px;border-bottom:1px solid var(--stroke);padding:0 1px 11px}
+.team-category-heading h2{font-family:Manrope,system-ui,sans-serif;color:var(--ink);font-size:18px;font-weight:800;letter-spacing:-.4px;margin:0}
+.team-category-heading span{font-size:11px;color:var(--muted);font-weight:700}
+.team-category-section .member-grid{margin-bottom:0}
+#team-category{min-width:145px}
+@media(max-width:560px){
+ .team-sections{gap:23px}
+ .team-category-heading h2{font-size:16px}
+ #team-category{min-width:125px}
+}
