@@ -60,3 +60,21 @@
  .team-category-heading h2{font-size:16px}
  #team-category{min-width:125px}
 }
+
+/* Monthly Rising Stars training */
+.training-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 18px}
+.training-actions>.notice{display:flex;align-items:center;gap:10px;margin:0;flex:1;font-size:12px;line-height:1.6}
+.training-actions>.btn{flex-shrink:0}
+.training-panel{margin-bottom:20px}
+.training-members{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--stroke);border-radius:0 0 16px 16px;overflow:hidden}
+.training-member{display:flex;align-items:center;gap:12px;min-width:0;background:#fff;padding:17px 20px}
+.training-member .player-avatar{flex-shrink:0}
+.training-member-name{flex:1;min-width:0}
+.training-member-name strong{font-size:13px;display:block;overflow-wrap:anywhere}
+.training-member-name small{font-size:11px;color:var(--muted);display:block;margin-top:3px}
+.training-member .tag{margin-left:auto;flex-shrink:0}
+.training-solo-check{display:flex;align-items:center;gap:9px;color:#3f594d;font-size:12px;font-weight:700;line-height:1.5;margin:2px 0 18px}
+.training-solo-check input{accent-color:var(--green);width:17px;height:17px;flex-shrink:0}
+@media(max-width:830px){.training-members{grid-template-columns:1fr}}
+@media(max-width:560px){.training-actions{align-items:stretch;flex-direction:column}.training-actions>.btn{align-self:flex-start}.training-member{padding:13px;gap:10px}.training-member .tag{font-size:10px}}
+@media print{.training-actions .btn{display:none!important}.training-members{grid-template-columns:repeat(2,minmax(0,1fr))}}
