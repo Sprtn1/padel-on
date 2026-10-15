@@ -32,6 +32,8 @@ const tabs=[['dashboard','Overview','grid'],['team','Team Members','users'],['ot
 const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportData:null,reportKey:'',reportLoading:false};
 // Staff inactivity policy: thirty minutes without user interaction logs out every open tab.
 // Background database polling and token refreshes never extend this timer.
+let lastKnownWeek=weekStart(todayBeirut());
+let lastKnownMonth=monthKey(todayBeirut());
 const IDLE_LIMIT_MS=30*60*1000;
 const IDLE_ACTIVITY_KEY='padelon_staff_last_activity_v1';
 const AUTH_STORAGE_KEY='padelon_auth_v1';
@@ -414,14 +416,29 @@ function updateQuickPreview(){
  const type=other>=2?'Free':'Half-price';
  const nazih=ids.some(id=>state.members.find(m=>m.id===id)?.unlimited);
  hint.textContent=`${ids.length} team + ${other} non-team · ${type} for standard team members${nazih?' · Nazih plays free':''}. Each standard member uses one weekly benefit.`;
- const exhausted=ids.filter(id=>{const m=state.members.find(x=>x.id===id);return m&&!m.unlimited&&status(m).remain===0});
+ const gameDate=form.querySelector('[name="played_on"]')?.value||today();
+ const exhausted=ids.filter(id=>{const m=state.members.find(x=>x.id===id);return m&&!m.unlimited&&status(m,gameDate).remain===0});
  if(exhausted.length){hint.textContent+=' · Warning: a member has no remaining benefits.';button.disabled=true}
  else button.disabled=false;
 }
-document.addEventListener('change',e=>{if(e.target.classList?.contains('quick-seat'))updateQuickPreview();if(e.target.id==='team-sort'){state.teamSort=e.target.value;render()}if(e.target.id==='team-filter'){state.teamFilter=e.target.value;render()}});
+document.addEventListener('change',e=>{if(e.target.classList?.contains('quick-seat')||(e.target.name==='played_on'&&state.modal?.type==='quick-team'))updateQuickPreview();if(e.target.id==='team-sort'){state.teamSort=e.target.value;render()}if(e.target.id==='team-filter'){state.teamFilter=e.target.value;render()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.modal)closeModal()});
 async function start(){if(!api.configured){renderAuth();return}if(api.getSession()?.access_token){if(idleExpired()){await autoSignOut();return}await loadData()}else renderAuth();}
 start();
 // Lightweight cross-device refresh. All records are read from Supabase, never local state alone.
-setInterval(()=>{checkStaffInactivity();if(api.configured&&api.getSession()&&state.staff&&!state.modal&&!working&&!document.hidden)loadData()},30000);
+setInterval(()=>{
+ checkStaffInactivity();
+ const currentWeek=weekStart(today()),currentMonth=monthKey(today());
+ if(lastKnownWeek!==currentWeek){
+   if(state.historyWeek===lastKnownWeek){state.historyWeek=currentWeek;state.historyData=null;state.historyLoading=false}
+   if(state.reportWeek===lastKnownWeek)state.reportWeek=currentWeek;
+   lastKnownWeek=currentWeek;
+ }
+ if(lastKnownMonth!==currentMonth){
+   if(state.reportMonth===lastKnownMonth)state.reportMonth=currentMonth;
+   if(state.month===lastKnownMonth)state.month=currentMonth;
+   lastKnownMonth=currentMonth;
+ }
+ if(api.configured&&api.getSession()&&state.staff&&!state.modal&&!working&&!document.hidden)loadData();
+},30000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)return;checkStaffInactivity();if(!idleExpired()&&api.getSession()&&state.staff&&!state.modal)loadData()});
