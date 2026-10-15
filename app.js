@@ -207,8 +207,15 @@ function reportMetrics(){
   return {member:m,played:personal.length,free:personal.filter(g=>g.benefit_type==='free').length,half:personal.filter(g=>g.benefit_type==='half').length,used:st?.used??personal.length,remaining:st?.remain,opening};
  }).filter(r=>r.played||r.used).sort((a,b)=>b.used-a.used||a.member.name.localeCompare(b.member.name));
  const weekUsed=state.reportMode==='week'?state.members.filter(m=>!m.unlimited).reduce((n,m)=>n+getWeeklyStatus(m,state.reportWeek,state.balances,games,data.resets).used,0):null;
- const monthFinance=getMonthFinance(state.finance,state.reportMonth);
- return {validMatches,games,rows,free,half,special,weekUsed,monthFinance};
+ const breakdown=state.matchmakers.length?state.matchmakers.map(person=>({...personFinancials(state.reportMonth,person),person})): [{...getMonthFinance(state.finance,state.reportMonth),person:{name:'Nazih Sonbol',commission_bps:1500}}];
+ const monthFinance={total:breakdown.reduce((sum,r)=>sum+r.total,0),fee:breakdown.reduce((sum,r)=>sum+r.fee,0),games:breakdown.reduce((sum,r)=>sum+r.games,0)};
+ return {validMatches,games,rows,free,half,special,weekUsed,monthFinance,breakdown};
+}
+function matchmakingBreakdownHTML(rows){
+ return `<article class="panel matchmaking-breakdown"><div class="panel-head"><div><h2>Matchmaking by person</h2><p>Independent monthly revenue, commissions, and payments</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Matchmaker</th><th>Games</th><th>Revenue</th><th>Rate</th><th>Commission</th><th>Settlement</th></tr></thead><tbody>${rows.map(r=>{
+ const settlement=state.settlements.find(x=>(x.matchmaker_id||LEGACY_MATCHMAKER_ID)===(r.person.id||LEGACY_MATCHMAKER_ID)&&x.month_key===state.reportMonth+'-01');
+ return `<tr><td><strong>${esc(r.person.name)}</strong></td><td>${r.games}</td><td>${amount(r.total)}</td><td>${(matchmakerRate(r.person)/100).toLocaleString('en-US',{maximumFractionDigits:2})}%</td><td><strong>${amount(r.fee)}</strong></td><td>${tag(settlement?.status==='paid'?'Paid':'Unpaid',settlement?.status==='paid'?'green':'amber')}</td></tr>`;
+ }).join('')}</tbody></table></div></article>`;
 }
 function reportsPage(){
  const [start,end]=reportRange();
@@ -219,7 +226,7 @@ function reportsPage(){
 <div class="period-control"><div><strong>${icon('calendar')} ${title}</strong><small>${weekly?'Weekly benefits and records':'Monthly games and matchmaking revenue'} · Asia/Beirut dates</small></div><div class="period-buttons"><button class="btn btn-light" data-action="report-prev" aria-label="Previous ${weekly?'week':'month'}">${icon('chevronLeft')}</button><button class="btn btn-light" data-action="report-next" ${(weekly?state.reportWeek>=weekStart(today()):state.reportMonth>=monthKey(today()))?'disabled':''} aria-label="Next ${weekly?'week':'month'}">${icon('chevronRight')}</button></div></div>
 ${!m?`<div class="panel-empty">${state.reportLoading?'Loading report from Supabase…':'No report loaded. Use the period arrows to retry.'}</div>`:`
 <section class="finance-grid">${summaryCard('Team matches',m.validMatches.length,'Matches recorded in selected period','calendar',true)}${summaryCard('Benefit uses',weekly?m.weekUsed:m.games.length,weekly?'Includes imported opening balances':'Dated transactions only','gift')}${summaryCard('Free / Half-price',`${m.free} / ${m.half}`,'Per-member benefit entries','activity')}</section>
-${weekly?`<div class="notice">Historical balances use the member's current configured allowance. Imported opening balances are counted as weekly usage; reset events are respected.</div>`:`<section class="finance-grid">${summaryCard('Nazih revenue',amount(m.monthFinance.total),'Collected this month','wallet',true)}${summaryCard('Nazih commission',amount(m.monthFinance.fee),'15% of monthly revenue','coins')}${summaryCard('Other benefit games',m.special,'Special-player entries this month','users')}</section>`}
+${weekly?`<div class="notice">Historical balances use the member's current configured allowance. Imported opening balances are counted as weekly usage; reset events are respected.</div>`:`<section class="finance-grid">${summaryCard('Matchmaking revenue',amount(m.monthFinance.total),'All matchmaking personnel','wallet',true)}${summaryCard('Total commissions',amount(m.monthFinance.fee),'Sum of independent monthly commissions','coins')}${summaryCard('Other benefit games',m.special,'Special-player entries this month','users')}</section>${matchmakingBreakdownHTML(m.breakdown)}`}
 <article class="panel"><div class="panel-head"><div><h2>Team member breakdown</h2><p>${title} · ${m.rows.length} members with activity</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Member</th><th>Category</th><th>Games logged</th><th>Free</th><th>Half-price</th><th>${weekly?'Week used':'Monthly total'}</th>${weekly?'<th>Remaining*</th>':''}</tr></thead><tbody>${m.rows.length?m.rows.map(r=>`<tr><td><strong>${esc(r.member.name)}</strong></td><td>${esc(groupLabel(r.member.team_category))}</td><td>${r.played}</td><td>${r.free}</td><td>${r.half}</td><td><strong>${r.used}</strong></td>${weekly?`<td>${r.member.unlimited?'Unlimited':r.remaining}</td>`:''}</tr>`).join(''):`<tr><td colspan="${weekly?7:6}" class="panel-empty">No benefits recorded for this period.</td></tr>`}</tbody></table></div></article>
 <div class="archive-note">${weekly?'* Remaining benefits use current allowances and historical reset events.':'Financial totals use permanent saved matchmaking records. The monthly game counts exclude imported balances.'} No report action edits any records.</div>
 `}`;
@@ -231,7 +238,7 @@ function exportReport(){
   ['Team matches',m.validMatches.length],['Logged benefit uses',m.games.length],
   ['Free entries',m.free],['Half-price entries',m.half],['Other-player games',m.special]];
  if(weekly)rows.push(['Weekly used (including opening balances)',m.weekUsed]);
- else rows.push(['Nazih revenue USD',(m.monthFinance.total/100).toFixed(2)],['Nazih commission USD',(m.monthFinance.fee/100).toFixed(2)]);
+ else {rows.push(['Total matchmaking revenue USD',(m.monthFinance.total/100).toFixed(2)],['Total commissions USD',(m.monthFinance.fee/100).toFixed(2)]);rows.push([],['Matchmaker','Games','Revenue USD','Commission Rate','Commission USD','Payment status']);for(const x of m.breakdown){const settlement=state.settlements.find(t=>(t.matchmaker_id||LEGACY_MATCHMAKER_ID)===(x.person.id||LEGACY_MATCHMAKER_ID)&&t.month_key===state.reportMonth+'-01');rows.push([x.person.name,x.games,(x.total/100).toFixed(2),(matchmakerRate(x.person)/100)+'%',(x.fee/100).toFixed(2),settlement?.status||'unpaid']);}}
  rows.push([],['Member','Team category','Logged games','Free','Half-price',weekly?'Week used':'Monthly total',...(weekly?['Remaining*']:[])]);
  for(const r of m.rows)rows.push([r.member.name,groupLabel(r.member.team_category),r.played,r.free,r.half,r.used,...(weekly?[r.member.unlimited?'Unlimited':r.remaining]:[])]);
  rows.push([],['Date','Team members','Match benefit','Non-team players']);
