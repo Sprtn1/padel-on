@@ -31,7 +31,8 @@ function toast(message,bad=false){const host=document.getElementById('toast-host
 const tabs=[['dashboard','Overview','grid'],['team','Team Members','users'],['other','Other Benefits','gift'],['finance','Matchmaking','wallet'],['training','Monthly Training','calendar'],['activity','Game Activity','list'],['reports','Reports','download'],['settings','Settings','settings']];
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
-const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null};
+const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
+const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null};
 // Staff inactivity policy: thirty minutes without user interaction logs out every open tab.
 // Background database polling and token refreshes never extend this timer.
 let lastKnownWeek=weekStart(todayBeirut());
@@ -91,7 +92,18 @@ function titleFor(){return tabs.find(x=>x[0]===state.tab)?.[1]||'Dashboard'}
 function today(){return todayBeirut()}
 function normalMembers(){return state.members.filter(m=>m.active&&!m.unlimited)}
 function status(m,date=today()){const past=state.historyWeek!==weekStart(today())&&weekStart(date)===state.historyWeek?state.historyData:null;return getWeeklyStatus(m,date,state.balances,past?.games||state.games,past?.resets||state.resets);}
-function financials(ym=state.month){return getMonthFinance(state.finance,ym);}
+function selectedMatchmaker(){return state.matchmakers.find(x=>x.id===state.matchmakerId)||state.matchmakers[0]||null;}
+function matchmakerRate(person){return Number(person?.commission_bps??1500)}
+function matchmakingFee(cents,person){return Math.round(Number(cents||0)*matchmakerRate(person)/10000)}
+function personFinancials(ym,person){
+ const rows=state.finance.filter(g=>(g.matchmaker_id||LEGACY_MATCHMAKER_ID)===person.id);
+ const f=getMonthFinance(rows,ym);
+ return {...f,fee:matchmakingFee(f.total,person)};
+}
+function financials(ym=state.month){
+ const person=selectedMatchmaker();
+ return person?personFinancials(ym,person):getMonthFinance(state.finance,ym);
+}
 function navMarkup(mobile=false){const allowed=tabs.filter(t=>mobile?t[0]!=='settings':true);return allowed.map(([key,title,ico])=>`<button class="${mobile?'mobile-nav':'nav-item'} ${state.tab===key?'active':''}" data-tab="${key}" aria-current="${state.tab===key?'page':'false'}">${icon(ico)}<span>${mobile?title.split(' ')[0]:title}</span></button>`).join('')}
 function shell(){
  const name=state.staff?.email?.split('@')[0]||'Staff';
