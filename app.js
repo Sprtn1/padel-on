@@ -385,7 +385,7 @@ async function loadData(resetTab=false){if(state.loading)return;state.loading=tr
  // Do not redraw private data if this tab was signed out while requests were pending.
  if(!api.getSession()?.access_token || idleLogoutStarted)return;
  Object.assign(state,{members,balances,matches,games,resets,special,specialGames,finance,settlements});
- if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport();
+ if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport(); if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth();
  }catch(e){if((idleLogoutStarted || !api.getSession()?.access_token) && !e.message.includes('no PADEL ON staff access'))return;if(e.message.includes('sign in')||e.message.includes('JWT')||e.message.includes('refresh token')){clearStaffActivity();await api.signOut();renderAuth(e.message)}else if(state.staff){toast(e.message,true)}else renderAuth(e.message)}finally{state.loading=false;}}
 let working=false;
 async function runMutation(task,success='Saved successfully'){if(working)return;working=true;const b=document.getElementById('save-button');if(b){b.disabled=true;b.textContent='Saving…'}try{await task();state.modal=null;await loadData();toast(success)}catch(e){toast(e?.message||'Could not save. Try again.',true)}finally{working=false;if(b&&b.isConnected){b.disabled=false;b.textContent='Try again'}}}
@@ -449,7 +449,19 @@ async function saveForm(form){const f=new FormData(form),data=Object.fromEntries
 function exportFinance(){const f=financials();const csv=[['Date','Players','Notes','Collected USD','Commission Share USD'],...f.rows.map(r=>[r.played_on,r.players,r.notes,(r.amount_cents/100).toFixed(2),(commission(r.amount_cents)/100).toFixed(2)]),['TOTAL','','',(f.total/100).toFixed(2),(f.fee/100).toFixed(2)]].map(a=>a.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`padel-on-nazih-${state.month}.csv`;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 async function handleAction(target){const act=target.dataset.action,id=target.dataset.id;
  switch(act){
- case 'refresh':await loadData();if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
+ case 'refresh':await loadData();if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
+ case 'training-prev-month':
+  state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
+ case 'training-next-month':
+  if(state.trainingMonth<monthKey(today())){state.trainingMonth=shiftMonth(state.trainingMonth,1);await loadTrainingMonth()}break;
+ case 'add-training':
+  if(state.trainingLoadedMonth!==state.trainingMonth||state.trainingLoading)throw Error('Please load this month first.');
+  if(!trainingMonthData().remaining)throw Error('All Rising Stars members have used their session this month.');
+  openModal('training');break;
+ case 'void-training':
+  if(state.staff?.role!=='admin')throw Error('Only administrators can correct recorded training.');
+  openModal('void-training',id);break;
+ case 'export-training':exportTrainingCSV();break;
  case 'quick-team':openModal('quick-team',id);break;
  case 'team-prev-week':await loadHistoryWeek(addDays(state.historyWeek,-7));break;
  case 'team-next-week':await loadHistoryWeek(addDays(state.historyWeek,7));break;
@@ -491,7 +503,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
  if(e.target.id==='modal-backdrop'){closeModal();return;}
- const tab=e.target.closest('[data-tab]');if(tab){state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports')await loadReport();return;}
+ const tab=e.target.closest('[data-tab]');if(tab){state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports')await loadReport();if(state.tab==='training')await loadTrainingMonth();return;}
  const action=e.target.closest('[data-action]');if(action){try{await handleAction(action)}catch(err){toast(err.message,true)}}
 });
 document.addEventListener('submit',async e=>{
@@ -552,6 +564,7 @@ setInterval(()=>{
  if(lastKnownMonth!==currentMonth){
    if(state.reportMonth===lastKnownMonth)state.reportMonth=currentMonth;
    if(state.month===lastKnownMonth)state.month=currentMonth;
+   if(state.trainingMonth===lastKnownMonth){state.trainingMonth=currentMonth;state.trainingLoadedMonth=null;}
    lastKnownMonth=currentMonth;
  }
  if(api.configured&&api.getSession()&&state.staff&&!state.modal&&!working&&!document.hidden)loadData();
