@@ -1,3 +1,7 @@
+## New features: Quick Match, Previous Weeks, Reports
+
+For the four-player Quick Match, browseable previous weeks, and CSV/printable reports, see **[FEATURE_UPGRADE.md](FEATURE_UPGRADE.md)**. **Required:** run [supabase/migrations/20261015_quick_match.sql](supabase/migrations/20261015_quick_match.sql) once in your PADEL ON project's Supabase SQL Editor before using Quick Match. The old Manual Entry function and records remain intact.
+
 # PADEL ON · Team Games Tracker
 
 A real database-backed management site for **PADEL ON**. Host the website on **GitHub Pages** and use **Supabase** for logins, player records, benefit tracking, matchmaking revenue, and protected counter resets.
