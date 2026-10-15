@@ -273,6 +273,42 @@ async function loadTrainingMonth(){
  }
 }
 
+
+function trainingPage(){
+ const ym=state.trainingMonth,ready=!state.trainingLoading&&!state.trainingError&&state.trainingLoadedMonth===ym;
+ const d=ready?trainingMonthData():null;
+ const sessionRows=d?d.sessions.map(se=>{
+  const people=d.attendance.filter(a=>a.session_id===se.id).map(a=>state.members.find(m=>m.id===a.member_id)?.name||'Member').join(' & ');
+  return `<tr><td>${niceDay(se.session_date)}</td><td><strong>${esc(people)}</strong>${se.solo_exception?'<br/><small>Solo exception</small>':''}</td><td>${se.start_time?esc(String(se.start_time).slice(0,5)):'—'}</td><td>${se.duration_minutes} min</td><td>${esc(se.notes||'—')}</td><td>${state.staff?.role==='admin'?btn('Void','void-training','btn-danger btn-xs',`data-id="${se.id}"`):'<span class="tiny">Recorded</span>'}</td></tr>`;
+ }).join(''):'';
+ const memberRows=d?d.members.map(m=>{
+  const att=d.attendance.find(a=>a.member_id===m.id),session=att?d.sessions.find(se=>se.id===att.session_id):null;
+  return `<div class="training-member"><div class="player-avatar">${esc(initials(m.name))}</div><div class="training-member-name"><strong>${esc(m.name)}</strong><small>${session?'Completed '+niceDay(session.session_date):'Monthly session available'}</small></div>${tag(session?'Completed':'Available',session?'green':'amber')}</div>`;
+ }).join(''):'';
+ return `${heading('Rising Stars / Coach Khalil','Monthly Training','One free training entitlement per Rising Stars member every calendar month.',btn(`${icon('plus')} Record Session`,'add-training','btn-primary',!ready?'disabled':''))}
+<div class="period-control"><div><strong>${icon('calendar')} ${monthLabel(ym)}</strong><small>Coach Khalil · 45 minutes by default · normally 2 players</small></div><div class="period-buttons"><button class="btn btn-light" data-action="training-prev-month" aria-label="Previous month">${icon('chevronLeft')}</button><button class="btn btn-light" data-action="training-next-month" ${ym>=monthKey(today())?'disabled':''} aria-label="Next month">${icon('chevronRight')}</button></div></div>
+${!ready?`<div class="panel-empty">${state.trainingLoading?'Loading monthly training records…':state.trainingError?'Unable to load: '+esc(state.trainingError):'Loading training…'}</div>`:`
+<section class="finance-grid">${summaryCard('Eligible players',d.members.length,'Active Rising Stars members','users',true)}${summaryCard('Already trained',d.used,'Used this month','check')}${summaryCard('Still available',d.remaining,'Free sessions remaining','calendar')}</section>
+<div class="training-actions"><div class="notice">${icon('info')} One free session per player per month. Normally two players train together; a solo exception needs a reason. Weekly game benefits are unaffected.</div>${btn(`${icon('download')} Export Monthly CSV`,'export-training','btn-light')}</div>
+<article class="panel training-panel"><div class="panel-head"><div><h2>Monthly player status</h2><p>${monthLabel(ym)} · ${d.used} of ${d.members.length} completed</p></div></div><div class="training-members">${memberRows||'<div class="panel-empty">No active Rising Stars members. Check team classifications.</div>'}</div></article>
+<article class="panel"><div class="panel-head"><div><h2>Sessions with Coach Khalil</h2><p>${d.sessions.length} sessions · ${d.attendance.length} player attendances</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Players</th><th>Time</th><th>Duration</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${sessionRows||'<tr><td colspan="6" class="panel-empty">No sessions recorded this month.</td></tr>'}</tbody></table></div></article>
+<div class="archive-note">Training attendance is saved across months. Corrections require administrator authorization and are audited. This does not reset or change weekly padel games.</div>`}`;
+}
+function exportTrainingCSV(){
+ if(state.trainingLoadedMonth!==state.trainingMonth||state.trainingLoading||state.trainingError)throw Error('Load a training month first.');
+ const d=trainingMonthData(),ym=state.trainingMonth;
+ const rows=[['PADEL ON','Monthly Rising Stars Training',monthLabel(ym)],['Coach','Coach Khalil'],['Eligible',d.members.length],['Trained',d.used],['Remaining',d.remaining],[],['Member','Status','Training date','Duration (min)','Coach']];
+ for(const m of d.members){
+  const att=d.attendance.find(a=>a.member_id===m.id),se=att?d.sessions.find(x=>x.id===att.session_id):null;
+  rows.push([m.name,se?'Completed':'Not yet',se?.session_date||'',se?.duration_minutes||'',se?'Coach Khalil':'']);
+ }
+ rows.push([],['Date','Start time','Player names','Duration (min)','Solo exception','Notes']);
+ for(const se of d.sessions){
+  rows.push([se.session_date,se.start_time||'',d.attendance.filter(a=>a.session_id===se.id).map(a=>state.members.find(m=>m.id===a.member_id)?.name||'Member').join(' & '),se.duration_minutes,se.solo_exception?'Yes':'No',se.notes]);
+ }
+ downloadCSV(rows,'padel-on-training-'+ym+'.csv');
+}
+
 function financePage(){const f=financials(),sel=state.settlements.find(s=>s.month_key===state.month+'-01');const paid=sel?.status==='paid';const diff=Number(sel?.amount_paid_cents||0)-f.fee;return `${heading('Matchmaking / Nazih Sonbol','Revenue & Commission','Every matchmaking game is saved permanently. Monthly totals are kept separately.',btn(`${icon('plus')} Add Matchmaking Game`,'add-nazih','btn-primary'))}
 <div class="toolbar"><div class="money-note">Revenue collected from other players · all figures USD</div><div class="month-control"><button data-action="prev-month" title="Previous month" aria-label="Previous month">${icon('chevronLeft')}</button><strong>${monthLabel(state.month)}</strong><button data-action="next-month" ${state.month>=monthKey(today())?'disabled':''} title="Next month" aria-label="Next month">${icon('chevronRight')}</button></div></div>
 <section class="finance-grid">${summaryCard('Revenue collected',amount(f.total),'From other players','wallet',true)}${summaryCard('Nazih’s 15% commission',amount(f.fee),'Calculated monthly','coins')}${summaryCard('Games recorded',f.games,'This selected month','calendar')}</section>
