@@ -1,3 +1,7 @@
+## Monthly training with Coach Khalil
+
+PADEL ON now has a **Monthly Training** page for Rising Stars. It records two-player (or reasoned solo-exception) completed sessions, one free session per member per month, previous months, and attendance CSV reports. **Run the new Supabase migration first:** see [MONTHLY_TRAINING_UPGRADE.md](MONTHLY_TRAINING_UPGRADE.md). All existing weekly counters and finances are independent.
+
 ## Team categories (Top / Team / Rising Stars / Ladies)
 
 The Team Members page now groups players into four categories and lets administrators assign categories when adding or editing members. To activate this against an existing Supabase database, run the structural SQL migration and then the separate private roster assignment script. Details: [TEAM_CATEGORIES_UPGRADE.md](TEAM_CATEGORIES_UPGRADE.md). The **private** script should not be uploaded to GitHub.
