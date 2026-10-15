@@ -86,6 +86,6 @@
 .matchmaker-tab{border:1px solid #e2ebe5;background:#f7faf8;border-radius:11px;padding:10px 15px;min-height:41px;color:#456458;font-weight:800;font-size:12px;transition:background .14s,border-color .14s}
 .matchmaker-tab.selected{background:#ddf5e8;color:#087c4d;border-color:#96d7b2;box-shadow:0 2px 9px rgba(16,140,75,.08)}
 .matchmaker-tab:hover{background:#eaf8f0}
-.matchmaker-breakdown{margin-bottom:18px}
+.matchmaking-breakdown{margin-bottom:18px}
 @media(max-width:560px){.matchmaker-switch{padding:13px;margin:-2px 0 18px}.matchmaker-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.matchmaker-tab{padding:9px 8px;font-size:11px;white-space:normal;overflow-wrap:anywhere}.matchmaker-switch-label{font-size:10px}}
 @media print{.matchmaker-switch-label{display:none}.matchmaker-tabs{display:none}}
