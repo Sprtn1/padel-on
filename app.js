@@ -239,6 +239,40 @@ function downloadCSV(rows,filename){
 
 function otherPage(){return `${heading('Special arrangements','Other Benefits','Track free-game eligibility outside the regular team allowances.',state.staff?.role==='admin'?btn(`${icon('plus')} Add Player`,'new-other','btn-primary'):'')}
 <div class="other-grid">${state.special.filter(p=>p.active).map(p=>{const info=p.status==='next_free'?['Next Game Free','green']:p.status==='rule_not_configured'?['Rule Not Configured','gray']:p.status==='counting'?[p.threshold?`${Math.max(0,p.threshold-p.current_counter)} Until Free`:'Counting','amber']:['Needs Confirmation','amber'];return `<article class="other-card"><div class="member-top"><div class="player-avatar">${esc(initials(p.name))}</div><div class="player-title"><strong>${esc(p.name)}</strong><small>Special benefit</small></div></div>${tag(info[0],info[1])}<div class="other-note">${p.status==='next_free'?'This player has a free game waiting.':p.slug==='rami-al-rifai'&&p.status==='counting'?`${Math.max(0,5-p.current_counter)} more paid game(s) before a free game.`:p.status==='rule_not_configured'?'Eligibility conditions have not been set.':'Confirm the player’s next-game benefit.'}</div><div class="player-row" style="margin-bottom:18px"><span class="game-caption">Games counter</span><span class="other-count num">${p.current_counter}</span></div><div class="card-bottom">${btn(`${icon('plus')} Record Game`,'record-other','btn-soft',`data-id="${p.id}"`)}${state.staff?.role==='admin'?btn(icon('edit'),'edit-other','btn-light btn-icon history-button',`data-id="${p.id}" title="Edit player"`):''}</div></article>`}).join('')}</div>`}
+
+function risingStarsMembers(){return state.members.filter(m=>m.active&&m.team_category==='rising_stars').sort((a,b)=>a.name.localeCompare(b.name));}
+function trainingMonthData(){
+ const sessions=state.trainingSessions.filter(s=>!s.voided_at&&monthKey(s.session_date)===state.trainingMonth).sort((a,b)=>b.session_date.localeCompare(a.session_date)||(b.start_time||'').localeCompare(a.start_time||''));
+ const sessionIds=new Set(sessions.map(s=>s.id));
+ const attendance=state.trainingAttendance.filter(a=>!a.voided_at&&sessionIds.has(a.session_id));
+ const attended=new Set(attendance.map(a=>a.member_id));
+ const members=risingStarsMembers();
+ return {sessions,attendance,attended,members,used:members.filter(m=>attended.has(m.id)).length,remaining:members.filter(m=>!attended.has(m.id)).length};
+}
+let trainingLoadSequence=0;
+async function loadTrainingMonth(){
+ if(!api.getSession()?.access_token||!state.staff)return;
+ const target=state.trainingMonth,seq=++trainingLoadSequence;
+ const start=target+'-01',end=addDays(shiftMonth(target,1)+'-01',-1);
+ state.trainingLoading=true;state.trainingError=null;state.trainingLoadedMonth=null;
+ if(state.tab==='training')render();
+ try{
+  const [sessions,attendance]=await Promise.all([
+   api.listAll('training_sessions','session_date=gte.'+start+'&session_date=lte.'+end),
+   api.listAll('training_attendance','month_key=eq.'+start)
+  ]);
+  if(seq!==trainingLoadSequence||!api.getSession()?.access_token)return;
+  state.trainingSessions=sessions;state.trainingAttendance=attendance;state.trainingLoadedMonth=target;
+ }catch(e){
+  if(seq===trainingLoadSequence&&api.getSession()?.access_token)state.trainingError=e?.message||'Unable to retrieve monthly training.';
+ }finally{
+  if(seq===trainingLoadSequence){
+   state.trainingLoading=false;
+   if(state.tab==='training'&&api.getSession()?.access_token)render();
+  }
+ }
+}
+
 function financePage(){const f=financials(),sel=state.settlements.find(s=>s.month_key===state.month+'-01');const paid=sel?.status==='paid';const diff=Number(sel?.amount_paid_cents||0)-f.fee;return `${heading('Matchmaking / Nazih Sonbol','Revenue & Commission','Every matchmaking game is saved permanently. Monthly totals are kept separately.',btn(`${icon('plus')} Add Matchmaking Game`,'add-nazih','btn-primary'))}
 <div class="toolbar"><div class="money-note">Revenue collected from other players · all figures USD</div><div class="month-control"><button data-action="prev-month" title="Previous month" aria-label="Previous month">${icon('chevronLeft')}</button><strong>${monthLabel(state.month)}</strong><button data-action="next-month" ${state.month>=monthKey(today())?'disabled':''} title="Next month" aria-label="Next month">${icon('chevronRight')}</button></div></div>
 <section class="finance-grid">${summaryCard('Revenue collected',amount(f.total),'From other players','wallet',true)}${summaryCard('Nazih’s 15% commission',amount(f.fee),'Calculated monthly','coins')}${summaryCard('Games recorded',f.games,'This selected month','calendar')}</section>
