@@ -289,7 +289,7 @@ function trainingPage(){
 <div class="period-control"><div><strong>${icon('calendar')} ${monthLabel(ym)}</strong><small>Coach Khalil · 45 minutes by default · normally 2 players</small></div><div class="period-buttons"><button class="btn btn-light" data-action="training-prev-month" aria-label="Previous month">${icon('chevronLeft')}</button><button class="btn btn-light" data-action="training-next-month" ${ym>=monthKey(today())?'disabled':''} aria-label="Next month">${icon('chevronRight')}</button></div></div>
 ${!ready?`<div class="panel-empty">${state.trainingLoading?'Loading monthly training records…':state.trainingError?'Unable to load: '+esc(state.trainingError):'Loading training…'}</div>`:`
 <section class="finance-grid">${summaryCard('Eligible players',d.members.length,'Active Rising Stars members','users',true)}${summaryCard('Already trained',d.used,'Used this month','check')}${summaryCard('Still available',d.remaining,'Free sessions remaining','calendar')}</section>
-<div class="training-actions"><div class="notice">${icon('info')} One free session per player per month. Normally two players train together; a solo exception needs a reason. Weekly game benefits are unaffected.</div>${btn(`${icon('download')} Export Monthly CSV`,'export-training','btn-light')}</div>
+<div class="training-actions"><div class="notice">${icon('info')} One free session per player per month. Normally two players train together; a solo exception needs a reason. Weekly game benefits are unaffected.</div>${btn(`${icon('download')} Export Monthly CSV`,'export-training','btn-light')}${btn('Print / Save PDF','print-training','btn-light')}</div>
 <article class="panel training-panel"><div class="panel-head"><div><h2>Monthly player status</h2><p>${monthLabel(ym)} · ${d.used} of ${d.members.length} completed</p></div></div><div class="training-members">${memberRows||'<div class="panel-empty">No active Rising Stars members. Check team classifications.</div>'}</div></article>
 <article class="panel"><div class="panel-head"><div><h2>Sessions with Coach Khalil</h2><p>${d.sessions.length} sessions · ${d.attendance.length} player attendances</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Players</th><th>Time</th><th>Duration</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${sessionRows||'<tr><td colspan="6" class="panel-empty">No sessions recorded this month.</td></tr>'}</tbody></table></div></article>
 <div class="archive-note">Training attendance is saved across months. Corrections require administrator authorization and are audited. This does not reset or change weekly padel games.</div>`}`;
@@ -462,6 +462,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
   if(state.staff?.role!=='admin')throw Error('Only administrators can correct recorded training.');
   openModal('void-training',id);break;
  case 'export-training':exportTrainingCSV();break;
+ case 'print-training':window.print();break;
  case 'quick-team':openModal('quick-team',id);break;
  case 'team-prev-week':await loadHistoryWeek(addDays(state.historyWeek,-7));break;
  case 'team-next-week':await loadHistoryWeek(addDays(state.historyWeek,7));break;
