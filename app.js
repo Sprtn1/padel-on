@@ -104,10 +104,10 @@ function recentActivity(max=6,filterName=''){
  return [...team,...special].filter(g=>!filterName||g.names.toLowerCase().includes(filterName.toLowerCase())).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,max);
 }
 function dashboard(){const normal=normalMembers();const used=normal.reduce((n,m)=>n+status(m).used,0),left=normal.reduce((n,m)=>n+status(m).remain,0),empty=normal.filter(m=>status(m).remain===0).length;const recent=recentActivity(6);return `
-${heading('Your club, organized','Good day, team.','Here’s what’s happening at PADEL ON this week.',btn(`${icon('plus')} Record a Game`,'record-team','btn-primary'))}
+${heading('Your club, organized','Good day, team.','Here’s what’s happening at PADEL ON this week.',btn(`${icon('plus')} Quick Match`,'quick-team','btn-primary'))}
 <div class="notice" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">${icon('calendar')} <span><strong>Current week:</strong> ${weekLabel(today())} · Counters automatically follow the Beirut calendar week.</span></div>
 <section class="summary">${summaryCard('Active team members',state.members.filter(m=>m.active).length,'Including Nazih Sonbol','users',true)}${summaryCard('Benefits used',used,'This week · standard members','activity')}${summaryCard('Benefits remaining',left,'Available this week','gift')}${summaryCard('Allowances exhausted',empty,'Members with 0 remaining','shield')}</section>
-<section class="two-col"><article class="panel"><div class="panel-head"><div><h2>Recent game activity</h2><p>Last 30 days · latest first</p></div><button class="link" data-tab="activity">View all ${icon('arrow')}</button></div><div class="panel-body">${recent.length?recent.map(a=>`<div class="activity-line"><div class="activity-avatar">${esc(initials(a.names.split(',')[0]))}</div><div class="activity-copy"><strong>${esc(a.names)}</strong><small>${esc(a.type)}</small></div><span class="small-date">${niceDay(a.date)}</span></div>`).join(''):`<div class="empty-prompt">${icon('calendar')}<strong>No new games yet</strong><span>Recorded games will appear here.</span></div>`}</div></article><article class="panel"><div class="panel-head"><div><h2>Quick actions</h2><p>Everything in just a tap</p></div></div><div class="panel-body quick-list"><button class="quick-link" data-action="record-team">${icon('plus')}<span><strong>Record team game</strong><small>Use a weekly benefit</small></span></button><button class="quick-link" data-action="add-nazih">${icon('wallet')}<span><strong>Log matchmaking revenue</strong><small>Track Nazih's 15% commission</small></span></button><button class="quick-link" data-tab="other">${icon('gift')}<span><strong>Other player benefits</strong><small>Free game eligibility</small></span></button><button class="quick-link" data-tab="settings">${icon('settings')}<span><strong>Management settings</strong><small>Members and secure resets</small></span></button></div></article></section>`}
+<section class="two-col"><article class="panel"><div class="panel-head"><div><h2>Recent game activity</h2><p>Last 30 days · latest first</p></div><button class="link" data-tab="activity">View all ${icon('arrow')}</button></div><div class="panel-body">${recent.length?recent.map(a=>`<div class="activity-line"><div class="activity-avatar">${esc(initials(a.names.split(',')[0]))}</div><div class="activity-copy"><strong>${esc(a.names)}</strong><small>${esc(a.type)}</small></div><span class="small-date">${niceDay(a.date)}</span></div>`).join(''):`<div class="empty-prompt">${icon('calendar')}<strong>No new games yet</strong><span>Recorded games will appear here.</span></div>`}</div></article><article class="panel"><div class="panel-head"><div><h2>Quick actions</h2><p>Everything in just a tap</p></div></div><div class="panel-body quick-list"><button class="quick-link" data-action="quick-team">${icon('plus')}<span><strong>Quick Match</strong><small>Choose all four participants</small></span></button><button class="quick-link" data-action="add-nazih">${icon('wallet')}<span><strong>Log matchmaking revenue</strong><small>Track Nazih's 15% commission</small></span></button><button class="quick-link" data-tab="other">${icon('gift')}<span><strong>Other player benefits</strong><small>Free game eligibility</small></span></button><button class="quick-link" data-tab="settings">${icon('settings')}<span><strong>Management settings</strong><small>Members and secure resets</small></span></button></div></article></section>`}
 function teamPage(){
  const selected=state.historyWeek, historical=selected!==weekStart(today());
  let members=state.members.filter(m=>m.active);
@@ -152,6 +152,12 @@ function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',d
  case'team': {
   title='Record Team Game';subtitle='Select all eligible team members in this match.';action='save-team';
   content=`<form id="modal-form" data-save="${action}">${field('played_on','Game date',today(),'date',`required max="${today()}" min="${addDays(today(),-30)}"`)}<div class="form-field"><span>Team member(s) · select up to 4</span><div class="check-options">${state.members.filter(x=>x.active).map(x=>`<label><input type="checkbox" name="member_ids" value="${x.id}" ${x.id===m.id?'checked':''}/> ${esc(x.name)} ${x.unlimited?'(unlimited)':''}</label>`).join('')}</div></div><div class="form-field"><span>Benefit type</span><div class="radio-tiles"><label><input type="radio" name="benefit_type" value="free" checked/> Free game</label><label><input type="radio" name="benefit_type" value="half"/> Half-price game</label></div></div>${textareaField('notes','Notes (optional)')}<div class="notice warn">Confirm the actual player composition: free with two non-team participants, or half-price with three or more team participants. Each selected team member uses one weekly benefit.</div>${formActions('Save Game')}</form>`;break;}
+ case 'quick-team':{
+  title='Quick Match · Four Players';subtitle='Choose four participants. The benefit is calculated from team composition.';
+  const options=state.members.filter(x=>x.active).map(x=>`<option value="${x.id}">${esc(x.name)}${x.unlimited?' · unlimited':` · ${status(x).remain} left`}</option>`).join('');
+  const slots=Array.from({length:4},(_,i)=>`<label class="form-field"><span>Player ${i+1}</span><select class="form-input quick-seat" name="seat_${i}" required><option value="">Choose participant</option><option value="non-team">Non-team player</option>${options.replace(`value="${m.id}"`,`value="${m.id}" ${i===0?'selected':''}`)}</select></label>`).join('');
+  content=`<form id="modal-form" data-save="save-quick"><div class="form-cols">${field('played_on','Game date',today(),'date',`required max="${today()}" min="${addDays(today(),-30)}"`)}</div><div class="quick-seat-grid">${slots}</div><div id="quick-benefit-preview" class="notice">Select all four players to calculate their game benefits.</div>${field('non_team_names','Non-team names (optional)','','text','maxlength="255" placeholder="Names separated by commas"')}${textareaField('notes','Notes (optional)')}${formActions('Record Match')}</form>`;
+  break;}
  case 'other-game': {const p=state.special.find(x=>x.id===m.id);title='Record Special Benefit';subtitle=p?.name||'';content=`<form id="modal-form" data-save="save-other">${field('played_on','Game date',today(),'date',`required max="${today()}" min="${addDays(today(),-30)}"`)}<div class="form-field"><span>Game type</span><div class="radio-tiles"><label><input type="radio" name="game_type" value="paid" ${p?.status!=='next_free'?'checked':''}/> Paid game</label><label><input type="radio" name="game_type" value="free" ${p?.status==='next_free'?'checked':''}/> Free game</label></div></div>${textareaField('notes','Notes (optional)')}${formActions('Record Game')}</form>`;break;}
  case 'finance': {const rec=state.finance.find(x=>x.id===m.id);title=rec?'Edit Matchmaking Game':'Add Matchmaking Game';subtitle='Revenue collected from the other players (USD).';content=`<form id="modal-form" data-save="save-finance"><div class="form-cols">${field('played_on','Game date',rec?.played_on||today(),'date',`required max="${today()}"`)}${field('amount','Amount received ($)',rec?Number(rec.amount_cents/100).toFixed(2):'','number','required min="0" max="1000000000" step="0.01" placeholder="45.00"')}</div>${field('players','Other players (optional)',rec?.players||'','text','maxlength="255"')}${textareaField('notes','Notes (optional)',rec?.notes||'')}${formActions(rec?'Save Changes':'Save Revenue')}</form>`;break;}
  case 'edit-member': {const p=state.members.find(x=>x.id===m.id);title=p?'Edit Team Member':'Add Team Member';subtitle='Only administrators can modify the team roster.';content=`<form id="modal-form" data-save="save-member">${field('name','Full name',p?.name||'','text','required maxlength="100" minlength="2"')}<div class="form-cols">${field('weekly_allowance','Weekly allowance',p?.weekly_allowance??2,'number','min="0" max="30" required')}${selectField('active','Status',[['true','Active'],['false','Inactive']],p?.active===false?'false':'true')}</div>${selectField('unlimited','Free game rule',[['false','Weekly allowance'],['true','Unlimited free games']],p?.unlimited?'true':'false')}${formActions(p?'Save Member':'Create Member')}</form>`;break;}
@@ -165,7 +171,7 @@ function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',d
  return `<div class="modal-backdrop" id="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-head"><div><h2>${esc(title)}</h2><p>${esc(subtitle)}</p></div><button class="modal-close" data-action="close-modal" aria-label="Close">${icon('close')}</button></div><div class="modal-body">${content}</div></div></div>`
 }
 function formActions(text,danger=false){return `<div class="modal-actions">${btn('Cancel','close-modal','btn-light')}<button type="submit" class="btn ${danger?'btn-danger':'btn-primary'}" id="save-button">${esc(text)}</button></div>`}
-function openModal(type,id=null,more={}){state.modal={type,id,...(['team','other-game','finance'].includes(type)?{requestId:crypto.randomUUID()}:{}),...more};render();setTimeout(()=>document.querySelector('#modal-root .form-input')?.focus(),0)}
+function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance'].includes(type)?{requestId:crypto.randomUUID()}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();},0)}
 function closeModal(){state.modal=null;document.getElementById('modal-root').innerHTML=''}
 function renderAuth(message=''){
  app.innerHTML=`<main class="auth-wrap"><section class="auth-lead"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><h1>The team.<br/><em>All in one place.</em></h1><p>Weekly padel benefits, special players, and matchmaking revenue—securely tracked together.</p></section><section class="auth-card"><div class="eyebrow">Private club workspace</div><h2>Welcome back</h2><p class="sub">Sign in with your PADEL ON staff account.</p>${!api.configured?'<div class="auth-error">Database not configured. Set the Supabase URL and publishable key in <strong>config.js</strong>, then follow README.md.</div>':''}${message?`<div class="auth-error">${esc(message)}</div>`:''}<form id="login-form">${field('email','Email address','','email','required autocomplete="email"')}${field('password','Password','','password','required autocomplete="current-password"')}<button class="btn btn-primary" ${!api.configured?'disabled':''} type="submit">Sign In ${icon('arrow')}</button></form><div class="auth-foot">Authorized PADEL ON staff only · Protected by Supabase Auth</div></section></main>`;
@@ -189,6 +195,18 @@ async function runMutation(task,success='Saved successfully'){if(working)return;
 function slugify(x){return x.trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Math.random().toString(36).slice(2,6)}
 async function saveForm(form){const f=new FormData(form),data=Object.fromEntries(f.entries()),m=state.modal;
  switch(form.dataset.save){
+ case 'save-quick':{
+  const seats=Array.from({length:4},(_,i)=>data[`seat_${i}`]);
+  if(seats.some(x=>!x))throw Error('Select all four match participants.');
+  const ids=seats.filter(x=>x!=='non-team');
+  const nonTeam=seats.filter(x=>x==='non-team').length;
+  if(!ids.length)throw Error('A benefit match needs at least one team member.');
+  if(new Set(ids).size!==ids.length)throw Error('Select each team member only once.');
+  const benefit=nonTeam>=2?'free':ids.length>=3?'half':null;
+  if(!benefit)throw Error('No benefit rule matches this group.');
+  // The Supabase function independently validates the match and handles Nazih's unlimited free exception.
+  await api.rpc('record_quick_team_match',{p_match_id:m.requestId,p_member_ids:ids,p_non_team_count:nonTeam,p_played_on:data.played_on,p_non_team_names:data.non_team_names?.trim()||'',p_notes:data.notes?.trim()||''});
+  break;}
  case 'save-team':{
   const ids=f.getAll('member_ids');if(!ids.length)throw Error('Select at least one team member.');if(ids.length>4)throw Error('Select at most four team members.');
   await api.rpc('record_team_match',{p_match_id:m.requestId,p_member_ids:ids,p_played_on:data.played_on,p_benefit_type:data.benefit_type,p_notes:data.notes||''});break;}
@@ -218,6 +236,7 @@ function exportFinance(){const f=financials();const csv=[['Date','Players','Note
 async function handleAction(target){const act=target.dataset.action,id=target.dataset.id;
  switch(act){
  case 'refresh':await loadData();toast('Data refreshed');break;
+ case 'quick-team':openModal('quick-team',id);break;
  case 'record-team':openModal('team',id);break;
  case 'record-other':openModal('other-game',id);break;
  case 'add-nazih':openModal('finance');break;
@@ -266,7 +285,28 @@ document.addEventListener('input',e=>{
   render();const input=document.getElementById(id);input?.focus();input?.setSelectionRange(caret,caret);
  }
 });
-document.addEventListener('change',e=>{if(e.target.id==='team-sort'){state.teamSort=e.target.value;render()}if(e.target.id==='team-filter'){state.teamFilter=e.target.value;render()}});
+function updateQuickPreview(){
+ const form=document.getElementById('modal-form');
+ if(!form||form.dataset.save!=='save-quick')return;
+ const seats=Array.from(form.querySelectorAll('.quick-seat')).map(el=>el.value);
+ const hint=document.getElementById('quick-benefit-preview');
+ const button=form.querySelector('#save-button');
+ if(!hint||!button)return;
+ if(seats.some(v=>!v)){hint.textContent='Choose all four participants to calculate benefits.';button.disabled=true;return}
+ const ids=seats.filter(v=>v!=='non-team');
+ if(ids.length===0 || new Set(ids).size!==ids.length){
+   hint.textContent=ids.length===0?'Select at least one team member.':'The same team member cannot occupy two spots.';
+   button.disabled=true;return;
+ }
+ const other=4-ids.length;
+ const type=other>=2?'Free':'Half-price';
+ const nazih=ids.some(id=>state.members.find(m=>m.id===id)?.unlimited);
+ hint.textContent=`${ids.length} team + ${other} non-team · ${type} for standard team members${nazih?' · Nazih plays free':''}. Each standard member uses one weekly benefit.`;
+ const exhausted=ids.filter(id=>{const m=state.members.find(x=>x.id===id);return m&&!m.unlimited&&status(m).remain===0});
+ if(exhausted.length){hint.textContent+=' · Warning: a member has no remaining benefits.';button.disabled=true}
+ else button.disabled=false;
+}
+document.addEventListener('change',e=>{if(e.target.classList?.contains('quick-seat'))updateQuickPreview();if(e.target.id==='team-sort'){state.teamSort=e.target.value;render()}if(e.target.id==='team-filter'){state.teamFilter=e.target.value;render()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.modal)closeModal()});
 async function start(){if(!api.configured){renderAuth();return}if(api.getSession()?.access_token){if(idleExpired()){await autoSignOut();return}await loadData()}else renderAuth();}
 start();
