@@ -368,7 +368,7 @@ function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',d
  return `<div class="modal-backdrop" id="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-head"><div><h2>${esc(title)}</h2><p>${esc(subtitle)}</p></div><button class="modal-close" data-action="close-modal" aria-label="Close">${icon('close')}</button></div><div class="modal-body">${content}</div></div></div>`
 }
 function formActions(text,danger=false){return `<div class="modal-actions">${btn('Cancel','close-modal','btn-light')}<button type="submit" class="btn ${danger?'btn-danger':'btn-primary'}" id="save-button">${esc(text)}</button></div>`}
-function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance'].includes(type)?{requestId:crypto.randomUUID()}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();},0)}
+function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance','training'].includes(type)?{requestId:crypto.randomUUID()}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();},0)}
 function closeModal(){state.modal=null;document.getElementById('modal-root').innerHTML=''}
 function renderAuth(message=''){
  app.innerHTML=`<main class="auth-wrap"><section class="auth-lead"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><h1>The team.<br/><em>All in one place.</em></h1><p>Weekly padel benefits, special players, and matchmaking revenue—securely tracked together.</p></section><section class="auth-card"><div class="eyebrow">Private club workspace</div><h2>Welcome back</h2><p class="sub">Sign in with your PADEL ON staff account.</p>${!api.configured?'<div class="auth-error">Database not configured. Set the Supabase URL and publishable key in <strong>config.js</strong>, then follow README.md.</div>':''}${message?`<div class="auth-error">${esc(message)}</div>`:''}<form id="login-form">${field('email','Email address','','email','required autocomplete="email"')}${field('password','Password','','password','required autocomplete="current-password"')}<button class="btn btn-primary" ${!api.configured?'disabled':''} type="submit">Sign In ${icon('arrow')}</button></form><div class="auth-foot">Authorized PADEL ON staff only · Protected by Supabase Auth</div></section></main>`;
@@ -408,6 +408,23 @@ async function saveForm(form){const f=new FormData(form),data=Object.fromEntries
   const ids=f.getAll('member_ids');if(!ids.length)throw Error('Select at least one team member.');if(ids.length>4)throw Error('Select at most four team members.');
   await api.rpc('record_team_match',{p_match_id:m.requestId,p_member_ids:ids,p_played_on:data.played_on,p_benefit_type:data.benefit_type,p_notes:data.notes||''});break;}
  case 'save-other':await api.rpc('record_other_game',{p_game_id:m.requestId,p_player_id:m.id,p_played_on:data.played_on,p_game_type:data.game_type,p_notes:data.notes||''});break;
+ case 'save-training':{
+  const ids=[data.player1,data.player2].filter(Boolean);
+  if(ids.length===0)throw Error('Select a Rising Stars member.');
+  if(new Set(ids).size!==ids.length)throw Error('Select two different members.');
+  const solo=data.solo_exception==='yes';
+  if(ids.length===1&&!solo)throw Error('Select a second player or enable the one-player exception.');
+  if(ids.length===2&&solo)throw Error('Uncheck solo exception when two players are selected.');
+  if(solo&&(data.notes||'').trim().length<4)throw Error('Write a reason for solo training in Notes.');
+  if(monthKey(data.session_date)!==state.trainingMonth)throw Error('Date must be in the selected month.');
+  await api.rpc('record_training_session',{p_session_id:m.requestId,p_member_ids:ids,p_session_date:data.session_date,p_start_time:data.start_time||null,p_duration_minutes:Number(data.duration_minutes),p_notes:(data.notes||'').trim(),p_solo_exception:solo});
+  break;
+ }
+ case 'void-training':{
+  if(!data.reason||data.reason.trim().length<4)throw Error('Provide a reason for the correction.');
+  await api.rpc('void_training_session',{p_session_id:m.id,p_reason:data.reason.trim()});
+  break;
+ }
  case 'save-finance':{
   const payload={played_on:data.played_on,amount_cents:parseUSD(data.amount),players:data.players?.trim()||'',notes:data.notes?.trim()||'',updated_at:new Date().toISOString()};
   if(m.id)await api.patch('nazih_games',m.id,payload);else await api.insert('nazih_games',{...payload,id:m.requestId,created_by:api.getSession().user.id});
