@@ -333,6 +333,30 @@ function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',d
   break;}
  case 'other-game': {const p=state.special.find(x=>x.id===m.id);title='Record Special Benefit';subtitle=p?.name||'';content=`<form id="modal-form" data-save="save-other">${field('played_on','Game date',today(),'date',`required max="${today()}" min="${addDays(today(),-30)}"`)}<div class="form-field"><span>Game type</span><div class="radio-tiles"><label><input type="radio" name="game_type" value="paid" ${p?.status!=='next_free'?'checked':''}/> Paid game</label><label><input type="radio" name="game_type" value="free" ${p?.status==='next_free'?'checked':''}/> Free game</label></div></div>${textareaField('notes','Notes (optional)')}${formActions('Record Game')}</form>`;break;}
  case 'finance': {const rec=state.finance.find(x=>x.id===m.id);title=rec?'Edit Matchmaking Game':'Add Matchmaking Game';subtitle='Revenue collected from the other players (USD).';content=`<form id="modal-form" data-save="save-finance"><div class="form-cols">${field('played_on','Game date',rec?.played_on||today(),'date',`required max="${today()}"`)}${field('amount','Amount received ($)',rec?Number(rec.amount_cents/100).toFixed(2):'','number','required min="0" max="1000000000" step="0.01" placeholder="45.00"')}</div>${field('players','Other players (optional)',rec?.players||'','text','maxlength="255"')}${textareaField('notes','Notes (optional)',rec?.notes||'')}${formActions(rec?'Save Changes':'Save Revenue')}</form>`;break;}
+
+ case 'training':{
+  title='Record Coach Khalil Training';subtitle='One free monthly training per Rising Stars member.';
+  const d=trainingMonthData(),eligible=d.members.filter(m=>!d.attended.has(m.id));
+  const opts=eligible.map(p=>[p.id,p.name]);
+  const first=state.trainingMonth+'-01',last=addDays(shiftMonth(state.trainingMonth,1)+'-01',-1);
+  const latest=last>today()?today():last;
+  content=`<form id="modal-form" data-save="save-training">
+   ${field('session_date','Training date',state.trainingMonth===monthKey(today())?today():latest,'date',`required min="${first}" max="${latest}"`)}
+   ${selectField('player1','Rising Stars player 1',[['','Choose player'],...opts],'')}
+   ${selectField('player2','Rising Stars player 2',[['','Choose second player (or use solo exception)'],...opts],'')}
+   <label class="training-solo-check"><input type="checkbox" name="solo_exception" value="yes"/> One-player exception (normally two players train together)</label>
+   <div class="form-cols">${field('start_time','Start time (optional)','','time')}${field('duration_minutes','Duration (minutes)',45,'number','required min="15" max="180" step="5"')}</div>
+   ${textareaField('notes','Notes / solo exception reason')}
+   <div class="notice">Coach Khalil · Free session · Up to one attendance per player each month. For one player, tick the solo exception and write a reason.</div>
+   ${formActions('Save Completed Training')}</form>`;
+  break;
+ }
+ case 'void-training':{
+  const session=state.trainingSessions.find(x=>x.id===m.id);
+  title='Void Training Record';subtitle=session?'Coach Khalil · '+niceDay(session.session_date):'Correct an incorrect training entry';danger=true;
+  content=`<div class="notice warn">Voiding preserves the audit history and restores the selected players’ eligibility for that month.</div><form id="modal-form" data-save="void-training">${textareaField('reason','Reason for correction')}${formActions('Void Training',true)}</form>`;
+  break;
+ }
  case 'edit-member': {const p=state.members.find(x=>x.id===m.id);title=p?'Edit Team Member':'Add Team Member';subtitle='Only administrators can modify the team roster.';content=`<form id="modal-form" data-save="save-member">${field('name','Full name',p?.name||'','text','required maxlength="100" minlength="2"')}${selectField('team_category','Team category',TEAM_GROUPS,p?.team_category||'team')}<div class="form-cols">${field('weekly_allowance','Weekly allowance',p?.weekly_allowance??0,'number','min="0" max="30" required')}${selectField('active','Status',[['true','Active'],['false','Inactive']],p?.active===false?'false':'true')}</div>${selectField('unlimited','Free game rule',[['false','Weekly allowance'],['true','Unlimited free games']],p?.unlimited?'true':'false')}${formActions(p?'Save Member':'Create Member')}</form>`;break;}
  case 'choose-member':{title='Edit Team Member';subtitle='Select a person to update.';content=`<form id="modal-form" data-save="choose-member">${selectField('member_id','Team member',state.members.map(x=>[x.id,x.name]),state.members[0]?.id)}${formActions('Continue')}</form>`;break;}
  case 'edit-other':{const p=state.special.find(x=>x.id===m.id);title=p?'Edit Other Benefit':'Add Other Benefit';subtitle='These counters are not reset weekly.';content=`<form id="modal-form" data-save="save-other-player">${field('name','Player name',p?.name||'','text','required maxlength="100"')}${field('current_counter','Current counter',p?.current_counter??0,'number','required min="0" max="1000000"')}${selectField('status','Eligibility status',[['needs_confirmation','Needs Confirmation'],['next_free','Next Game Free'],['counting','Counting Games'],['rule_not_configured','Rule Not Configured']],p?.status||'needs_confirmation')}${field('threshold','Threshold (optional)',p?.threshold??'','number','min="1" max="100"')}${selectField('active','Status',[['true','Active'],['false','Inactive']],p?.active===false?'false':'true')}${formActions('Save Player')}</form>`;break;}
