@@ -6,12 +6,26 @@
   <meta name="theme-color" content="#0c1720" />
   <meta name="description" content="PADEL ON — private team games, benefits and matchmaking management" />
   <title>PADEL ON · Team Tracker</title>
-  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="./styles.css" />
+  <link id="site-favicon" rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
 </head>
 <body>
   <div id="app"><div class="startup"><div class="loader"></div><p>Loading PADEL ON…</p></div></div>
   <div id="toast-host" aria-live="polite" aria-atomic="true"></div>
-  <script type="module" src="./app.js"></script>
+  <!-- Request fresh application assets on each new page load. -->
+  <script type="module">
+    const v = Date.now().toString(36);
+    const icon = document.getElementById('site-favicon');
+    if (icon) icon.href = `./assets/favicon.svg?v=${v}`;
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = `./styles.css?v=${v}`;
+    document.head.appendChild(stylesheet);
+    try {
+      await import(`./app.js?v=${v}`);
+    } catch (error) {
+      console.error('PADEL ON could not load:', error);
+      document.getElementById('app').textContent = 'Unable to load PADEL ON. Check your connection and try reloading.';
+    }
+  </script>
 </body>
 </html>
