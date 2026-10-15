@@ -30,6 +30,59 @@ function btn(label,action,cls='btn-light',more=''){return `<button class="btn ${
 function toast(message,bad=false){const host=document.getElementById('toast-host');const node=document.createElement('div');node.className=`toast ${bad?'bad':''}`;node.textContent=message;host.append(node);setTimeout(()=>node.remove(),4100)}
 const tabs=[['dashboard','Overview','grid'],['team','Team Members','users'],['other','Other Benefits','gift'],['finance','Matchmaking','wallet'],['activity','Game Activity','list'],['settings','Settings','settings']];
 const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',activitySearch:'',loading:false,modal:null};
+// Staff inactivity policy: ten minutes without user interaction logs out every open tab.
+// Background database polling and token refreshes never extend this timer.
+const IDLE_LIMIT_MS=10*60*1000;
+const IDLE_ACTIVITY_KEY='padelon_staff_last_activity_v1';
+const AUTH_STORAGE_KEY='padelon_auth_v1';
+let lastActivityWrite=0;
+let idleLogoutStarted=false;
+function lastStaffActivity(){
+ try{return Number(localStorage.getItem(IDLE_ACTIVITY_KEY))||0}catch{return 0}
+}
+function idleExpired(){
+ const previous=lastStaffActivity();
+ return !previous || Date.now()-previous>=IDLE_LIMIT_MS || previous>Date.now()+10000;
+}
+function beginStaffSession(){
+ try{localStorage.setItem(IDLE_ACTIVITY_KEY,String(Date.now()));lastActivityWrite=Date.now()}catch{}
+}
+function clearStaffActivity(){
+ try{localStorage.removeItem(IDLE_ACTIVITY_KEY)}catch{}
+}
+async function autoSignOut(){
+ if(idleLogoutStarted || !api.getSession()?.access_token)return;
+ idleLogoutStarted=true;
+ clearStaffActivity();
+ state.staff=null;
+ state.modal=null;
+ // api.signOut clears the local authentication token before contacting Supabase.
+ const remoteLogout=api.signOut();
+ renderAuth('Signed out after 10 minutes of inactivity. Please sign in again.');
+ try{await remoteLogout}finally{idleLogoutStarted=false}
+}
+function activityFromStaff(){
+ if(!api.getSession()?.access_token || idleLogoutStarted)return;
+ // Coming back after ten minutes is not activity that can revive an expired session.
+ if(idleExpired()){void autoSignOut();return}
+ const now=Date.now();
+ if(now-lastActivityWrite<2000)return;
+ try{localStorage.setItem(IDLE_ACTIVITY_KEY,String(now));lastActivityWrite=now}catch{}
+}
+function checkStaffInactivity(){
+ if(api.getSession()?.access_token && idleExpired())void autoSignOut();
+}
+for(const eventName of ['pointerdown','pointermove','keydown','wheel','touchstart','scroll']){
+ window.addEventListener(eventName,activityFromStaff,{passive:true,capture:true});
+}
+window.addEventListener('storage',event=>{
+ if((event.key===AUTH_STORAGE_KEY || event.key===IDLE_ACTIVITY_KEY) && event.newValue===null && api.getSession()?.access_token){
+  void autoSignOut();
+ }
+});
+window.addEventListener('pageshow',checkStaffInactivity);
+setInterval(checkStaffInactivity,5000);
+
 function titleFor(){return tabs.find(x=>x[0]===state.tab)?.[1]||'Dashboard'}
 function today(){return todayBeirut()}
 function normalMembers(){return state.members.filter(m=>m.active&&!m.unlimited)}
@@ -104,9 +157,11 @@ async function loadData(resetTab=false){if(state.loading)return;state.loading=tr
  const [members,balances,matches,games,resets,special,specialGames,finance,settlements]=await Promise.all([
   api.listAll('team_members'),api.listAll('initial_balances'),api.listAll('team_matches',`played_on=gte.${since}`),api.listAll('team_games',`played_on=gte.${since}`),api.listAll('reset_events',`week_start=gte.${since}`),api.listAll('other_players'),api.listAll('other_games',`played_on=gte.${since}`),api.listAll('nazih_games'),api.listAll('nazih_settlements')
  ]);
+ // Do not redraw private data if this tab was signed out while requests were pending.
+ if(!api.getSession()?.access_token || idleLogoutStarted)return;
  Object.assign(state,{members,balances,matches,games,resets,special,specialGames,finance,settlements});
  if(resetTab)state.tab='dashboard'; render();
- }catch(e){if(e.message.includes('sign in')||e.message.includes('JWT')||e.message.includes('refresh token')){await api.signOut();renderAuth(e.message)}else if(state.staff){toast(e.message,true)}else renderAuth(e.message)}finally{state.loading=false;}}
+ }catch(e){if((idleLogoutStarted || !api.getSession()?.access_token) && !e.message.includes('no PADEL ON staff access'))return;if(e.message.includes('sign in')||e.message.includes('JWT')||e.message.includes('refresh token')){clearStaffActivity();await api.signOut();renderAuth(e.message)}else if(state.staff){toast(e.message,true)}else renderAuth(e.message)}finally{state.loading=false;}}
 let working=false;
 async function runMutation(task,success='Saved successfully'){if(working)return;working=true;const b=document.getElementById('save-button');if(b){b.disabled=true;b.textContent='Saving…'}try{await task();state.modal=null;await loadData();toast(success)}catch(e){toast(e?.message||'Could not save. Try again.',true)}finally{working=false;if(b&&b.isConnected){b.disabled=false;b.textContent='Try again'}}}
 function slugify(x){return x.trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Math.random().toString(36).slice(2,6)}
@@ -161,7 +216,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'prev-month':state.month=shiftMonth(state.month,-1);render();break;
  case 'next-month':if(state.month<monthKey(today())){state.month=shiftMonth(state.month,1);render()}break;
  case 'export-finance':exportFinance();break;
- case 'signout':await api.signOut();state.staff=null;renderAuth();break;
+ case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;state.modal=null;renderAuth();await logout;break;}
  }}
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
@@ -172,7 +227,7 @@ document.addEventListener('click',async e=>{
 document.addEventListener('submit',async e=>{
  if(e.target.id==='login-form'){
  e.preventDefault();if(working)return;working=true;const f=new FormData(e.target);const button=e.target.querySelector('[type=submit]');button.disabled=true;button.textContent='Signing in…';
- try{await api.login(f.get('email'),f.get('password'));await loadData(true)}catch(err){renderAuth(err.message)}finally{working=false}return;
+ try{await api.login(f.get('email'),f.get('password'));beginStaffSession();await loadData(true)}catch(err){renderAuth(err.message)}finally{working=false}return;
  }
  if(e.target.id==='modal-form'){
  e.preventDefault();
@@ -191,8 +246,8 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{if(e.target.id==='team-sort'){state.teamSort=e.target.value;render()}if(e.target.id==='team-filter'){state.teamFilter=e.target.value;render()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.modal)closeModal()});
-async function start(){if(!api.configured){renderAuth();return}if(api.getSession()?.access_token){await loadData()}else renderAuth();}
+async function start(){if(!api.configured){renderAuth();return}if(api.getSession()?.access_token){if(idleExpired()){await autoSignOut();return}await loadData()}else renderAuth();}
 start();
 // Lightweight cross-device refresh. All records are read from Supabase, never local state alone.
-setInterval(()=>{if(api.configured&&api.getSession()&&state.staff&&!state.modal&&!working&&!document.hidden)loadData()},30000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&api.getSession()&&state.staff&&!state.modal)loadData()});
+setInterval(()=>{checkStaffInactivity();if(api.configured&&api.getSession()&&state.staff&&!state.modal&&!working&&!document.hidden)loadData()},30000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)return;checkStaffInactivity();if(!idleExpired()&&api.getSession()&&state.staff&&!state.modal)loadData()});
