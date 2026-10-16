@@ -736,7 +736,12 @@ function adminAccountManagementCards(){
 }
 function settingsPage(){const admin=state.staff?.role==='admin';return `${heading('Administration','Settings','Manage allowances, update players, and protect sensitive changes.',btn(`${icon('logout')} Sign out`,'signout','btn-light'))}<div class="notice warn">${icon('shield')} Manual resets are verified by a server-side Supabase Edge Function. The reset code is never exposed in the public website files.</div><div class="settings-grid"><article class="panel settings-box"><h3>Team roster</h3><p>Create team members, edit weekly allowances, and deactivate members while keeping their history.</p>${btn(`${icon('plus')} Add Member`,'new-member','btn-primary',admin?'':'disabled')}${btn(`${icon('edit')} Edit Member`,'choose-member-edit','btn-light',admin?'':'disabled')}</article><article class="panel settings-box"><h3>Manual weekly reset</h3><p>Reset a member or everyone for the active week. A reset changes the counting baseline but does not remove game records.</p>${btn('Reset One Member','reset-one','btn-light',admin?'':'disabled')}${btn('Reset All Members','reset-all','btn-danger',admin?'':'disabled')}</article><article class="panel settings-box"><h3>Database & security</h3><p>Live records use Supabase with Row-Level Security. Administrators can manage the roster and settlements.</p><div class="flex">${tag('Connected','green')}${tag((state.staff?.role||'Staff').toUpperCase(),'gray')}</div></article><article class="panel settings-box"><h3>Financial archive</h3><p>Matchmaking records are retained indefinitely unless deleted by an authorized staff member. Download a monthly CSV for your records.</p>${btn(`${icon('download')} Export Selected Month`,'export-finance','btn-light')}</article>${admin?adminAccountManagementCards():''}</div>${admin?'<div class="archive-note">To add new staff accounts, create them in Supabase Auth and authorize them in the staff_profiles table. Do not share login passwords.</div>':''}`}
 function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'debts':return debtPage();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();default:return dashboard()}}
-function render(){app.innerHTML=shell()}
+function render(){
+ const searchFocus=state.globalSearchOpen&&document.activeElement?.id==='global-search-input';
+ const cursor=searchFocus?document.activeElement.selectionStart:null;
+ app.innerHTML=shell();
+ if(searchFocus){const input=document.getElementById('global-search-input');input?.focus();if(cursor!==null)input?.setSelectionRange(cursor,cursor);}
+}
 function field(name,label,value='',type='text',attr=''){return `<label class="form-field"><span>${label}</span><input class="form-input" name="${name}" type="${type}" value="${esc(value)}" ${attr}/></label>`}
 function selectField(name,label,options,selected){return `<label class="form-field"><span>${label}</span><select class="form-input" name="${name}">${options.map(([val,lbl])=>`<option value="${esc(val)}" ${val===selected?'selected':''}>${esc(lbl)}</option>`).join('')}</select></label>`}
 function textareaField(name,label,value=''){return `<label class="form-field"><span>${label}</span><textarea class="form-input" name="${name}" maxlength="500">${esc(value)}</textarea></label>`}
@@ -937,8 +942,31 @@ async function loadDebtData(){
   }
  }finally{
   state.debtLoading=false;
-  if(state.tab==='debts'&&api.getSession()?.access_token)render();
+  if((state.tab==='debts'||state.tab==='dashboard'||state.tab==='reports')&&!state.modal&&api.getSession()?.access_token)render();updateGlobalSearchResults();
  }
+}
+async function loadOverviewTraining(){
+ if(!api.getSession()?.access_token||!state.staff||state.overviewTrainingLoading)return;
+ const ym=monthKey(today());
+ if(state.overviewTrainingMonth===ym&&Date.now()-state.overviewTrainingFetchedAt<30000)return;
+ state.overviewTrainingLoading=true;
+ try{
+  const records=await api.listAll('training_attendance','month_key=eq.'+ym+'-01');
+  if(!api.getSession()?.access_token||idleLogoutStarted)return;
+  state.overviewTrainingAttendance=records;
+  state.overviewTrainingMonth=ym;state.overviewTrainingError=null;
+ }catch(e){
+  if(api.getSession()?.access_token)state.overviewTrainingError=e?.message||'Training attendance unavailable';
+ }finally{
+  state.overviewTrainingLoading=false;state.overviewTrainingFetchedAt=Date.now();
+  if(state.tab==='dashboard'&&!state.modal&&api.getSession()?.access_token)render();
+ }
+}
+function loadClubSources(){
+ if(!api.getSession()?.access_token||!state.staff)return;
+ if(!state.privateLoading)void loadPrivateClients();
+ if(!state.debtLoading)void loadDebtData();
+ if(state.tab==='dashboard')void loadOverviewTraining();
 }
 async function loadPrivateClients(){
  if(!api.getSession()?.access_token||!state.staff||state.privateLoading)return;
@@ -963,7 +991,7 @@ async function loadPrivateClients(){
   }
  }finally{
   state.privateLoading=false;
-  if(state.tab==='private-clients'&&api.getSession()?.access_token)render();
+  if((state.tab==='private-clients'||state.tab==='dashboard'||state.tab==='reports')&&!state.modal&&api.getSession()?.access_token)render();updateGlobalSearchResults();
  }
 }
 async function loadData(resetTab=false){if(state.loading)return;state.loading=true;try{
@@ -979,7 +1007,7 @@ async function loadData(resetTab=false){if(state.loading)return;state.loading=tr
  if(!api.getSession()?.access_token || idleLogoutStarted)return;
  Object.assign(state,{members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers});
  if(matchmakers.length&&!matchmakers.some(p=>p.id===state.matchmakerId))state.matchmakerId=matchmakers[0].id;
- if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport(); if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth(); if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients(); if(state.tab==='debts'&&!state.debtLoading)void loadDebtData();
+ if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport(); if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth(); if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients(); if(state.tab==='debts'&&!state.debtLoading)void loadDebtData(); if(state.tab==='dashboard'||state.tab==='reports')loadClubSources();
  }catch(e){if((idleLogoutStarted || !api.getSession()?.access_token) && !e.message.includes('no PADEL ON staff access'))return;if(e.message.includes('sign in')||e.message.includes('JWT')||e.message.includes('refresh token')){clearStaffActivity();await api.signOut();renderAuth(e.message)}else if(state.staff){toast(e.message,true)}else renderAuth(e.message)}finally{state.loading=false;}}
 let working=false;
 async function runMutation(task,success='Saved successfully'){if(working)return;working=true;const b=document.getElementById('save-button');if(b){b.disabled=true;b.textContent='Saving…'}try{await task();state.modal=null;await loadData();toast(success)}catch(e){toast(e?.message||'Could not save. Try again.',true)}finally{working=false;if(b&&b.isConnected){b.disabled=false;b.textContent='Try again'}}}
@@ -1216,7 +1244,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'private-add-balance':if(!state.privateSelected)throw Error('Select a client.');openModal('private-deposit',null,{clientId:state.privateSelected});break;
  case 'private-void-entry':if(state.staff?.role!=='admin')throw Error('Only admins can correct financial entries.');if(!state.privateEntries.some(e=>e.id===id))throw Error('Entry not found.');openModal('private-void',id);break;
  case 'private-export':exportPrivateClientCSV();break;
- case 'refresh':await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
+ case 'refresh':await loadData();if(state.tab==='dashboard')loadClubSources();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
  case 'training-prev-month':
   state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
  case 'training-next-month':
@@ -1272,7 +1300,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
  if(e.target.id==='modal-backdrop'){closeModal();return;}
- const tab=e.target.closest('[data-tab]');if(tab){state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports')await loadReport();if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();
+ const tab=e.target.closest('[data-tab]');if(tab){state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard')loadClubSources();if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();
  if(state.tab==='settings'&&state.staff?.role==='admin'){
   await Promise.all([loadPrivateClients(),loadDebtData()]);
   if(state.tab==='settings'&&api.getSession()?.access_token)render();
