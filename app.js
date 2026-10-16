@@ -548,7 +548,7 @@ function adminAccountManagementCards(){
   return '<option value="">Select an account…</option>'+rows.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>
    '<option value="'+esc(c.id)+'" '+(c.id===chosen?'selected':'')+'>'+esc(c.name)+
    (c.client_code?' · ID '+esc(c.client_code):'')+
-   (c.deleted_at?' · REMOVED':'')+' · '+(balanceFunc(c)===0?'Settled':balanceFunc(c)>0?'Owes / credit: '+amount(Math.abs(balanceFunc(c))):'Credit / owes: '+amount(Math.abs(balanceFunc(c))))+'</option>'
+   (c.deleted_at?' · REMOVED':'')+' · '+(balanceFunc(c)===0?'Settled':balanceFunc(c)>0?'Owes '+amount(balanceFunc(c)):'Credit '+amount(-balanceFunc(c)))+'</option>'
   ).join('');
  }
  const privateOptions=options(state.privateClients,state.settingsPrivateAccountId,c=>-privateClientBalance(c));
