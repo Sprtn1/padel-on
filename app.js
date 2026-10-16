@@ -427,7 +427,55 @@ function render(){app.innerHTML=shell()}
 function field(name,label,value='',type='text',attr=''){return `<label class="form-field"><span>${label}</span><input class="form-input" name="${name}" type="${type}" value="${esc(value)}" ${attr}/></label>`}
 function selectField(name,label,options,selected){return `<label class="form-field"><span>${label}</span><select class="form-input" name="${name}">${options.map(([val,lbl])=>`<option value="${esc(val)}" ${val===selected?'selected':''}>${esc(lbl)}</option>`).join('')}</select></label>`}
 function textareaField(name,label,value=''){return `<label class="form-field"><span>${label}</span><textarea class="form-input" name="${name}" maxlength="500">${esc(value)}</textarea></label>`}
+function privateClientModal(type,m){
+ const client=state.privateClients.find(c=>c.id===m.clientId);
+ if(type==='private-client'){
+  const edit=Boolean(client);
+  const title=edit?'Edit Client':'Add Private Client';
+  const subtitle=edit?'Update client information. Opening balance stays locked after creation.':'Client IDs are optional if no ID has been assigned yet.';
+  const initial=edit?'':field('opening_balance','Opening balance ($) · negative = amount owed','0.00','number','required step="0.01" min="-1000000000" max="1000000000"');
+  const content=`<form id="modal-form" data-save="save-private-client">
+   ${field('name','Client name',client?.name||'','text','required maxlength="120"')}
+   ${field('client_code','Existing client ID (optional)',client?.client_code||'','text','maxlength="40" placeholder="Example: C1024"')}
+   ${field('contact','Contact information (optional)',client?.contact||'','text','maxlength="120"')}
+   ${initial}
+   ${edit?selectField('active','Account status',[['true','Active'],['false','Inactive']],client.active?'true':'false'):''}
+   ${textareaField('notes','Internal notes (optional)',client?.notes||'')}
+   <div class="notice">Private client details are stored in Supabase and visible only to authorized PADEL ON staff.</div>
+   ${formActions(edit?'Save Client':'Create Client')}</form>`;
+  return {title,subtitle,content};
+ }
+ if(type==='private-session'){
+  const options=state.privateCoaches.filter(c=>c.active).sort((a,b)=>a.category.localeCompare(b.category)||a.name.localeCompare(b.name));
+  const grouped=['A','B','C'].map(cat=>`<optgroup label="Category ${cat}">${options.filter(c=>c.category===cat).map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</optgroup>`).join('');
+  const content=`<form id="modal-form" data-save="save-private-session">
+  ${field('entry_date','Session date',today(),'date',`required max="${today()}"`)}
+  <label class="form-field"><span>Coach</span><select class="form-input" name="coach_id" required><option value="">Select coach</option>${grouped}</select></label>
+  <div class="form-cols">${field('session_fee','Session price ($)','','number','required min="0" step="0.01" placeholder="50.00"')}${field('paid','Amount paid now ($)','0.00','number','required min="0" step="0.01"')}</div>
+  ${textareaField('notes','Session notes (optional)')}
+  <div class="notice">The session price is deducted from the client balance; money paid now is credited. Any difference changes the credit or amount owed.</div>
+  ${formActions('Record Session')}</form>`;
+  return {title:'Record Private Session',subtitle:client?.name||'',content};
+ }
+ if(type==='private-deposit'){
+  const content=`<form id="modal-form" data-save="save-private-deposit">
+  ${field('entry_date','Payment date',today(),'date',`required max="${today()}"`)}
+  ${field('deposit','Amount added to balance ($)','','number','required min="0.01" step="0.01" placeholder="100.00"')}
+  ${textareaField('notes','Payment reference / notes (optional)')}
+  <div class="notice">Adds credit to this client’s account. It is not recorded as a coaching session.</div>
+  ${formActions('Add Balance')}</form>`;
+  return {title:'Add Client Balance',subtitle:client?.name||'',content};
+ }
+ const entry=state.privateEntries.find(e=>e.id===m.id);
+ const content=`<div class="notice warn">This correction is permanent in the audit log but excludes the selected entry from the account balance.</div>
+ <form id="modal-form" data-save="void-private-entry">${textareaField('reason','Correction reason')}${formActions('Void Entry',true)}</form>`;
+ return {title:'Void Financial Entry',subtitle:entry?.entry_type==='session'?'Cancel incorrect session record':'Cancel incorrect balance top-up',content,danger:true};
+}
 function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',danger=false,action='';switch(m.type){
+ case 'private-client':case 'private-session':case 'private-deposit':case 'private-void':{
+  const details=privateClientModal(m.type,m);
+  title=details.title;subtitle=details.subtitle;content=details.content;danger=Boolean(details.danger);break;
+ }
  case'team': {
   title='Record Team Game';subtitle='Select all eligible team members in this match.';action='save-team';
   content=`<form id="modal-form" data-save="${action}">${field('played_on','Game date',today(),'date',`required max="${today()}" min="${addDays(today(),-30)}"`)}<div class="form-field"><span>Team member(s) · select up to 4</span><div class="check-options">${state.members.filter(x=>x.active).map(x=>`<label><input type="checkbox" name="member_ids" value="${x.id}" ${x.id===m.id?'checked':''}/> ${esc(x.name)} ${x.unlimited?'(unlimited)':''}</label>`).join('')}</div></div><div class="form-field"><span>Benefit type</span><div class="radio-tiles"><label><input type="radio" name="benefit_type" value="free" checked/> Free game</label><label><input type="radio" name="benefit_type" value="half"/> Half-price game</label></div></div>${textareaField('notes','Notes (optional)')}<div class="notice warn">Confirm the actual player composition: free with two non-team participants, or half-price with three or more team participants. Each selected team member uses one weekly benefit.</div>${formActions('Save Game')}</form>`;break;}
@@ -474,7 +522,7 @@ function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',d
  return `<div class="modal-backdrop" id="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-head"><div><h2>${esc(title)}</h2><p>${esc(subtitle)}</p></div><button class="modal-close" data-action="close-modal" aria-label="Close">${icon('close')}</button></div><div class="modal-body">${content}</div></div></div>`
 }
 function formActions(text,danger=false){return `<div class="modal-actions">${btn('Cancel','close-modal','btn-light')}<button type="submit" class="btn ${danger?'btn-danger':'btn-primary'}" id="save-button">${esc(text)}</button></div>`}
-function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance','training'].includes(type)?{requestId:crypto.randomUUID()}:{}),...(['finance','settlement'].includes(type)?{personId:selectedMatchmaker()?.id||null}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();},0)}
+function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance','training','private-session','private-deposit'].includes(type)?{requestId:crypto.randomUUID()}:{}),...(['finance','settlement'].includes(type)?{personId:selectedMatchmaker()?.id||null}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();},0)}
 function closeModal(){state.modal=null;document.getElementById('modal-root').innerHTML=''}
 function renderAuth(message=''){
  app.innerHTML=`<main class="auth-wrap"><section class="auth-lead"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><h1>The team.<br/><em>All in one place.</em></h1><p>Weekly padel benefits, special players, and matchmaking revenue—securely tracked together.</p></section><section class="auth-card"><div class="eyebrow">Private club workspace</div><h2>Welcome back</h2><p class="sub">Sign in with your PADEL ON staff account.</p>${!api.configured?'<div class="auth-error">Database not configured. Set the Supabase URL and publishable key in <strong>config.js</strong>, then follow README.md.</div>':''}${message?`<div class="auth-error">${esc(message)}</div>`:''}<form id="login-form">${field('email','Email address','','email','required autocomplete="email"')}${field('password','Password','','password','required autocomplete="current-password"')}<button class="btn btn-primary" ${!api.configured?'disabled':''} type="submit">Sign In ${icon('arrow')}</button></form><div class="auth-foot">Authorized PADEL ON staff only · Protected by Supabase Auth</div></section></main>`;
