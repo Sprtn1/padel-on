@@ -1181,6 +1181,33 @@ function exportFinance(){
 }
 async function handleAction(target){const act=target.dataset.action,id=target.dataset.id;
  switch(act){
+ case 'global-search-open':
+  if(!state.staff||!api.getSession()?.access_token)throw Error('Sign in before searching.');
+  state.modal=null;state.globalSearchOpen=true;state.globalSearchQuery='';
+  render();
+  setTimeout(()=>document.getElementById('global-search-input')?.focus(),0);
+  loadClubSources();break;
+ case 'global-search-close':
+  state.globalSearchOpen=false;state.globalSearchQuery='';render();break;
+ case 'global-search-open-result':{
+  const kind=target.dataset.kind;
+  const candidate=globalSearchCandidates().find(x=>x.kind===kind&&x.id===id);
+  if(!candidate)throw Error('Search result is no longer available.');
+  state.globalSearchOpen=false;state.globalSearchQuery='';state.modal=null;
+  if(kind==='team'){
+   state.tab='team';state.teamSearch=candidate.title;state.teamCategoryFilter='all';state.teamFilter='all';
+   state.historyWeek=weekStart(today());
+  }else if(kind==='private'){
+   const client=state.privateClients.find(x=>x.id===id);
+   state.tab='private-clients';state.privateSelected=id;state.privateSearch='';
+   state.privateListFilter='all';state.privateShowArchived=Boolean(!client?.active);
+  }else if(kind==='debt'){
+   state.tab='debts';state.debtSelected=id;state.debtSearch='';state.debtFilter='all';
+  }else if(kind==='other'){
+   state.tab='other';
+  }
+  render();window.scrollTo({top:0,behavior:'instant'});break;
+ }
  case 'settings-private-remove':case 'settings-private-restore':
  case 'settings-cafe-remove':case 'settings-cafe-restore':{
   if(state.staff?.role!=='admin')throw Error('Administrators only.');
@@ -1322,6 +1349,10 @@ document.addEventListener('submit',async e=>{
  }
 });
 document.addEventListener('input',e=>{
+ if(e.target.id==='global-search-input'){
+  state.globalSearchQuery=e.target.value;
+  updateGlobalSearchResults();return;
+ }
  if(e.target.name==='client_code'&&e.target.closest('form[data-save="save-private-client"]'))validatePrivateClientIdInput();
  const id=e.target.id;if(id==='team-search'||id==='activity-search'||id==='private-client-search'||id==='debt-search'){
   const caret=e.target.selectionStart;const value=e.target.value;
@@ -1363,7 +1394,18 @@ document.addEventListener('change',e=>{
   render();return;
  }
 if(e.target.id==='debt-filter'){state.debtFilter=e.target.value;render()}if(e.target.id==='private-show-archived'){state.privateShowArchived=e.target.checked;render()}if(e.target.classList?.contains('quick-seat')||(e.target.name==='played_on'&&state.modal?.type==='quick-team'))updateQuickPreview();if(e.target.id==='team-sort'){state.teamSort=e.target.value;render()}if(e.target.id==='team-filter'){state.teamFilter=e.target.value;render()}if(e.target.id==='team-category'){state.teamCategoryFilter=e.target.value;render()}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.modal)closeModal()});
+document.addEventListener('keydown',e=>{
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
+  e.preventDefault();
+  if(api.getSession()?.access_token){
+   if(!state.globalSearchOpen)void handleAction({dataset:{action:'global-search-open'}}).catch(err=>toast(err.message,true));
+   else document.getElementById('global-search-input')?.focus();
+  }
+  return;
+ }
+ if(e.key==='Escape'&&state.globalSearchOpen){state.globalSearchOpen=false;state.globalSearchQuery='';render();return;}
+ if(e.key==='Escape'&&state.modal)closeModal();
+});
 async function start(){if(!api.configured){renderAuth();return}if(api.getSession()?.access_token){if(idleExpired()){await autoSignOut();return}await loadData()}else renderAuth();}
 start();
 // Lightweight cross-device refresh. All records are read from Supabase, never local state alone.
