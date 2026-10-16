@@ -186,3 +186,9 @@
  .finance-grid.four-up{grid-template-columns:1fr}
  .finance-grid.four-up>.summary-card:last-child{min-height:124px}
 }
+
+/* Private Sessions: immediate feedback when a client ID is already assigned. */
+.private-id-feedback{margin:-10px 0 15px;color:var(--muted);font-size:11px;line-height:1.5}
+.private-id-feedback.available{color:#138453}
+.private-id-feedback.duplicate{color:#b74435;font-weight:750}
+.form-field input[name="client_code"][aria-invalid="true"]{border-color:#d75d4c;background:#fff7f5;box-shadow:0 0 0 2px rgba(215,93,76,.10)}
