@@ -72,6 +72,10 @@ The server-side reset function is located at [`supabase/functions/reset-weekly/i
 
 The frontend uses relative asset URLs and can be served from a GitHub Pages project path or a configured custom domain. **GitHub Pages does not make the JavaScript private; the database must enforce access.**
 
+## Admin-only account removal
+
+Administrators can remove settled Private Sessions or Cafeteria accounts from day-to-day views and restore them later from Settings, without erasing financial history. Run the required Supabase migration first: [ADMIN_ACCOUNT_REMOVAL_UPGRADE.md](ADMIN_ACCOUNT_REMOVAL_UPGRADE.md). Removal requires a zero balance and a reason and is checked server-side.
+
 ## Operational checks
 
 Before relying on the app for day-to-day operations, verify that only approved users can view or change club data, that server-side validation prevents duplicate or unauthorized benefit usage, that changes are audited, that reports correspond to stored records, and that database backups and restore procedures work.
