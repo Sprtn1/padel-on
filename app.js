@@ -328,6 +328,76 @@ function exportTrainingCSV(){
  downloadCSV(rows,'padel-on-training-'+ym+'.csv');
 }
 
+function privateClientEntries(id){
+ return state.privateEntries.filter(row=>row.client_id===id&&!row.voided_at).sort((a,b)=>a.entry_date.localeCompare(b.entry_date)||a.created_at.localeCompare(b.created_at)||a.id.localeCompare(b.id));
+}
+
+function privateEntryDelta(entry){
+ return Number(entry.deposit_cents||0)+Number(entry.paid_cents||0)-Number(entry.session_fee_cents||0);
+}
+
+function privateClientBalance(client){
+ return Number(client.opening_balance_cents||0)+privateClientEntries(client.id).reduce((sum,row)=>sum+privateEntryDelta(row),0);
+}
+
+function privateBalanceLabel(cents){
+ return cents<0?'Owes '+amount(-cents):'Credit '+amount(cents);
+}
+
+function privateCoachName(id){
+ const coach=state.privateCoaches.find(x=>x.id===id);
+ return coach?`${coach.name} · Category ${coach.category}`:'Unknown coach';
+}
+
+function privateClientsPage(){
+ const ready=state.privateLoaded&&!state.privateLoading&&!state.privateError;
+ const rows=state.privateClients.filter(c=>(state.privateShowArchived||c.active)&&(!state.privateSearch||[c.name,c.client_code,c.contact].some(v=>String(v||'').toLowerCase().includes(state.privateSearch.toLowerCase())))).sort((a,b)=>a.name.localeCompare(b.name));
+ const selected=state.privateClients.find(c=>c.id===state.privateSelected)||state.privateClients.find(c=>c.active)||state.privateClients[0];
+ const active=state.privateClients.filter(c=>c.active),stats=active.map(c=>({client:c,balance:privateClientBalance(c)}));
+ const credit=stats.filter(x=>x.balance>0).reduce((sum,x)=>sum+x.balance,0);
+ const owed=stats.filter(x=>x.balance<0).reduce((sum,x)=>sum-x.balance,0);
+ const activeSessions=state.privateEntries.filter(r=>r.entry_type==='session'&&!r.voided_at);
+ const controls=btn(`${icon('plus')} Add Client`,'private-add-client','btn-primary')+(ready?btn(`${icon('download')} Export Client CSV`,'private-export','btn-light',!selected?'disabled':''):'');
+ const headline=heading('Client coaching','Private Sessions','Track client IDs, coaching sessions, payments, prepaid credit, and outstanding balances.',controls);
+ if(!ready)return `${headline}<div class="panel"><div class="panel-body"><div class="empty-prompt"><strong>${state.privateLoading?'Loading private sessions…':state.privateError?'Private Sessions setup required':'Loading client records…'}</strong><span>${state.privateError?esc(state.privateError):'Client and coach records are visible only to authorized staff.'}</span>${state.privateError?btn('Try again','private-retry','btn-light'):''}</div></div></div>`;
+ const intro=`<section class="finance-grid">${summaryCard('Active clients',active.length,'Client profiles','users',true)}${summaryCard('Sessions recorded',activeSessions.length,'Across all recorded dates','calendar')}${summaryCard('Client credit',amount(credit),'Prepaid balances','wallet')}${summaryCard('Outstanding',amount(owed),'Total amount owed','activity')}</section>`;
+ const search=`<div class="private-directory-head"><label class="search">${icon('search')}<input id="private-client-search" placeholder="Search by name or client ID…" autocomplete="off" value="${esc(state.privateSearch)}"/></label><label class="private-archive-check"><input type="checkbox" id="private-show-archived" ${state.privateShowArchived?'checked':''}/> Include inactive clients</label></div>`;
+ const clientButtons=rows.map(c=>{
+  const balance=privateClientBalance(c);
+  return `<button type="button" class="private-client-row ${selected?.id===c.id?'selected':''}" data-action="private-select-client" data-id="${c.id}"><div class="private-client-heading"><strong>${esc(c.name)}</strong>${c.active?'':tag('Inactive','gray')}</div><small>${esc(c.client_code||'No ID assigned')}</small><span class="private-client-balance ${balance<0?'negative':''}">${privateBalanceLabel(balance)}</span></button>`;
+ }).join('')||'<div class="panel-empty">No matching clients.</div>';
+ const panel=`<article class="panel private-directory"><div class="panel-head"><div><h2>Clients</h2><p>${rows.length} shown · ${active.length} active</p></div></div>${search}<div class="private-client-list">${clientButtons}</div></article>`;
+ if(!selected){
+  return `${headline}${intro}<div class="private-layout">${panel}<article class="panel"><div class="empty-prompt"><strong>No client records yet</strong><span>Add a client to start tracking private coaching.</span>${btn(`${icon('plus')} Add First Client`,'private-add-client','btn-primary')}</div></article></div>`;
+ }
+ const balance=privateClientBalance(selected),entries=privateClientEntries(selected.id),sessions=entries.filter(e=>e.entry_type==='session');
+ let running=Number(selected.opening_balance_cents||0);
+ const history=entries.map(e=>{running+=privateEntryDelta(e);return {entry:e,remaining:running}}).reverse();
+ const details=`<div class="private-detail">
+ <div class="private-detail-header"><div><div class="eyebrow">${esc(selected.client_code||'ID NOT ASSIGNED')}</div><h2>${esc(selected.name)}</h2><p>${selected.contact?esc(selected.contact):'Client account'} · ${sessions.length} session${sessions.length===1?'':'s'}</p></div><div class="private-balance-box ${balance<0?'negative':''}"><small>${balance<0?'Outstanding':'Account credit'}</small><strong>${amount(Math.abs(balance))}</strong></div></div>
+ <div class="private-client-actions">${btn(`${icon('plus')} Record Session`,'private-record-session','btn-primary',selected.active?'':'disabled')}${btn('Add Balance','private-add-balance','btn-light',selected.active?'':'disabled')}${btn('Edit Client','private-edit-client','btn-light')}</div>
+ <div class="private-account-note">Balance = opening balance + top-ups + paid amounts − session fees. A negative balance is money owed by the client.</div>
+ <div class="panel-head private-ledger-head"><div><h2>Session & payment history</h2><p>${entries.length} entries · oldest records are preserved</p></div></div>
+ <div class="data-table-wrap"><table class="data-table private-ledger-table"><thead><tr><th>Date</th><th>Type / coach</th><th>Charge</th><th>Paid / top-up</th><th>Balance</th><th>Action</th></tr></thead><tbody>
+ ${history.length?history.map(({entry:e,remaining:v})=>`<tr><td>${niceDay(e.entry_date)}</td><td><strong>${e.entry_type==='session'?'Private session':'Balance top-up'}</strong><br/><small>${e.entry_type==='session'?esc(privateCoachName(e.coach_id)):esc(e.notes||'Deposit')}</small>${e.entry_type==='session'&&e.notes?`<br/><small>${esc(e.notes)}</small>`:''}</td><td>${e.entry_type==='session'?amount(e.session_fee_cents):'—'}</td><td>${amount(e.entry_type==='deposit'?e.deposit_cents:e.paid_cents)}</td><td class="${v<0?'private-negative':''}">${privateBalanceLabel(v)}</td><td>${state.staff?.role==='admin'?btn('Void','private-void-entry','btn-danger btn-xs',`data-id="${e.id}"`):'<span class="tiny">Recorded</span>'}</td></tr>`).join(''):'<tr><td colspan="6" class="panel-empty">No sessions or deposits recorded yet.</td></tr>'}
+ </tbody></table></div>
+ </div>`;
+ return `${headline}${intro}<div class="private-layout">${panel}<article class="panel">${details}</article></div>`;
+}
+
+function exportPrivateClientCSV(){
+ const c=state.privateClients.find(x=>x.id===state.privateSelected);
+ if(!c||!state.privateLoaded||state.privateLoading)throw Error('Choose a client to export.');
+ const rows=[['PADEL ON','Private Coaching Client Statement'],['Client ID',c.client_code||'Unassigned'],['Client',c.name],['Opening balance USD',(Number(c.opening_balance_cents)/100).toFixed(2)],[],['Date','Type','Coach','Session fee USD','Paid USD','Deposit USD','Running balance USD','Notes']];
+ let running=Number(c.opening_balance_cents||0);
+ for(const e of privateClientEntries(c.id)){
+  running+=privateEntryDelta(e);
+  rows.push([e.entry_date,e.entry_type,e.entry_type==='session'?privateCoachName(e.coach_id):'',(Number(e.session_fee_cents)/100).toFixed(2),(Number(e.paid_cents)/100).toFixed(2),(Number(e.deposit_cents)/100).toFixed(2),(running/100).toFixed(2),e.notes]);
+ }
+ rows.push([],['ENDING BALANCE USD',(running/100).toFixed(2)]);
+ downloadCSV(rows,'padel-on-client-'+String(c.client_code||c.id).replace(/[^A-Za-z0-9_-]/g,'-')+'.csv');
+}
+
 function financePage(){
  if(!state.matchmakers.length)return legacyFinancePage();
  const person=selectedMatchmaker();if(!person)return '<div class="panel-empty">No matchmaking personnel configured.</div>';
