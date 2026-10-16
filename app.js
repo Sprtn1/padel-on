@@ -32,7 +32,7 @@ const tabs=[['dashboard','Overview','grid'],['debts','Cafeteria Debts','wallet']
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
-const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateShowArchived:false,debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all'};
+const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all'};
 // Staff inactivity policy: thirty minutes without user interaction logs out every open tab.
 // Background database polling and token refreshes never extend this timer.
 let lastKnownWeek=weekStart(todayBeirut());
@@ -400,6 +400,62 @@ function privateCoachName(id){
  return coach?`${coach.name} · Category ${coach.category}`:'Unknown coach';
 }
 
+function comparePrivateClients(a,b,sort=state.privateSort){
+ const nameOrder=a.name.localeCompare(b.name,undefined,{sensitivity:'base',numeric:true});
+ if(sort!=='id')return nameOrder;
+ const idA=String(a.client_code||'').trim(),idB=String(b.client_code||'').trim();
+ if(!idA)return idB?1:nameOrder;
+ if(!idB)return -1;
+ const idOrder=idA.localeCompare(idB,undefined,{numeric:true,sensitivity:'base'});
+ return idOrder||nameOrder;
+}
+function privateDayEntries(day=state.privateDay,type='session'){
+ return state.privateEntries.filter(e=>!e.voided_at&&e.entry_date===day&&e.entry_type===type)
+  .sort((a,b)=>(a.created_at||'').localeCompare(b.created_at||'')||a.id.localeCompare(b.id));
+}
+function privateDateInMonth(ym,preferredDay){
+ const lastDay=Number(addDays(shiftMonth(ym,1)+'-01',-1).slice(-2));
+ const candidate=ym+'-'+String(Math.min(Number(preferredDay),lastDay)).padStart(2,'0');
+ return candidate>today()?today():candidate;
+}
+function privateDailySessionsPanel(){
+ const day=state.privateDay,ym=monthKey(day),limit=today();
+ const end=addDays(shiftMonth(ym,1)+'-01',-1),days=Number(end.slice(-2));
+ const dailySessions=privateDayEntries(day,'session'),dailyDeposits=privateDayEntries(day,'deposit');
+ const monthlySessions=state.privateEntries.filter(e=>!e.voided_at&&e.entry_type==='session'&&monthKey(e.entry_date)===ym);
+ const counts=Object.create(null);
+ for(const session of monthlySessions)counts[session.entry_date]=(counts[session.entry_date]||0)+1;
+ const fee=dailySessions.reduce((sum,e)=>sum+Number(e.session_fee_cents||0),0);
+ const paid=dailySessions.reduce((sum,e)=>sum+Number(e.paid_cents||0),0);
+ const deposits=dailyDeposits.reduce((sum,e)=>sum+Number(e.deposit_cents||0),0);
+ const dayControls=`<div class="private-daily-nav">
+ <button type="button" class="btn btn-light btn-icon" data-action="private-day-prev" title="Previous day" aria-label="Previous day">${icon('chevronLeft')}</button>
+ <input id="private-day-date" aria-label="Choose session date" type="date" value="${day}" max="${limit}"/>
+ <button type="button" class="btn btn-light btn-icon" data-action="private-day-next" title="Next day" aria-label="Next day" ${day>=limit?'disabled':''}>${icon('chevronRight')}</button>
+ <button class="btn btn-light" data-action="private-day-today" ${day===limit?'disabled':''}>Today</button></div>`;
+ const dayButtons=Array.from({length:days},(_,i)=>{
+  const d=ym+'-'+String(i+1).padStart(2,'0'),n=counts[d]||0,disabled=d>limit;
+  return `<button type="button" class="private-calendar-day ${day===d?'selected':''} ${n?'has-sessions':''}" data-action="private-day-select" data-day="${d}" ${disabled?'disabled':''} aria-label="${esc(niceDay(d,{weekday:'long',month:'long',day:'numeric',year:'numeric'}))}, ${n} sessions" aria-pressed="${day===d}"><span>${i+1}</span>${n?`<small>${n}</small>`:'<small class="private-calendar-dot">·</small>'}</button>`;
+ }).join('');
+ const summary=`<div class="private-day-summary"><div><span>Sessions</span><strong>${dailySessions.length}</strong></div><div><span>Session charges</span><strong>${amount(fee)}</strong></div><div><span>Paid at sessions</span><strong>${amount(paid)}</strong></div><div><span>Balance top-ups</span><strong>${amount(deposits)}</strong></div></div>`;
+ const sessionRows=dailySessions.map(e=>{
+  const client=state.privateClients.find(c=>c.id===e.client_id);
+  return `<tr><td><strong>${esc(client?.name||'Unknown client')}</strong><br/><small>${esc(client?.client_code||'No client ID')}</small></td><td>${esc(privateCoachName(e.coach_id))}</td><td class="num">${amount(e.session_fee_cents)}</td><td class="num">${amount(e.paid_cents)}</td><td>${client?btn('View Client','private-select-client','btn-light btn-xs',`data-id="${client.id}"`):'—'}</td></tr>`;
+ }).join('');
+ const depositRows=dailyDeposits.map(e=>{
+  const client=state.privateClients.find(c=>c.id===e.client_id);
+  return `<tr><td><strong>${esc(client?.name||'Unknown client')}</strong><br/><small>${esc(client?.client_code||'No client ID')}</small></td><td class="num">${amount(e.deposit_cents)}</td><td>${esc(e.notes||'—')}</td><td>${client?btn('View Client','private-select-client','btn-light btn-xs',`data-id="${client.id}"`):'—'}</td></tr>`;
+ }).join('');
+ return `<article class="panel private-daily-panel">
+ <div class="private-daily-heading"><div><div class="eyebrow">Daily coaching activity</div><h2>${esc(niceDay(day,{weekday:'long',month:'long',day:'numeric',year:'numeric'}))}</h2><p>Browse each day to review all private sessions, coaches, charges and payments.</p></div>${dayControls}</div>
+ <div class="private-month-nav"><button type="button" class="btn btn-light btn-icon" data-action="private-month-prev" title="Previous month" aria-label="Previous month">${icon('chevronLeft')}</button><strong>${monthLabel(ym)}</strong><small>${monthlySessions.length} sessions this month</small><button type="button" class="btn btn-light btn-icon" data-action="private-month-next" title="Next month" aria-label="Next month" ${ym>=monthKey(limit)?'disabled':''}>${icon('chevronRight')}</button></div>
+ <div class="private-calendar-days" role="group" aria-label="Choose day in ${monthLabel(ym)}">${dayButtons}</div>
+ ${summary}
+ <div class="panel-head private-daily-table-title"><div><h2>Sessions on ${niceDay(day,{month:'short',day:'numeric'})}</h2><p>${dailySessions.length} session${dailySessions.length===1?'':'s'} · payments shown are amounts paid at each session</p></div></div>
+ <div class="data-table-wrap"><table class="data-table private-daily-table"><thead><tr><th>Client / ID</th><th>Coach</th><th>Session fee</th><th>Paid at session</th><th>Account</th></tr></thead><tbody>${sessionRows||'<tr><td colspan="5" class="panel-empty">No private sessions recorded for this date.</td></tr>'}</tbody></table></div>
+ ${dailyDeposits.length?`<div class="panel-head private-daily-table-title"><div><h2>Balance top-ups</h2><p>Deposits recorded this day, separate from session payments</p></div></div><div class="data-table-wrap"><table class="data-table private-daily-table"><thead><tr><th>Client / ID</th><th>Amount added</th><th>Notes</th><th>Account</th></tr></thead><tbody>${depositRows}</tbody></table></div>`:''}
+ </article>`;
+}
 function privateClientsPage(){
  const ready=state.privateLoaded&&!state.privateError;
  const rows=state.privateClients.filter(c=>(state.privateShowArchived||c.active)&&(!state.privateSearch||[c.name,c.client_code,c.contact].some(v=>String(v||'').toLowerCase().includes(state.privateSearch.toLowerCase())))).sort((a,b)=>a.name.localeCompare(b.name));
