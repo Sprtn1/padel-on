@@ -327,6 +327,29 @@ function matchmakingBreakdownHTML(rows){
  return `<tr><td><strong>${esc(r.person.name)}</strong></td><td>${r.games}</td><td>${amount(r.total)}</td><td>${(matchmakerRate(r.person)/100).toLocaleString('en-US',{maximumFractionDigits:2})}%</td><td><strong>${amount(r.fee)}</strong></td><td>${tag(settlement?.status==='paid'?'Paid':'Unpaid',settlement?.status==='paid'?'green':'amber')}</td></tr>`;
  }).join('')}</tbody></table></div></article>`;
 }
+function consolidatedFinancePanel(ym){
+ const data=clubFinancialSnapshot(ym,'month');
+ const line=(label,value,desc,highlight=false)=>
+ `<div class="consolidated-finance-row ${highlight?'strong':''}"><div><strong>${esc(label)}</strong><small>${esc(desc)}</small></div><b>${value===null?'—':amount(value)}</b></div>`;
+ const ready=state.privateLoaded&&!state.privateError&&state.debtLoaded&&!state.debtError;
+ const rows=[
+ ['Private session fees',data.privateCharges,'Service value recorded; not necessarily paid'],
+ ['Paid at private sessions',data.privatePaid,'Money received during coaching sessions'],
+ ['Private client top-ups',data.privateTopups,'Cash received as prepaid balance (not new revenue)'],
+ ['Cafeteria purchases charged',data.cafeteriaCharges,'Value of items placed on accounts'],
+ ['Cafeteria payments received',data.cafeteriaPaid,'Money paid against cafeteria balances'],
+ ['Matchmaking collections',data.matchmakingCollected,'Revenue recorded in matchmaking ledgers'],
+ ['Matchmaking commissions',data.commissionTotal,'Commission payable, not cash received']
+ ].map(([label,value,desc])=>line(label,value,desc)).join('');
+ return `<article class="panel consolidated-finance-panel"><div class="panel-head"><div><h2>Club financial overview</h2><p>${monthLabel(ym)} · separate charges, cash receipts and commissions</p></div></div>
+ ${!ready?'<div class="notice finance-loading">Private and cafeteria records are still loading or unavailable. Missing figures are shown as —, not zero.</div>':''}
+ <div class="consolidated-finance-grid">
+ <div class="consolidated-finance-total"><small>Cash collected across tracked activities</small><strong>${data.collected===null?'—':amount(data.collected)}</strong><p>Session payments + balance top-ups + cafeteria payments + matchmaking collections</p></div>
+ <div class="consolidated-finance-total secondary"><small>Matchmaking commissions</small><strong>${amount(data.commissionTotal)}</strong><p>Separate estimated payment obligation, not deducted from cash collected</p></div></div>
+ <div class="consolidated-finance-rows">${rows}</div>
+ <p class="management-note consolidated-note">Payments toward outstanding debt can relate to earlier purchases; prepaid top-ups are cash received but not additional session revenue. Do not add charges and payments together as total revenue. Figures are based on entry dates in Asia/Beirut.</p>
+ </article>`;
+}
 function reportsPage(){
  const [start,end]=reportRange();
  const weekly=state.reportMode==='week',m=reportMetrics();
@@ -336,7 +359,7 @@ function reportsPage(){
 <div class="period-control"><div><strong>${icon('calendar')} ${title}</strong><small>${weekly?'Weekly benefits and records':'Monthly games and matchmaking revenue'} · Asia/Beirut dates</small></div><div class="period-buttons"><button class="btn btn-light" data-action="report-prev" aria-label="Previous ${weekly?'week':'month'}">${icon('chevronLeft')}</button><button class="btn btn-light" data-action="report-next" ${(weekly?state.reportWeek>=weekStart(today()):state.reportMonth>=monthKey(today()))?'disabled':''} aria-label="Next ${weekly?'week':'month'}">${icon('chevronRight')}</button></div></div>
 ${!m?`<div class="panel-empty">${state.reportLoading?'Loading report from Supabase…':'No report loaded. Use the period arrows to retry.'}</div>`:`
 <section class="finance-grid">${summaryCard('Team matches',m.validMatches.length,'Matches recorded in selected period','calendar',true)}${summaryCard('Benefit uses',weekly?m.weekUsed:m.games.length,weekly?'Includes imported opening balances':'Dated transactions only','gift')}${summaryCard('Free / Half-price',`${m.free} / ${m.half}`,'Per-member benefit entries','activity')}</section>
-${weekly?`<div class="notice">Historical balances use the member's current configured allowance. Imported opening balances are counted as weekly usage; reset events are respected.</div>`:`<section class="finance-grid">${summaryCard('Matchmaking revenue',amount(m.monthFinance.total),'All matchmaking personnel','wallet',true)}${summaryCard('Total commissions',amount(m.monthFinance.fee),'Sum of independent monthly commissions','coins')}${summaryCard('Other benefit games',m.special,'Special-player entries this month','users')}</section>${matchmakingBreakdownHTML(m.breakdown)}`}
+${weekly?`<div class="notice">Historical balances use the member's current configured allowance. Imported opening balances are counted as weekly usage; reset events are respected.</div>`:`<section class="finance-grid">${summaryCard('Matchmaking revenue',amount(m.monthFinance.total),'All matchmaking personnel','wallet',true)}${summaryCard('Total commissions',amount(m.monthFinance.fee),'Sum of independent monthly commissions','coins')}${summaryCard('Other benefit games',m.special,'Special-player entries this month','users')}</section>${matchmakingBreakdownHTML(m.breakdown)}${consolidatedFinancePanel(state.reportMonth)}`}
 <article class="panel"><div class="panel-head"><div><h2>Team member breakdown</h2><p>${title} · ${m.rows.length} members with activity</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Member</th><th>Category</th><th>Games logged</th><th>Free</th><th>Half-price</th><th>${weekly?'Week used':'Monthly total'}</th>${weekly?'<th>Remaining*</th>':''}</tr></thead><tbody>${m.rows.length?m.rows.map(r=>`<tr><td><strong>${esc(r.member.name)}</strong></td><td>${esc(groupLabel(r.member.team_category))}</td><td>${r.played}</td><td>${r.free}</td><td>${r.half}</td><td><strong>${r.used}</strong></td>${weekly?`<td>${r.member.unlimited?'Unlimited':r.remaining}</td>`:''}</tr>`).join(''):`<tr><td colspan="${weekly?7:6}" class="panel-empty">No benefits recorded for this period.</td></tr>`}</tbody></table></div></article>
 <div class="archive-note">${weekly?'* Remaining benefits use current allowances and historical reset events.':'Financial totals use permanent saved matchmaking records. The monthly game counts exclude imported balances.'} No report action edits any records.</div>
 `}`;
@@ -348,7 +371,8 @@ function exportReport(){
   ['Team matches',m.validMatches.length],['Logged benefit uses',m.games.length],
   ['Free entries',m.free],['Half-price entries',m.half],['Other-player games',m.special]];
  if(weekly)rows.push(['Weekly used (including opening balances)',m.weekUsed]);
- else {rows.push(['Total matchmaking revenue USD',(m.monthFinance.total/100).toFixed(2)],['Total commissions USD',(m.monthFinance.fee/100).toFixed(2)]);rows.push([],['Matchmaker','Games','Revenue USD','Commission Rate','Commission USD','Payment status']);for(const x of m.breakdown){const settlement=state.settlements.find(t=>(t.matchmaker_id||LEGACY_MATCHMAKER_ID)===(x.person.id||LEGACY_MATCHMAKER_ID)&&t.month_key===state.reportMonth+'-01');rows.push([x.person.name,x.games,(x.total/100).toFixed(2),(matchmakerRate(x.person)/100)+'%',(x.fee/100).toFixed(2),settlement?.status||'unpaid']);}}
+ else {const finance=clubFinancialSnapshot(state.reportMonth,'month');rows.push([],['CLUB FINANCIAL OVERVIEW',state.reportMonth],['Cash received across tracked operations USD',finance.collected===null?'Not loaded':(finance.collected/100).toFixed(2)],['Private session fees (charges) USD',finance.privateCharges===null?'Not loaded':(finance.privateCharges/100).toFixed(2)],['Private payments at sessions USD',finance.privatePaid===null?'Not loaded':(finance.privatePaid/100).toFixed(2)],['Private balance top-ups USD',finance.privateTopups===null?'Not loaded':(finance.privateTopups/100).toFixed(2)],['Cafeteria purchases charged USD',finance.cafeteriaCharges===null?'Not loaded':(finance.cafeteriaCharges/100).toFixed(2)],['Cafeteria payments received USD',finance.cafeteriaPaid===null?'Not loaded':(finance.cafeteriaPaid/100).toFixed(2)],['Matchmaking collections USD',(finance.matchmakingCollected/100).toFixed(2)],['Matchmaking commissions USD',(finance.commissionTotal/100).toFixed(2)]);
+rows.push(['Total matchmaking revenue USD',(m.monthFinance.total/100).toFixed(2)],['Total commissions USD',(m.monthFinance.fee/100).toFixed(2)]);rows.push([],['Matchmaker','Games','Revenue USD','Commission Rate','Commission USD','Payment status']);for(const x of m.breakdown){const settlement=state.settlements.find(t=>(t.matchmaker_id||LEGACY_MATCHMAKER_ID)===(x.person.id||LEGACY_MATCHMAKER_ID)&&t.month_key===state.reportMonth+'-01');rows.push([x.person.name,x.games,(x.total/100).toFixed(2),(matchmakerRate(x.person)/100)+'%',(x.fee/100).toFixed(2),settlement?.status||'unpaid']);}}
  rows.push([],['Member','Team category','Logged games','Free','Half-price',weekly?'Week used':'Monthly total',...(weekly?['Remaining*']:[])]);
  for(const r of m.rows)rows.push([r.member.name,groupLabel(r.member.team_category),r.played,r.free,r.half,r.used,...(weekly?[r.member.unlimited?'Unlimited':r.remaining]:[])]);
  rows.push([],['Date','Team members','Match benefit','Non-team players']);
