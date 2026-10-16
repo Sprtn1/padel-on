@@ -25,6 +25,19 @@ Both `staff` and `admin` accounts may:
 
 Only an `admin` account can **void a mistaken financial entry**, and a reason is mandatory. The record stays in the audit log; the voided amount no longer counts in the client balance.
 
+## Client filters and day-by-day session history
+
+The **Private Sessions** page now includes:
+
+- **Show:** All clients or **Owes us only** (clients with a negative credit balance). This filter uses all non-voided coaching transactions.
+- **Sort:** Alphabetically by client name or by **Client ID (numeric order)**, so ID `2` is listed before `10` and `100`. Mixed IDs use natural alphanumeric sorting; unassigned IDs appear last. Search and inactive-client controls continue to work.
+- **Daily coaching activity:** Defaults to today's date in **Asia/Beirut**. Navigate with previous/next day arrows, a date picker, or previous/next month buttons. Each day of the month is clickable, and session counts are marked on days with activity.
+- **Daily totals:** Session count, session charges, money paid **at sessions**, and **separate** balance top-ups. Deposits do not count as coaching sessions.
+- **Session details:** Each non-voided session for that date, across all clients, with client name and ID, coach and category, fee, amount paid, and a button to open the client's full account.
+- **Historical browsing:** You can view older dates and months without changing any balances or records. Future dates are disabled.
+
+**No extra SQL migration is required:** these views reuse the protected `private_clients`, `private_coaches`, and `private_ledger_entries` tables.
+
 ## Meaning of the balance
 
 `Current balance = opening balance + deposits + amounts paid during sessions − session prices`
