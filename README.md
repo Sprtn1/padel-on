@@ -1,166 +1,101 @@
-## Multi-person matchmaking and commissions
+# PADEL ON — Club Operations Tracker
 
-The Matchmaking page now has a switchable per-person revenue ledger, independent monthly commissions, settlement statuses, CSV exports, and a per-person breakdown in Reports → Monthly. A one-time database migration plus separate private personnel setup are required. Follow [MULTI_MATCHMAKER_UPGRADE.md](MULTI_MATCHMAKER_UPGRADE.md). All existing Nazih records and previous paid/unpaid settlements are retained.
+PADEL ON is a private, staff-facing club management application hosted as a static website on GitHub Pages, with authentication, authorization, and stored records handled by Supabase.
 
-## Monthly training with Coach Khalil
+**This repository is public.** Its frontend source code, configuration of public API endpoints, migration files, and commit history can be viewed by anyone. **Never commit passwords, confidential club reports, private roster setup scripts, service-role credentials, or reset codes.**
 
-PADEL ON now has a **Monthly Training** page for Rising Stars. It records two-player (or reasoned solo-exception) completed sessions, one free session per member per month, previous months, and attendance CSV reports. **Run the new Supabase migration first:** see [MONTHLY_TRAINING_UPGRADE.md](MONTHLY_TRAINING_UPGRADE.md). All existing weekly counters and finances are independent.
+## Features
 
-## Team categories (Top / Team / Rising Stars / Ladies)
+- Weekly team game benefits and dated game history
+- Four configurable team categories, with member search and filters
+- Quick match recording and read-only previous-week views
+- Separate benefit tracking for special cases
+- Matchmaking ledgers, monthly settlements, and reporting by authorized staff
+- Monthly training attendance and history
+- Downloadable operational reports
+- Authenticated staff and administrator workflows
 
-The Team Members page now groups players into four categories and lets administrators assign categories when adding or editing members. To activate this against an existing Supabase database, run the structural SQL migration and then the separate private roster assignment script. Details: [TEAM_CATEGORIES_UPGRADE.md](TEAM_CATEGORIES_UPGRADE.md). The **private** script should not be uploaded to GitHub.
+Individual entitlements, commission arrangements, actual member records, and other club policies belong in the private Supabase database and internal management documentation, not this public README.
 
-## New features: Quick Match, Previous Weeks, Reports
+## Architecture
 
-For the four-player Quick Match, browseable previous weeks, and CSV/printable reports, see **[FEATURE_UPGRADE.md](FEATURE_UPGRADE.md)**. **Required:** run [supabase/migrations/20261015_quick_match.sql](supabase/migrations/20261015_quick_match.sql) once in your PADEL ON project's Supabase SQL Editor before using Quick Match. The old Manual Entry function and records remain intact.
+| Part | Technology | What is public? |
+| --- | --- | --- |
+| Website | Static HTML, CSS, and JavaScript on GitHub Pages | All deployed frontend code |
+| API configuration | `config.js` | Supabase project URL and **publishable** key |
+| Identity | Supabase Auth | Sign-in handled by Supabase |
+| Data | Supabase PostgreSQL | Access must be restricted with Row-Level Security |
+| Restricted operations | Supabase SQL functions and Edge Functions | Source code may be public; credentials must be stored only as server-side secrets |
 
-# PADEL ON · Team Games Tracker
+**A Supabase publishable/anon key is intended for browser use.** It is not an administrator credential. Protect club data with Supabase Row-Level Security (RLS), permissions, and authenticated server-side checks. Do not put a `service_role` key or `sb_secret_` key in `config.js`.
 
-A real database-backed management site for **PADEL ON**. Host the website on **GitHub Pages** and use **Supabase** for logins, player records, benefit tracking, matchmaking revenue, and protected counter resets.
+## Getting started
 
-**No Node.js build, paid Lovable subscription, or Canva is required.** The GitHub-hosted files are a static frontend. Database storage and all security-sensitive operations run in Supabase. The site must not be considered ready for business use until Supabase setup and real-device tests are complete.
+### 1. Database and authentication
 
-## What it does
+1. Create or select the appropriate Supabase project.
+2. Review [`supabase/schema.sql`](supabase/schema.sql) and apply the base database schema in **Supabase → SQL Editor**, if setting up a new project. Do not blindly rerun the initial schema on an existing live database.
+3. Review and apply only the relevant upgrades from [`supabase/migrations/`](supabase/migrations/), in the documented order. For existing installations, take a database backup first.
+4. Load any required **private** initial data and club-specific setup scripts directly into the intended Supabase project. These files must stay outside this repository.
+5. Configure Supabase Auth users and map authorized users to staff profiles. Limit administrative access and disable public signups if appropriate.
+6. Verify all RLS policies and restricted database functions before recording real club data.
 
-- **18 team members** loaded using the separate PRIVATE initial-data SQL file, with opening balances and configured allowances.
-- Records **free or half-price** team games, including up to 4 team members in a match. A normal member consumes one weekly benefit per qualifying game. Nazih may only be recorded as *free* and has no limit.
-- **Monday–Sunday Asia/Beirut weekly counters**, recalculated from dated records rather than erasing history.
-- **Other Benefits**: Haidar (counter 1, rule pending), Rami (counter 4; one paid game until next free), Bassem Kaadan (needs confirmation), Zainab (next game free).
-- **Nazih permanent financial ledger** with each game, monthly revenue, 15% commission on the **monthly total**, months navigation, adjustments via edit or soft delete, paid/unpaid settlements and CSV export.
-- Game activity page showing the **past 30 days** while retaining the database history.
-- **Email/password Supabase staff authentication** with separate `staff` and `admin` access.
-- **Secure manual reset** with a management code stored privately in the Edge Function secret `RESET_CODE`; wrong attempts are rate-limited and successful resets are audited. The code is never placed into website files.
-- Cross-device shared data; the site refreshes from the database roughly every 30 seconds while open (and when coming back into view).
+Setup information for specific features is available in the corresponding upgrade guides, but **those documents and all tracked SQL/JavaScript are public**. Keep actual person-specific rules and confidential financial details in private documentation.
 
-> Original PADEL ON logo: `assets/logo.svg` contains a replacement text mark. Replace it with your real Canva-exported SVG of the same filename, or edit the `<img>` references to use a PNG.
+### 2. Public browser configuration
 
-## 1. Create your Supabase project
+Use [`config.js`](config.js) for the Supabase project URL and the project's **publishable** key only. These two values are deliberately visible in browser developer tools.
 
-1. Go to [supabase.com](https://supabase.com) and create a project.
-2. In **SQL Editor**, create a query, paste the entire contents of [`supabase/schema.sql`](supabase/schema.sql), and **Run**.
-3. **Load the private initial data:** In the same Supabase SQL Editor, create a second query and paste/run the separately downloaded `PADEL_ON_PRIVATE_INITIAL_DATA.sql`. **Do not upload that file to GitHub or put it inside the website directory.** Initial values apply to the week when the private SQL is run; they are not re-added on later app loads.
-4. **Run initial data only once for setup.** Weekly resets already happen by date.
-5. Go to **Authentication → Providers** and enable Email (password) sign-in.
-6. For a private staff application, disable public signups. In **Authentication → Users**, add a staff user with an email address and password or an invitation. Follow Supabase's email confirmation instructions if applicable.
-7. Back in the **SQL Editor**, grant an administrator role by replacing the email in the following query:
+Never place any of the following in frontend files, migration scripts, documentation, commit messages, or GitHub issues:
 
-```sql
-insert into public.staff_profiles(id, email, role)
-select id, email, 'admin' from auth.users
-where lower(email)=lower('your-email@example.com')
-on conflict (id) do update set role='admin';
-```
+- Supabase secret/service-role keys, database passwords, or other privileged access tokens
+- Staff account passwords or recovery credentials
+- Private reset/management codes
+- Confidential financial exports, backup files, or identifiable roster data not intended for publication
 
-If the query inserts **zero rows**, your account hasn't been created in **Authentication → Users** yet. You cannot use the website until a matching staff profile exists.
+### 3. Deploy restricted functions
 
-For additional staff accounts, create the Auth user and run the same SQL with `'staff'` instead of `'admin'`. Staff can record/correct games and revenue; admins can also edit rosters, record payments, and reset counters.
+The server-side reset function is located at [`supabase/functions/reset-weekly/index.ts`](supabase/functions/reset-weekly/index.ts). Configure its required environment variables and secrets **inside Supabase**, not in source control. Deploy it using your established Supabase CLI or dashboard workflow and test that the authorization checks reject non-admin users.
 
-**Supabase Auth is the identity provider.** Database policies deny unauthorized visitors access to club tables, regardless of GitHub Pages being public.
+### 4. Host with GitHub Pages
 
-## 2. Configure the website
+1. Publish the website assets in this repository to a branch configured for GitHub Pages.
+2. In **Repository → Settings → Pages**, select the appropriate branch and root directory.
+3. Wait for deployment, then open the hosted website.
+4. Sign in with an authorized account and verify API access, role restrictions, and a genuine record from a test environment or approved workflow.
 
-1. Supabase dashboard → **Project Settings → Data API**, copy **Project URL** (like `https://xyz.supabase.co`).
-2. Supabase dashboard → **Project Settings → API Keys**, copy the **publishable key** (or legacy `anon` public key).
-3. Open [`config.js`](config.js) and replace:
+The frontend uses relative asset URLs and can be served from a GitHub Pages project path or a configured custom domain. **GitHub Pages does not make the JavaScript private; the database must enforce access.**
 
-```js
-export const SUPABASE_URL = 'https://YOUR_PROJECT_REF.supabase.co';
-export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_YOUR_VALUE';
-```
+## Operational checks
 
-**This is a public frontend key, not a secret.** The RLS policies protect data. **Never** paste a Supabase `service_role` key, secret API key, database password, or the reset code here or anywhere in GitHub.
+Before relying on the app for day-to-day operations, verify that only approved users can view or change club data, that server-side validation prevents duplicate or unauthorized benefit usage, that changes are audited, that reports correspond to stored records, and that database backups and restore procedures work.
 
-4. Optional: replace [`assets/logo.svg`](assets/logo.svg) with your original PADEL ON logo.
+The automated tests are intended to check application logic; they are not a substitute for testing the deployed Supabase policies. If Node.js is available, run `npm test`.
 
-## 3. Set up secure reset verification
+## Repository safety
 
-This is the **only** step requiring the Supabase CLI. The Edge Function is in [`supabase/functions/reset-weekly/index.ts`](supabase/functions/reset-weekly/index.ts).
-
-Install [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started) using one of Supabase's supported installation methods, then in a terminal in the project directory:
+A [`.gitignore`](.gitignore) is included to help avoid accidentally staging local secrets, exports, private SQL scripts, and backups **with Git**. It does not remove files already committed, hide public webpage assets, or prevent manual uploads through the GitHub website. Review every staged file before committing:
 
 ```bash
-supabase login
-supabase link --project-ref YOUR_PROJECT_REF
-supabase secrets set RESET_CODE=YOUR_PRIVATE_RESET_CODE
-supabase functions deploy reset-weekly
+git status --short
+git diff --cached --name-only
 ```
 
-Supabase automatically provides `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` as protected function environment variables. Never put the service-role key into the browser or repository.
+If an actual credential is ever committed, **revoke or rotate it immediately**. Deleting or editing the file is not sufficient because Git history, forks, and cached copies may still contain it.
 
-In Supabase **Edge Functions**, verify that `reset-weekly` is deployed and JWT verification is enabled where supported. The function **also independently verifies the user's access token and admin role**.
+## Source layout
 
-After deployment, an administrator can reset one or all standard team members from **Settings**. Five incorrect reset attempts per 15-minute window are blocked. If the Edge Function is not deployed, reset buttons will display an error rather than pretend to work.
-
-## 4. Publish the website to GitHub Pages
-
-1. Create a **public** GitHub repository, for example `padel-on-team-tracker`.
-2. Upload **all project files and folders** from this directory into the repository **root** (not the ZIP itself). GitHub's **Add file → Upload files** feature accepts drag-and-drop files; for directories, drag the extracted project contents or use git.
-3. Commit the files to the default `main` branch.
-4. Go to **Repository → Settings → Pages**.
-5. Under **Build and deployment**, select **Deploy from a branch**; choose `main` and `/ (root)`; press **Save**.
-6. Wait for Pages deployment. Open the generated URL, typically `https://YOUR_USERNAME.github.io/padel-on-team-tracker/`.
-7. Log in using the Supabase staff account created earlier.
-
-The `.nojekyll` file prevents unwanted Jekyll processing. All paths are relative, so GitHub Pages project URLs work without a build. **Do not upload any `.env`, database passwords, or private API keys to GitHub.**
-
-If you choose to use a custom domain, update GitHub Pages settings accordingly. The entire application still uses relative asset paths.
-
-## 5. Test before club use
-
-1. Sign in as admin; confirm 18 team members and four special players are present.
-2. Check that your members and weekly opening balances match the separately loaded private initial data during the setup week.
-3. Record one free game for a member with remaining benefits; refresh and verify the counter decreases correctly.
-4. Open the website on a **second device** using an authorized staff login; confirm the new game appears after refresh.
-5. Record a team match involving two team members: both should be decremented atomically.
-6. Record a paid game for Rami: his counter becomes 5 and his status becomes **Next Game Free**. Record that free game; his status becomes **Needs Confirmation**, with no invented repeating cycle.
-7. Enter $40 and $60 for Nazih in the same month: total revenue should become **$100**, commission **$15**. Move one record to a different month and confirm both months update.
-8. Verify unpaid/paid settlement controls (admin only).
-9. Attempt a reset with a wrong code; it must fail. Enter the backend-configured management code; the counter should reset without deleting old game entries or Nazih's financial ledger.
-10. At the next Monday in Beirut, the dashboard starts the new weekly allowance automatically. Historic records remain in the DB.
-
-## Local preview
-
-No package installation is required. If Python is installed, start a simple server in the project folder:
-
-```bash
-python3 -m http.server 8080
+```text
+index.html                    Website entry point
+app.js                        Application views and interaction
+styles.css                    Responsive styling
+config.js                     PUBLIC Supabase URL and publishable key
+lib/                          Client, dates, and business logic
+assets/                       Website branding and icons
+supabase/schema.sql           Public database schema and RLS
+supabase/migrations/          Public structural upgrades
+supabase/functions/           Server-side function source (no secrets)
+tests/                        Automated application tests
 ```
 
-Visit [http://localhost:8080](http://localhost:8080). The page requires working Supabase credentials and staff access to show the management dashboard.
-
-If Node.js is available, run the unit tests without installing dependencies:
-
-```bash
-npm test
-```
-
-## Security and operational notes
-
-- **Do not publish sensitive details in the GitHub repository.** The initial member names are in the separate `PADEL_ON_PRIVATE_INITIAL_DATA.sql` file, which must **never** be uploaded to the public GitHub repository. The public website JavaScript still contains some static section labels (including the matchmaking section name), so it is not a fully secret website; Supabase RLS must protect the actual database records.
-- Do not include the reset code in any public repository or issue. Consider using a stronger, randomly generated secret for real financial operations. Change it through `supabase secrets set RESET_CODE=...`, not the browser.
-- Only staff accounts approved in `staff_profiles` can read club data; the email/password login itself is not sufficient without authorization.
-- Game activity is shown for 30 days. Historical rows remain archived for auditability; they are **not physically deleted** after 30 days.
-- Financial deletions are soft deletes, and database triggers record a before/after audit trail. Historical financial records remain available until explicitly edited or deleted.
-- Commission is calculated as `round(sum(amount_cents) * 0.15)`; individual per-game amounts shown in the UI are informational and their rounded sum might differ by a cent from the monthly commission.
-- Financial records are stored in whole USD cents; no floating-point money errors.
-- There is no automatic money transfer, payment gateway, court booking, or client invoices.
-- Supabase and GitHub Pages usage is subject to the providers' current free-tier limits and inactivity policies. Configure backups if club data is valuable.
-- Staff should use distinct accounts; do not share one administrator password.
-
-## Project files
-
-```
-index.html                 Entry point
-styles.css                 Full mobile-first design
-app.js                     Pages, forms, navigation and logic
-config.js                  Public Supabase URL + publishable key
-assets/logo.svg            Replaceable PADEL ON logo
-assets/favicon.svg         Browser icon
-lib/api.js                 Supabase REST/Auth/Functions client
-lib/date.js                Beirut calendar and exact currency helpers
-lib/logic.js               Weekly counters and monthly commission math
-supabase/schema.sql        Tables, RLS, atomic RPCs, audit triggers (no private roster)
-supabase/functions/reset-weekly/index.ts  Server-side reset authorization
-package.json               Dependency-free test runner
-.nojekyll                  GitHub Pages support
-```
+For deployment details and feature upgrade instructions, review the public technical guides in this repository. Keep private club-specific setup and operational documents in a separate access-controlled location.
