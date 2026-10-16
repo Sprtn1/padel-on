@@ -507,6 +507,34 @@ function debtModal(type,m){
  <form id="modal-form" data-save="void-debt-entry">${textareaField('reason','Reason for correction')}${formActions('Void Entry',true)}</form>`;
  return {title:'Correct Cafeteria Entry',subtitle:entry?.entry_type==='charge'?'Void a debt charge':'Void a recorded payment',content,danger:true};
 }
+function normalizePrivateClientId(value){return String(value??'').trim().toUpperCase();}
+function privateClientIdOwner(value,editingId=null){
+ const id=normalizePrivateClientId(value);
+ if(!id)return null;
+ // Includes inactive clients: archived IDs remain reserved.
+ return state.privateClients.find(client=>
+  client.id!==editingId&&normalizePrivateClientId(client.client_code)===id
+ )||null;
+}
+function validatePrivateClientIdInput(){
+ const form=document.querySelector('#modal-form[data-save="save-private-client"]');
+ if(!form)return true;
+ const input=form.querySelector('[name="client_code"]');
+ const feedback=form.querySelector('#private-id-feedback');
+ const submit=form.querySelector('#save-button');
+ if(!input||!feedback||!submit)return true;
+ const normalized=normalizePrivateClientId(input.value);
+ const owner=privateClientIdOwner(normalized,state.modal?.clientId||null);
+ input.setCustomValidity(owner?'This client ID is already assigned.':'');
+ feedback.textContent=owner?
+  'Already assigned to '+owner.name+'. Please choose another ID.':
+  normalized?'This client ID is available.':'Optional. Enter an ID only if the client has one.';
+ feedback.classList.toggle('duplicate',Boolean(owner));
+ feedback.classList.toggle('available',Boolean(normalized)&&!owner);
+ input.setAttribute('aria-invalid',owner?'true':'false');
+ submit.disabled=Boolean(owner);
+ return !owner;
+}
 function privateClientModal(type,m){
  const client=state.privateClients.find(c=>c.id===m.clientId);
  if(type==='private-client'){
@@ -516,7 +544,7 @@ function privateClientModal(type,m){
   const initial=edit?'':field('opening_balance','Opening balance ($) · negative = amount owed','0.00','number','required step="0.01" min="-1000000000" max="1000000000"');
   const content=`<form id="modal-form" data-save="save-private-client">
    ${field('name','Client name',client?.name||'','text','required maxlength="120"')}
-   ${field('client_code','Existing client ID (optional)',client?.client_code||'','text','maxlength="40" placeholder="Example: C1024"')}
+   ${field('client_code','Existing client ID (optional)',client?.client_code||'','text','maxlength="40" placeholder="Example: C1024" aria-describedby="private-id-feedback"')}<div class="private-id-feedback" id="private-id-feedback" aria-live="polite">IDs must be unique across all clients.</div>
    ${field('contact','Contact information (optional)',client?.contact||'','text','maxlength="120"')}
    ${initial}
    ${edit?selectField('active','Account status',[['true','Active'],['false','Inactive']],client.active?'true':'false'):''}
@@ -606,7 +634,7 @@ function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',d
  return `<div class="modal-backdrop" id="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-head"><div><h2>${esc(title)}</h2><p>${esc(subtitle)}</p></div><button class="modal-close" data-action="close-modal" aria-label="Close">${icon('close')}</button></div><div class="modal-body">${content}</div></div></div>`
 }
 function formActions(text,danger=false){return `<div class="modal-actions">${btn('Cancel','close-modal','btn-light')}<button type="submit" class="btn ${danger?'btn-danger':'btn-primary'}" id="save-button">${esc(text)}</button></div>`}
-function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance','training','private-session','private-deposit','debt-person','debt-charge','debt-payment'].includes(type)?{requestId:crypto.randomUUID()}:{}),...(['finance','settlement'].includes(type)?{personId:selectedMatchmaker()?.id||null}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();},0)}
+function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance','training','private-session','private-deposit','debt-person','debt-charge','debt-payment'].includes(type)?{requestId:crypto.randomUUID()}:{}),...(['finance','settlement'].includes(type)?{personId:selectedMatchmaker()?.id||null}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();validatePrivateClientIdInput();},0)}
 function closeModal(){state.modal=null;document.getElementById('modal-root').innerHTML=''}
 function renderAuth(message=''){
  app.innerHTML=`<main class="auth-wrap"><section class="auth-lead"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><h1>The team.<br/><em>All in one place.</em></h1><p>Weekly padel benefits, special players, and matchmaking revenue—securely tracked together.</p></section><section class="auth-card"><div class="eyebrow">Private club workspace</div><h2>Welcome back</h2><p class="sub">Sign in with your PADEL ON staff account.</p>${!api.configured?'<div class="auth-error">Database not configured. Set the Supabase URL and publishable key in <strong>config.js</strong>, then follow README.md.</div>':''}${message?`<div class="auth-error">${esc(message)}</div>`:''}<form id="login-form">${field('email','Email address','','email','required autocomplete="email"')}${field('password','Password','','password','required autocomplete="current-password"')}<button class="btn btn-primary" ${!api.configured?'disabled':''} type="submit">Sign In ${icon('arrow')}</button></form><div class="auth-foot">Authorized PADEL ON staff only · Protected by Supabase Auth</div></section></main>`;
@@ -719,11 +747,21 @@ async function saveForm(form){const f=new FormData(form),data=Object.fromEntries
  case 'save-private-client':{
    const name=(data.name||'').trim();
    if(name.length<2)throw Error('Enter a client name.');
-   if(m.clientId){
-     await api.rpc('private_update_client',{p_client_id:m.clientId,p_name:name,p_client_code:data.client_code?.trim()||null,p_contact:data.contact?.trim()||'',p_notes:data.notes?.trim()||'',p_active:data.active==='true'});
-   }else{
-     const created=await api.rpc('private_add_client',{p_name:name,p_client_code:data.client_code?.trim()||null,p_contact:data.contact?.trim()||'',p_opening_balance_cents:privateSignedUSD(data.opening_balance),p_notes:data.notes?.trim()||''});
-     if(typeof created==='string')state.privateSelected=created;
+   const clientCode=normalizePrivateClientId(data.client_code);
+   const conflict=privateClientIdOwner(clientCode,m.clientId||null);
+   if(conflict)throw Error('Client ID '+clientCode+' is already assigned to '+conflict.name+'. Please enter another ID.');
+   try{
+     if(m.clientId){
+       await api.rpc('private_update_client',{p_client_id:m.clientId,p_name:name,p_client_code:clientCode||null,p_contact:data.contact?.trim()||'',p_notes:data.notes?.trim()||'',p_active:data.active==='true'});
+     }else{
+       const created=await api.rpc('private_add_client',{p_name:name,p_client_code:clientCode||null,p_contact:data.contact?.trim()||'',p_opening_balance_cents:privateSignedUSD(data.opening_balance),p_notes:data.notes?.trim()||''});
+       if(typeof created==='string')state.privateSelected=created;
+     }
+   }catch(error){
+     // The database unique index is authoritative across concurrent staff sessions.
+     if(/private_clients_code_ci_unique|private_clients_code_normalized_unique|private_client.*(duplicate|already exists)/i.test(error?.message||''))
+       throw Error('Client ID '+clientCode+' is already in use. Choose a different ID.');
+     throw error;
    }
    break;
  }
@@ -910,6 +948,7 @@ document.addEventListener('submit',async e=>{
  }
 });
 document.addEventListener('input',e=>{
+ if(e.target.name==='client_code'&&e.target.closest('form[data-save="save-private-client"]'))validatePrivateClientIdInput();
  const id=e.target.id;if(id==='team-search'||id==='activity-search'||id==='private-client-search'||id==='debt-search'){
   const caret=e.target.selectionStart;const value=e.target.value;
   if(id==='team-search')state.teamSearch=value;else if(id==='activity-search')state.activitySearch=value;else if(id==='private-client-search')state.privateSearch=value;else state.debtSearch=value;
