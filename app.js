@@ -479,6 +479,32 @@ function closeModal(){state.modal=null;document.getElementById('modal-root').inn
 function renderAuth(message=''){
  app.innerHTML=`<main class="auth-wrap"><section class="auth-lead"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><h1>The team.<br/><em>All in one place.</em></h1><p>Weekly padel benefits, special players, and matchmaking revenue—securely tracked together.</p></section><section class="auth-card"><div class="eyebrow">Private club workspace</div><h2>Welcome back</h2><p class="sub">Sign in with your PADEL ON staff account.</p>${!api.configured?'<div class="auth-error">Database not configured. Set the Supabase URL and publishable key in <strong>config.js</strong>, then follow README.md.</div>':''}${message?`<div class="auth-error">${esc(message)}</div>`:''}<form id="login-form">${field('email','Email address','','email','required autocomplete="email"')}${field('password','Password','','password','required autocomplete="current-password"')}<button class="btn btn-primary" ${!api.configured?'disabled':''} type="submit">Sign In ${icon('arrow')}</button></form><div class="auth-foot">Authorized PADEL ON staff only · Protected by Supabase Auth</div></section></main>`;
 }
+async function loadPrivateClients(){
+ if(!api.getSession()?.access_token||!state.staff||state.privateLoading)return;
+ state.privateLoading=true;state.privateError=null;
+ if(state.tab==='private-clients')render();
+ try{
+  const [clients,coaches,entries]=await Promise.all([
+   api.listAll('private_clients'),
+   api.listAll('private_coaches'),
+   api.listAll('private_ledger_entries')
+  ]);
+  if(!api.getSession()?.access_token||idleLogoutStarted)return;
+  state.privateClients=clients;state.privateCoaches=coaches;state.privateEntries=entries;
+  state.privateLoaded=true;state.privateError=null;
+  if(!clients.some(c=>c.id===state.privateSelected)){
+   state.privateSelected=clients.find(c=>c.active)?.id||clients[0]?.id||null;
+  }
+ }catch(e){
+  if(api.getSession()?.access_token){
+   state.privateLoaded=false;
+   state.privateError=(e?.message||'Failed to load client data')+'. Apply the Private Coaching migration in Supabase if this feature has not been set up.';
+  }
+ }finally{
+  state.privateLoading=false;
+  if(state.tab==='private-clients'&&api.getSession()?.access_token)render();
+ }
+}
 async function loadData(resetTab=false){if(state.loading)return;state.loading=true;try{
  const auth=api.getSession();if(!auth?.access_token)throw Error('Sign in required');
  const profiles=await api.list('staff_profiles',`id=eq.${auth.user.id}`);
@@ -492,7 +518,7 @@ async function loadData(resetTab=false){if(state.loading)return;state.loading=tr
  if(!api.getSession()?.access_token || idleLogoutStarted)return;
  Object.assign(state,{members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers});
  if(matchmakers.length&&!matchmakers.some(p=>p.id===state.matchmakerId))state.matchmakerId=matchmakers[0].id;
- if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport(); if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth();
+ if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport(); if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth(); if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients();
  }catch(e){if((idleLogoutStarted || !api.getSession()?.access_token) && !e.message.includes('no PADEL ON staff access'))return;if(e.message.includes('sign in')||e.message.includes('JWT')||e.message.includes('refresh token')){clearStaffActivity();await api.signOut();renderAuth(e.message)}else if(state.staff){toast(e.message,true)}else renderAuth(e.message)}finally{state.loading=false;}}
 let working=false;
 async function runMutation(task,success='Saved successfully'){if(working)return;working=true;const b=document.getElementById('save-button');if(b){b.disabled=true;b.textContent='Saving…'}try{await task();state.modal=null;await loadData();toast(success)}catch(e){toast(e?.message||'Could not save. Try again.',true)}finally{working=false;if(b&&b.isConnected){b.disabled=false;b.textContent='Try again'}}}
@@ -570,7 +596,7 @@ function exportFinance(){
 }
 async function handleAction(target){const act=target.dataset.action,id=target.dataset.id;
  switch(act){
- case 'refresh':await loadData();if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
+ case 'refresh':await loadData();if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
  case 'training-prev-month':
   state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
  case 'training-next-month':
@@ -626,7 +652,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
  if(e.target.id==='modal-backdrop'){closeModal();return;}
- const tab=e.target.closest('[data-tab]');if(tab){state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports')await loadReport();if(state.tab==='training')await loadTrainingMonth();return;}
+ const tab=e.target.closest('[data-tab]');if(tab){state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports')await loadReport();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();return;}
  const action=e.target.closest('[data-action]');if(action){try{await handleAction(action)}catch(err){toast(err.message,true)}}
 });
 document.addEventListener('submit',async e=>{
