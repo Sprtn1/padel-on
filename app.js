@@ -676,6 +676,23 @@ function privateClientModal(type,m){
  return {title:'Void Financial Entry',subtitle:entry?.entry_type==='session'?'Cancel incorrect session record':'Cancel incorrect balance top-up',content,danger:true};
 }
 function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',danger=false,action='';switch(m.type){
+ case 'admin-account-manage':{
+  if(state.staff?.role!=='admin')throw Error('Administrators only.');
+  const person=m.accountKind==='private'?state.privateClients.find(c=>c.id===m.id):state.debtPeople.find(c=>c.id===m.id);
+  if(!person)throw Error('Account not found.');
+  const friendly=m.accountKind==='private'?'private coaching client':'cafeteria account';
+  title=(m.remove?'Remove':'Restore')+' '+friendly;
+  subtitle=person.name;
+  danger=Boolean(m.remove);
+  content=`<div class="notice ${m.remove?'warn':''}">${m.remove?
+   'Removal hides this account but keeps all financial records and preserves its ID. The current balance must be exactly zero.':
+   'Restore this removed account with its complete previous history.'}</div>
+   <form id="modal-form" data-save="save-admin-account-manage">
+   ${m.remove?`${field('confirm_name','Type the exact account name to confirm','','text','required autocomplete="off"')} ${textareaField('reason','Reason for removal')}`:''}
+   ${formActions(m.remove?'Confirm Removal':'Restore Account',m.remove)}</form>`;
+  break;
+ }
+
  case 'debt-person':case 'debt-charge':case 'debt-payment':case 'debt-void':{
   const dialog=debtModal(m.type,m);
   title=dialog.title;subtitle=dialog.subtitle;content=dialog.content;danger=Boolean(dialog.danger);break;
@@ -807,6 +824,27 @@ function privateSignedUSD(raw){
 }
 async function saveForm(form){const f=new FormData(form),data=Object.fromEntries(f.entries()),m=state.modal;
  switch(form.dataset.save){
+ case 'save-admin-account-manage':{
+  if(state.staff?.role!=='admin')throw Error('Only administrators can remove or restore accounts.');
+  if(m.accountKind!=='private'&&m.accountKind!=='cafeteria')throw Error('Invalid account type.');
+  const isPrivate=m.accountKind==='private';
+  const person=isPrivate?state.privateClients.find(x=>x.id===m.id):state.debtPeople.find(x=>x.id===m.id);
+  if(!person)throw Error('Account not found.');
+  const balance=isPrivate?privateClientBalance(person):debtOutstanding(person.id);
+  if(m.remove){
+   if(person.deleted_at)throw Error('Account already removed.');
+   if(balance!==0)throw Error('Account cannot be removed until its balance is exactly zero.');
+   if((data.confirm_name||'').trim()!==person.name)throw Error('Type the exact account name to confirm.');
+   if((data.reason||'').trim().length<4)throw Error('Provide a reason (at least four characters).');
+  }else if(!person.deleted_at)throw Error('This account is not removed.');
+  await api.rpc(isPrivate?'private_set_client_removed':'cafeteria_set_person_removed',{
+   ...(isPrivate?{p_client_id:person.id}:{p_person_id:person.id}),
+   p_remove:Boolean(m.remove),p_reason:m.remove?data.reason.trim():''
+  });
+  if(isPrivate){state.settingsPrivateAccountId=person.id;await loadPrivateClients();}
+  else {state.settingsCafeteriaAccountId=person.id;await loadDebtData();}
+  break;
+ }
  case 'save-debt-person':{
   const name=(data.name||'').trim();
   if(name.length<2)throw Error('Enter the person’s name.');
@@ -949,6 +987,17 @@ function exportFinance(){
 }
 async function handleAction(target){const act=target.dataset.action,id=target.dataset.id;
  switch(act){
+ case 'settings-private-remove':case 'settings-private-restore':
+ case 'settings-cafe-remove':case 'settings-cafe-restore':{
+  if(state.staff?.role!=='admin')throw Error('Administrators only.');
+  const isPrivate=act.startsWith('settings-private'),isRemoval=act.endsWith('-remove');
+  const accountId=isPrivate?state.settingsPrivateAccountId:state.settingsCafeteriaAccountId;
+  const person=isPrivate?state.privateClients.find(x=>x.id===accountId):state.debtPeople.find(x=>x.id===accountId);
+  if(!person)throw Error('Select an account in Settings first.');
+  if(isRemoval&&(isPrivate?privateClientBalance(person):debtOutstanding(person.id))!==0)
+   throw Error('Settle the account balance before removal.');
+  openModal('admin-account-manage',person.id,{accountKind:isPrivate?'private':'cafeteria',remove:isRemoval});break;
+ }
  case 'debt-retry':await loadDebtData();break;
  case 'debt-new-person':if(!state.debtLoaded||state.debtError)throw Error('Cafeteria database not configured yet.');openModal('debt-person');break;
  case 'debt-select-person':if(!state.debtPeople.some(p=>p.id===id&&!p.deleted_at))throw Error('Person not found.');state.debtSelected=id;render();break;
@@ -1057,7 +1106,12 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
  if(e.target.id==='modal-backdrop'){closeModal();return;}
- const tab=e.target.closest('[data-tab]');if(tab){state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports')await loadReport();if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();return;}
+ const tab=e.target.closest('[data-tab]');if(tab){state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports')await loadReport();if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();
+ if(state.tab==='settings'&&state.staff?.role==='admin'){
+  await Promise.all([loadPrivateClients(),loadDebtData()]);
+  if(state.tab==='settings'&&api.getSession()?.access_token)render();
+ }
+ return;}
  const action=e.target.closest('[data-action]');if(action){try{await handleAction(action)}catch(err){toast(err.message,true)}}
 });
 document.addEventListener('submit',async e=>{
@@ -1104,6 +1158,9 @@ function updateQuickPreview(){
  else button.disabled=false;
 }
 document.addEventListener('change',e=>{
+ if(e.target.id==='settings-private-account'){state.settingsPrivateAccountId=e.target.value;render();return}
+ if(e.target.id==='settings-cafeteria-account'){state.settingsCafeteriaAccountId=e.target.value;render();return}
+
  if(e.target.id==='private-client-filter'){state.privateListFilter=e.target.value==='owing'?'owing':'all';render();return}
  if(e.target.id==='private-client-sort'){state.privateSort=e.target.value==='id'?'id':'name';render();return}
  if(e.target.id==='private-day-date'){
