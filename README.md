@@ -13,7 +13,7 @@ PADEL ON is a private, staff-facing club management application hosted as a stat
 - Matchmaking ledgers, monthly settlements, and reporting by authorized staff
 - Monthly training attendance and history
 - Private coaching client IDs, session fees, dated payments, and credit/debt balances
-- A separate, staff-only cafeteria debt ledger with partial payments and outstanding balances
+- A separate, staff-only cafeteria ledger with debt tracking, partial payments, and prepaid credit for future purchases
 - Downloadable operational reports
 - Authenticated staff and administrator workflows
 
