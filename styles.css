@@ -269,3 +269,88 @@
  .admin-account-buttons .btn{width:100%}
  .settings-box.admin-account-box{gap:8px}
 }
+
+/* Management Overview, global search and consolidated financial reports. */
+.management-section-label{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:22px 2px 14px}
+.management-section-label h2{font:800 17px Manrope,system-ui,sans-serif;letter-spacing:-.3px;color:var(--ink);margin:0}
+.management-section-label span{font-size:11px;color:var(--muted);font-weight:650}
+.management-summary .summary-card{min-width:0}
+.management-summary .summary-card .submetric{line-height:1.4}
+.management-panels{grid-template-columns:minmax(0,1.3fr) minmax(0,.9fr);margin-bottom:19px}
+.management-alerts{padding:0 17px 17px;display:grid;gap:8px}
+.management-alert{display:flex;align-items:center;gap:12px;width:100%;text-align:left;min-width:0;border-radius:11px;padding:12px;background:#f7faf8;border:1px solid #e7efea;color:var(--ink)}
+.management-alert:hover{background:#edf7f1}
+.management-alert.warning{border-color:#f4dfd2;background:#fff9f5}
+.management-alert-icon{color:#c2763a;background:#fff0e6;border-radius:9px;padding:7px;display:flex;flex:0 0 auto}
+.management-alert.info .management-alert-icon{color:#10845a;background:#e6f7ec}
+.management-alert-icon svg{width:17px;height:17px}
+.management-alert>span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere}
+.management-alert strong{display:block;font-size:12px;margin-bottom:4px}
+.management-alert small{display:block;color:var(--muted);font-size:11px;line-height:1.5}
+.management-alert>svg:last-child{color:#90a49a;width:15px;flex-shrink:0}
+.management-commission-total{font:850 29px Manrope,system-ui,sans-serif;color:var(--ink);margin:1px 0 14px}
+.management-commission-total small{display:block;font:600 11px system-ui,sans-serif;color:var(--muted);margin-top:5px}
+.management-commission-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--stroke);font-size:12px;padding:10px 0}
+.management-commission-row span{overflow-wrap:anywhere}
+.management-commission-row strong{white-space:nowrap;font-variant-numeric:tabular-nums}
+.management-note{font-size:11px;line-height:1.7;color:var(--muted);padding-top:9px;margin:0}
+.consolidated-finance-panel{margin:0 0 20px}
+.consolidated-finance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0 23px 16px}
+.consolidated-finance-total{background:#eaf8f0;padding:20px;border-radius:13px;min-width:0}
+.consolidated-finance-total.secondary{background:#f6f9f7}
+.consolidated-finance-total small{display:block;color:#4c8468;font-size:11px;font-weight:750}
+.consolidated-finance-total strong{font:850 28px Manrope,system-ui,sans-serif;color:#087e50;display:block;margin:8px 0}
+.consolidated-finance-total.secondary strong{color:#244439}
+.consolidated-finance-total p{color:#658176;font-size:11px;line-height:1.5;margin:0}
+.consolidated-finance-rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 30px;padding:0 23px}
+.consolidated-finance-row{display:flex;align-items:center;justify-content:space-between;gap:14px;border-top:1px solid var(--stroke);padding:13px 0;min-width:0}
+.consolidated-finance-row>div{min-width:0}
+.consolidated-finance-row strong{display:block;font-size:12px;color:var(--ink)}
+.consolidated-finance-row small{display:block;color:var(--muted);font-size:10px;line-height:1.5;margin-top:4px}
+.consolidated-finance-row>b{color:var(--ink);font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.consolidated-note{padding:12px 23px 20px}
+.finance-loading{margin:0 23px 14px}
+.global-search-layer{position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:10vh 16px 16px}
+.global-search-backdrop{position:absolute;inset:0;background:rgba(9,27,20,.57);backdrop-filter:blur(4px)}
+.global-search-dialog{position:relative;background:#fff;border-radius:18px;box-shadow:0 26px 85px rgba(0,0,0,.24);width:min(590px,100%);overflow:hidden;max-height:78vh;display:flex;flex-direction:column}
+.global-search-header{padding:13px 15px;display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--stroke)}
+.global-search-header>svg{color:#199c6e;flex-shrink:0}
+.global-search-header input{border:none;outline:none;flex:1;min-width:0;font:600 14px system-ui,sans-serif;color:var(--ink);height:35px}
+.global-search-results{padding:9px;overflow-y:auto;min-height:90px}
+.global-search-result{display:flex;align-items:center;text-align:left;gap:11px;background:#fff;border:0;border-radius:11px;padding:11px;width:100%;min-width:0;color:var(--ink)}
+.global-search-result:hover,.global-search-result:focus-visible{background:#ecf8f0;outline:none}
+.global-search-result-icon{width:36px;height:36px;background:#eff7f1;color:#129164;border-radius:9px;display:grid;place-items:center;flex-shrink:0}
+.global-search-result-icon svg{width:18px;height:18px}
+.global-search-result>span:nth-child(2){flex:1;min-width:0}
+.global-search-result strong{display:block;font-size:12px;overflow-wrap:anywhere}
+.global-search-result small{display:block;color:var(--muted);font-size:11px;margin-top:4px;overflow-wrap:anywhere}
+.global-search-result>svg:last-child{color:#92a398;width:16px}
+.global-search-hint{padding:18px;color:var(--muted);font-size:12px;line-height:1.6}
+.global-search-footer{border-top:1px solid var(--stroke);background:#f9fcfa;padding:10px 15px;color:var(--muted);font-size:10px}
+@media(max-width:1070px){
+ .management-panels{grid-template-columns:1fr}
+ .consolidated-finance-rows{grid-template-columns:1fr}
+ .management-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+ .management-section-label{flex-direction:column;gap:4px}
+ .management-section-label h2{font-size:15px}
+ .management-summary{gap:9px}
+ .management-summary .summary-card{padding:14px;min-height:124px}
+ .management-summary .summary-card .metric{font-size:22px}
+ .management-summary .summary-card .label{font-size:11px}
+ .consolidated-finance-grid{grid-template-columns:1fr;padding:0 14px 13px}
+ .consolidated-finance-total{padding:15px}
+ .consolidated-finance-total strong{font-size:24px}
+ .consolidated-finance-rows{padding:0 14px}
+ .consolidated-note{padding:10px 14px 16px}
+ .finance-loading{margin:0 14px 12px}
+ .global-search-layer{padding:6vh 10px 12px}
+ .global-search-dialog{max-height:83vh}
+ .global-search-header{padding:8px}
+ .global-search-header input{font-size:12px}
+}
+@media print{
+ .global-search-layer{display:none!important}
+ .consolidated-finance-panel{break-inside:auto}
+}
