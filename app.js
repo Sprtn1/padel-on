@@ -680,6 +680,40 @@ function privateSignedUSD(raw){
 }
 async function saveForm(form){const f=new FormData(form),data=Object.fromEntries(f.entries()),m=state.modal;
  switch(form.dataset.save){
+ case 'save-debt-person':{
+  const name=(data.name||'').trim();
+  if(name.length<2)throw Error('Enter the person’s name.');
+  if(m.personId){
+   await api.rpc('cafeteria_update_person',{p_person_id:m.personId,p_name:name,p_notes:(data.notes||'').trim(),p_active:data.active==='true'});
+  }else{
+   const initial=parseUSD(data.initial_debt);
+   const created=await api.rpc('cafeteria_add_person',{p_person_id:m.requestId,p_name:name,p_initial_debt_cents:initial,p_entry_date:data.entry_date,p_notes:(data.notes||'').trim()});
+   state.debtSelected=typeof created==='string'?created:m.requestId;
+   if(initial===0)state.debtFilter='all';
+   else state.debtFilter='open';
+  }
+  break;
+ }
+ case 'save-debt-charge':case 'save-debt-payment':{
+  const person=state.debtPeople.find(x=>x.id===m.personId);
+  if(!person||!person.active)throw Error('Choose an active cafeteria account.');
+  const isCharge=form.dataset.save==='save-debt-charge';
+  const cents=parseUSD(data.amount);
+  if(cents<=0)throw Error('Enter an amount greater than zero.');
+  if(!isCharge&&cents>debtOutstanding(person.id))throw Error('The payment exceeds the amount owed.');
+  await api.rpc('cafeteria_record_entry',{p_entry_id:m.requestId,p_person_id:person.id,p_entry_type:isCharge?'charge':'payment',p_amount_cents:cents,p_entry_date:data.entry_date,p_notes:(data.notes||'').trim()});
+  state.debtSelected=person.id;
+  if(!isCharge)state.debtFilter='all'; // Show paid-in-full accounts after final payment.
+  else state.debtFilter='open';
+  break;
+ }
+ case 'void-debt-entry':{
+  if(state.staff?.role!=='admin')throw Error('Only an administrator can correct a debt transaction.');
+  if((data.reason||'').trim().length<4)throw Error('Provide a reason for the correction.');
+  await api.rpc('cafeteria_void_entry',{p_entry_id:m.id,p_reason:data.reason.trim()});
+  state.debtFilter='all';
+  break;
+ }
  case 'save-private-client':{
    const name=(data.name||'').trim();
    if(name.length<2)throw Error('Enter a client name.');
@@ -779,6 +813,21 @@ function exportFinance(){
 }
 async function handleAction(target){const act=target.dataset.action,id=target.dataset.id;
  switch(act){
+ case 'debt-retry':await loadDebtData();break;
+ case 'debt-new-person':if(!state.debtLoaded||state.debtError)throw Error('Cafeteria database not configured yet.');openModal('debt-person');break;
+ case 'debt-select-person':if(!state.debtPeople.some(p=>p.id===id))throw Error('Person not found.');state.debtSelected=id;render();break;
+ case 'debt-edit-person':if(!state.debtSelected)throw Error('Select a person.');openModal('debt-person',null,{personId:state.debtSelected});break;
+ case 'debt-add-charge':case 'debt-add-payment':{
+  const person=state.debtPeople.find(p=>p.id===state.debtSelected);
+  if(!person||!person.active)throw Error('Select an active person.');
+  if(act==='debt-add-payment'&&debtOutstanding(person.id)===0)throw Error('This person has no outstanding debt.');
+  openModal(act==='debt-add-charge'?'debt-charge':'debt-payment',null,{personId:person.id});break;
+ }
+ case 'debt-void':
+  if(state.staff?.role!=='admin')throw Error('Only admins may correct cafeteria transactions.');
+  if(!state.debtEntries.some(e=>e.id===id&&!e.voided_at))throw Error('Entry not found.');
+  openModal('debt-void',id);break;
+ case 'debt-export':debtExport();break;
  case 'private-retry':await loadPrivateClients();break;
  case 'private-add-client':if(!state.privateLoaded||state.privateError)throw Error('Client database is not ready. Apply the Supabase migration.');openModal('private-client');break;
  case 'private-select-client':if(!state.privateClients.some(c=>c.id===id))throw Error('Client not found.');state.privateSelected=id;render();break;
@@ -860,9 +909,9 @@ document.addEventListener('submit',async e=>{
  }
 });
 document.addEventListener('input',e=>{
- const id=e.target.id;if(id==='team-search'||id==='activity-search'||id==='private-client-search'){
+ const id=e.target.id;if(id==='team-search'||id==='activity-search'||id==='private-client-search'||id==='debt-search'){
   const caret=e.target.selectionStart;const value=e.target.value;
-  if(id==='team-search')state.teamSearch=value;else if(id==='activity-search')state.activitySearch=value;else state.privateSearch=value;
+  if(id==='team-search')state.teamSearch=value;else if(id==='activity-search')state.activitySearch=value;else if(id==='private-client-search')state.privateSearch=value;else state.debtSearch=value;
   render();const input=document.getElementById(id);input?.focus();input?.setSelectionRange(caret,caret);
  }
 });
@@ -888,7 +937,7 @@ function updateQuickPreview(){
  if(exhausted.length){hint.textContent+=' · Warning: a member has no remaining benefits.';button.disabled=true}
  else button.disabled=false;
 }
-document.addEventListener('change',e=>{if(e.target.id==='private-show-archived'){state.privateShowArchived=e.target.checked;render()}if(e.target.classList?.contains('quick-seat')||(e.target.name==='played_on'&&state.modal?.type==='quick-team'))updateQuickPreview();if(e.target.id==='team-sort'){state.teamSort=e.target.value;render()}if(e.target.id==='team-filter'){state.teamFilter=e.target.value;render()}if(e.target.id==='team-category'){state.teamCategoryFilter=e.target.value;render()}});
+document.addEventListener('change',e=>{if(e.target.id==='debt-filter'){state.debtFilter=e.target.value;render()}if(e.target.id==='private-show-archived'){state.privateShowArchived=e.target.checked;render()}if(e.target.classList?.contains('quick-seat')||(e.target.name==='played_on'&&state.modal?.type==='quick-team'))updateQuickPreview();if(e.target.id==='team-sort'){state.teamSort=e.target.value;render()}if(e.target.id==='team-filter'){state.teamFilter=e.target.value;render()}if(e.target.id==='team-category'){state.teamCategoryFilter=e.target.value;render()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.modal)closeModal()});
 async function start(){if(!api.configured){renderAuth();return}if(api.getSession()?.access_token){if(idleExpired()){await autoSignOut();return}await loadData()}else renderAuth();}
 start();
