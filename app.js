@@ -32,7 +32,7 @@ const tabs=[['dashboard','Overview','grid'],['debts','Cafeteria Debts','wallet']
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
-const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:''};
+const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
 // Staff inactivity policy: thirty minutes without user interaction logs out every open tab.
 // Background database polling and token refreshes never extend this timer.
 let lastKnownWeek=weekStart(todayBeirut());
@@ -60,7 +60,7 @@ async function autoSignOut(){
  idleLogoutStarted=true;
  clearStaffActivity();
  state.staff=null;
- state.modal=null;
+ state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';
  // api.signOut clears the local authentication token before contacting Supabase.
  const remoteLogout=api.signOut();
  renderAuth('Signed out after 30 minutes of inactivity. Please sign in again.');
@@ -220,10 +220,10 @@ function managementAlerts(){
 }
 function managementAlertPanel(){
  const alerts=managementAlerts(),allReady=state.privateLoaded&&state.debtLoaded&&state.overviewTrainingMonth===monthKey(today())&&!state.overviewTrainingError;
- const content=alerts.length?alerts.slice(0,7).map(a=>
+ const content=alerts.length?alerts.slice(0,state.alertExpanded?alerts.length:7).map(a=>
   `<button type="button" class="management-alert ${a.severity}" data-action="management-alert-open" data-kind="${a.kind}" ${a.id?`data-id="${esc(a.id)}"`:''}><span class="management-alert-icon">${icon(a.severity==='warning'?'alert':'info')}</span><span><strong>${esc(a.subject)}</strong><small>${esc(a.detail)}</small></span>${icon('arrow')}</button>`).join(''):
   allReady?'<div class="panel-empty">No outstanding management alerts at the moment.</div>':'<div class="panel-empty">Loading client and training alerts…</div>';
- return `<article class="panel"><div class="panel-head"><div><h2>Management alerts</h2><p>High balances: ${amount(MANAGEMENT_HIGH_DEBT_CENTS)}+ · training follows the Beirut calendar</p></div>${alerts.length?tag(String(alerts.length)+' alerts','amber'):''}</div><div class="management-alerts">${content}</div></article>`;
+ return `<article class="panel"><div class="panel-head"><div><h2>Management alerts</h2><p>High balances: ${amount(MANAGEMENT_HIGH_DEBT_CENTS)}+ · training follows the Beirut calendar</p></div>${alerts.length?tag(String(alerts.length)+' alerts','amber'):''}</div><div class="management-alerts">${content}${alerts.length>7?btn(state.alertExpanded?'Show fewer alerts':'Show all '+alerts.length+' alerts','management-alert-toggle','btn-light'):''}${!allReady?'<div class="management-alert-status">Some alert sources are still loading or unavailable; totals may be incomplete.</div>':''}</div></article>`;
 }
 function overviewExtra(){
  const todayDate=today(),snapshot=clubFinancialSnapshot(todayDate,'day'),balance=clubBalanceSnapshot();
@@ -250,7 +250,7 @@ function overviewExtra(){
  }).join('');
  const todayPanel=`<article class="panel"><div class="panel-head"><div><h2>Today's private sessions</h2><p>${niceDay(todayDate,{weekday:'long',month:'short',day:'numeric'})} · session fees and amounts received</p></div><button class="link" data-tab="private-clients">View daily log ${icon('arrow')}</button></div>
  <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Client</th><th>Coach</th><th>Charge</th><th>Paid</th></tr></thead>
- <tbody>${!state.privateLoaded?'<tr><td colspan="4" class="panel-empty">Loading private sessions…</td></tr>':rows||'<tr><td colspan="4" class="panel-empty">No private sessions recorded today.</td></tr>'}</tbody></table></div></article>`;
+ <tbody>${!state.privateLoaded?'<tr><td colspan="4" class="panel-empty">'+(state.privateError?'Private sessions unavailable':'Loading private sessions…')+'</td></tr>':rows||'<tr><td colspan="4" class="panel-empty">No private sessions recorded today.</td></tr>'}</tbody></table></div></article>`;
  const commissions=`<article class="panel"><div class="panel-head"><div><h2>Pending matchmaking commissions</h2><p>${monthLabel(month)} · not marked as paid</p></div><button class="link" data-tab="finance">Matchmaking ${icon('arrow')}</button></div><div class="panel-body">
  <div class="management-commission-total">${amount(pending)}<small>${dueRows.length} unsettled person${dueRows.length===1?'':'s'}</small></div>
  ${dueRows.length?dueRows.slice(0,5).map(x=>`<div class="management-commission-row"><span>${esc(x.name)}</span><strong>${amount(x.fee)}</strong></div>`).join(''):'<div class="panel-empty">No unpaid commissions recorded this month.</div>'}
@@ -1194,6 +1194,26 @@ function exportFinance(){
 }
 async function handleAction(target){const act=target.dataset.action,id=target.dataset.id;
  switch(act){
+ case 'management-alert-toggle':
+  state.alertExpanded=!state.alertExpanded;render();break;
+ case 'management-alert-open':{
+  const kind=target.dataset.kind;
+  if(kind==='training'){
+   state.tab='training';state.trainingMonth=monthKey(today());render();await loadTrainingMonth();break;
+  }
+  const personId=target.dataset.id;
+  if(kind==='private'){
+   const client=state.privateClients.find(x=>x.id===personId&&!x.deleted_at);
+   if(!client)throw Error('Private client not found.');
+   state.tab='private-clients';state.privateSelected=personId;
+   state.privateSearch='';state.privateListFilter='all';
+   state.privateShowArchived=!client.active;
+  }else if(kind==='debt'){
+   if(!state.debtPeople.some(x=>x.id===personId&&!x.deleted_at))throw Error('Cafeteria account not found.');
+   state.tab='debts';state.debtSelected=personId;state.debtSearch='';state.debtFilter='all';
+  }else throw Error('Unknown alert type.');
+  render();window.scrollTo({top:0,behavior:'instant'});break;
+ }
  case 'global-search-open':
   if(!state.staff||!api.getSession()?.access_token)throw Error('Sign in before searching.');
   state.modal=null;state.globalSearchOpen=true;state.globalSearchQuery='';
@@ -1335,7 +1355,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'prev-month':state.month=shiftMonth(state.month,-1);render();break;
  case 'next-month':if(state.month<monthKey(today())){state.month=shiftMonth(state.month,1);render()}break;
  case 'export-finance':exportFinance();break;
- case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;state.modal=null;renderAuth();await logout;break;}
+ case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
  }}
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
