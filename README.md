@@ -35,6 +35,10 @@ For the independent Cafeteria Debts page (beneath Overview), apply [CAFETERIA_DE
 
 For the staff-only Private Sessions page, follow [PRIVATE_COACHING_UPGRADE.md](PRIVATE_COACHING_UPGRADE.md). The private coach-directory setup script is supplied separately and must not be committed here.
 
+## Alternating Other Benefits
+
+The Other Benefits page supports a configurable **Free Game / Paid Game** alternating policy. The database validates each turn and preserves all existing benefit records. To enable it for a specific person, follow [ALTERNATING_BENEFIT_UPGRADE.md](ALTERNATING_BENEFIT_UPGRADE.md), apply the public structural migration, then apply the separate private player setup SQL in Supabase.
+
 ## Management tools
 
 The **Overview** page provides an operations summary with daily coaching activity, financial collections, outstanding balances, unsettled commissions, and actionable alerts. **Reports → Monthly** provides a consolidated cash-flow and charges breakdown, with live outstanding balances clearly distinguished from historical monthly figures. Authenticated staff can search members and client accounts using the top-bar Search button or Ctrl+K.
