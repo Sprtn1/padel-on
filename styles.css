@@ -167,3 +167,22 @@
 @media(max-width:560px){.debt-layout{gap:12px}.debt-person-header{padding:17px 15px 12px}.debt-person-header h2{font-size:18px}.debt-total{padding:11px;min-width:106px}.debt-total strong{font-size:16px}.debt-person-actions{padding:0 15px 14px}.debt-person-actions .btn{flex:1}.debt-info-text{margin:0 15px 14px}.debt-filter-controls{flex-direction:column;align-items:stretch}.debt-filter-controls .select{max-width:none}}
 @media(max-width:830px){.mobile-bar{justify-content:flex-start;overflow-x:auto;scrollbar-width:none}.mobile-bar::-webkit-scrollbar{display:none}.mobile-nav{flex:0 0 75px;min-width:75px}}
 @media print{.debt-directory,.debt-person-actions{display:none!important}.debt-layout{display:block}.debt-person-header{padding:8px}}
+
+/* Wide-screen utilization for the four-card client and cafeteria dashboards.
+   Other pages retain their original content width and finance-grid structure. */
+@media(min-width:831px){
+ .workspace.workspace-wide{max-width:1800px;width:100%}
+}
+.finance-grid.four-up{grid-template-columns:repeat(4,minmax(0,1fr))}
+.finance-grid.four-up>.summary-card{min-width:0}
+@media(max-width:1160px){
+ .finance-grid.four-up{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+ .finance-grid.four-up{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .finance-grid.four-up>.summary-card:last-child{grid-column:auto;min-height:124px}
+}
+@media(max-width:370px){
+ .finance-grid.four-up{grid-template-columns:1fr}
+ .finance-grid.four-up>.summary-card:last-child{min-height:124px}
+}
