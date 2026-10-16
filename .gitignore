@@ -1,0 +1,72 @@
+# PADEL ON — local-only material.
+# .gitignore prevents future Git staging; it does not remove existing commits
+# or block manual uploads in GitHub's browser interface.
+
+# Environment files, credentials, private keys and certificates
+.env
+.env.*
+*.env
+*.env.*
+**/.env
+**/.env.*
+.envrc
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+*.crt
+*.cer
+id_rsa*
+id_ed25519*
+
+# Private roster, initial balances, staffing and matchmaker setup.
+PADEL_ON_PRIVATE_*.sql
+MATCHMAKERS_PRIVATE_*.sql
+*_PRIVATE_*.sql
+*_private_*.sql
+*PRIVATE*DATA*.sql
+**/private/
+**/secrets/
+**/credentials/
+private/
+secrets/
+credentials/
+
+# Sensitive exports and database backups
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.ods
+*.backup
+*.dump
+*.bak
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.sql.gz
+*.dump.gz
+*.tar.gz
+reports/
+exports/
+backups/
+data-exports/
+local-data/
+
+# Local tooling and editor files
+node_modules/
+dist/
+build/
+coverage/
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+
+# config.js remains PUBLIC intentionally: only Supabase project URL + publishable key.
+# Do not put a service-role key, secret API key, database password, or reset code in it.
+# Structural SQL files under supabase/ remain tracked.
