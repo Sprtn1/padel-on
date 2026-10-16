@@ -175,13 +175,14 @@ function clubFinancialSnapshot(period,scope='month'){
   completed:privatePaid!==null&&cafeteriaPaid!==null};
 }
 function clubBalanceSnapshot(){
- if(!state.privateLoaded||!state.debtLoaded||state.privateError||state.debtError)return null;
- const p=state.privateClients.filter(c=>!c.deleted_at).map(c=>({person:c,balance:privateClientBalance(c)}));
- const c=state.debtPeople.filter(c=>!c.deleted_at).map(c=>({person:c,balance:debtOutstanding(c.id)}));
- return {privateOwed:p.reduce((n,x)=>n+Math.max(0,-x.balance),0),
-  privateCredit:p.reduce((n,x)=>n+Math.max(0,x.balance),0),
-  cafeteriaOwed:c.reduce((n,x)=>n+Math.max(0,x.balance),0),
-  cafeteriaCredit:c.reduce((n,x)=>n+Math.max(0,-x.balance),0),
+ const privateReady=state.privateLoaded&&!state.privateError,cafeReady=state.debtLoaded&&!state.debtError;
+ const p=privateReady?state.privateClients.filter(c=>!c.deleted_at).map(c=>({person:c,balance:privateClientBalance(c)})):[];
+ const c=cafeReady?state.debtPeople.filter(c=>!c.deleted_at).map(c=>({person:c,balance:debtOutstanding(c.id)})):[];
+ return {privateReady,cafeReady,
+  privateOwed:privateReady?p.reduce((n,x)=>n+Math.max(0,-x.balance),0):null,
+  privateCredit:privateReady?p.reduce((n,x)=>n+Math.max(0,x.balance),0):null,
+  cafeteriaOwed:cafeReady?c.reduce((n,x)=>n+Math.max(0,x.balance),0):null,
+  cafeteriaCredit:cafeReady?c.reduce((n,x)=>n+Math.max(0,-x.balance),0):null,
   privateRows:p,cafeRows:c};
 }
 function daysLeftInMonth(date){
@@ -193,10 +194,10 @@ function managementAlerts(){
  const alerts=[],balances=clubBalanceSnapshot();
  if(balances){
   for(const x of balances.cafeRows.filter(x=>x.balance>=MANAGEMENT_HIGH_DEBT_CENTS).sort((a,b)=>b.balance-a.balance)){
-   alerts.push({severity:'warning',subject:x.person.name,detail:'Cafeteria balance owed: '+amount(x.balance),kind:'debt',id:x.person.id});
+   alerts.push({severity:'warning',subject:x.person.name,detail:(x.person.active?'':'Inactive account · ')+'Cafeteria balance owed: '+amount(x.balance),kind:'debt',id:x.person.id});
   }
   for(const x of balances.privateRows.filter(x=>x.balance<=-MANAGEMENT_HIGH_DEBT_CENTS).sort((a,b)=>a.balance-b.balance)){
-   alerts.push({severity:'warning',subject:x.person.name,detail:'Private coaching amount owed: '+amount(-x.balance),kind:'private',id:x.person.id});
+   alerts.push({severity:'warning',subject:x.person.name,detail:(x.person.active?'':'Inactive client · ')+'Private coaching amount owed: '+amount(-x.balance),kind:'private',id:x.person.id});
   }
   for(const x of balances.privateRows.filter(x=>!x.person.active&&x.balance<0)){
    if(x.balance<=-MANAGEMENT_HIGH_DEBT_CENTS)continue;
@@ -240,8 +241,8 @@ function overviewExtra(){
  const overviewMetrics=`<section class="summary management-summary">
   ${summaryCard('Private sessions today',snapshot.sessions??'—','Completed sessions · today','calendar',true)}
   ${summaryCard('Cash collected today',snapshot.collected===null?'—':amount(snapshot.collected),'Sessions, top-ups, cafeteria and matchmaking','wallet')}
-  ${summaryCard('Cafeteria owed',balance?amount(balance.cafeteriaOwed):'—','Current outstanding balances','activity')}
-  ${summaryCard('Private coaching owed',balance?amount(balance.privateOwed):'—','Current outstanding client balances','users')}
+  ${summaryCard('Cafeteria owed',balance.cafeteriaOwed===null?'—':amount(balance.cafeteriaOwed),'Current outstanding balances','activity')}
+  ${summaryCard('Private coaching owed',balance.privateOwed===null?'—':amount(balance.privateOwed),'Current outstanding client balances','users')}
  </section>`;
  const rows=latest.slice(0,8).map(e=>{
   const client=state.privateClients.find(c=>c.id===e.client_id);
@@ -360,7 +361,7 @@ function matchmakingBreakdownHTML(rows){
  }).join('')}</tbody></table></div></article>`;
 }
 function consolidatedFinancePanel(ym){
- const data=clubFinancialSnapshot(ym,'month');
+ const data=clubFinancialSnapshot(ym,'month'),balances=clubBalanceSnapshot();
  const line=(label,value,desc,highlight=false)=>
  `<div class="consolidated-finance-row ${highlight?'strong':''}"><div><strong>${esc(label)}</strong><small>${esc(desc)}</small></div><b>${value===null?'—':amount(value)}</b></div>`;
  const ready=state.privateLoaded&&!state.privateError&&state.debtLoaded&&!state.debtError;
@@ -379,7 +380,13 @@ function consolidatedFinancePanel(ym){
  <div class="consolidated-finance-total"><small>Cash collected across tracked activities</small><strong>${data.collected===null?'—':amount(data.collected)}</strong><p>Session payments + balance top-ups + cafeteria payments + matchmaking collections</p></div>
  <div class="consolidated-finance-total secondary"><small>Matchmaking commissions</small><strong>${amount(data.commissionTotal)}</strong><p>Separate estimated payment obligation, not deducted from cash collected</p></div></div>
  <div class="consolidated-finance-rows">${rows}</div>
- <p class="management-note consolidated-note">Payments toward outstanding debt can relate to earlier purchases; prepaid top-ups are cash received but not additional session revenue. Do not add charges and payments together as total revenue. Figures are based on entry dates in Asia/Beirut.</p>
+ <div class="consolidated-finance-current"><h3>Current balances · live, not historical month-end values</h3>
+ ${line('Outstanding private coaching',balances.privateOwed,'Amount customers currently owe')}
+ ${line('Outstanding cafeteria accounts',balances.cafeteriaOwed,'Unpaid cafeteria purchases')}
+ ${line('Prepaid private client credit',balances.privateCredit,'Credit already added to client accounts')}
+ ${line('Prepaid cafeteria credit',balances.cafeteriaCredit,'Credit held for future cafeteria purchases')}
+ </div>
+ <p class="management-note consolidated-note">Current balances are live snapshots, not historical month-end balances. Payments toward outstanding debt can relate to earlier purchases; prepaid top-ups are cash received but not additional session revenue. Do not add charges and payments together as total revenue. Figures are based on entry dates in Asia/Beirut.</p>
  </article>`;
 }
 function reportsPage(){
