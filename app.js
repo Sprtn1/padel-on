@@ -443,11 +443,11 @@ function privateDailySessionsPanel(){
  const summary=`<div class="private-day-summary"><div><span>Sessions</span><strong>${dailySessions.length}</strong></div><div><span>Session charges</span><strong>${amount(fee)}</strong></div><div><span>Paid at sessions</span><strong>${amount(paid)}</strong></div><div><span>Balance top-ups</span><strong>${amount(deposits)}</strong></div></div>`;
  const sessionRows=dailySessions.map(e=>{
   const client=state.privateClients.find(c=>c.id===e.client_id);
-  return `<tr><td><strong>${esc(client?.name||'Unknown client')}</strong><br/><small>${esc(client?.client_code||'No client ID')}</small></td><td>${esc(privateCoachName(e.coach_id))}</td><td class="num">${amount(e.session_fee_cents)}</td><td class="num">${amount(e.paid_cents)}</td><td>${client?btn('View Client','private-select-client','btn-light btn-xs',`data-id="${client.id}"`):'—'}</td></tr>`;
+  return `<tr><td><strong>${esc(client?.name||'Unknown client')}</strong><br/><small>${esc(client?.client_code||'No client ID')}</small></td><td>${esc(privateCoachName(e.coach_id))}</td><td class="num">${amount(e.session_fee_cents)}</td><td class="num">${amount(e.paid_cents)}</td><td>${client?btn('View Client','private-open-from-day','btn-light btn-xs',`data-id="${client.id}"`):'—'}</td></tr>`;
  }).join('');
  const depositRows=dailyDeposits.map(e=>{
   const client=state.privateClients.find(c=>c.id===e.client_id);
-  return `<tr><td><strong>${esc(client?.name||'Unknown client')}</strong><br/><small>${esc(client?.client_code||'No client ID')}</small></td><td class="num">${amount(e.deposit_cents)}</td><td>${esc(e.notes||'—')}</td><td>${client?btn('View Client','private-select-client','btn-light btn-xs',`data-id="${client.id}"`):'—'}</td></tr>`;
+  return `<tr><td><strong>${esc(client?.name||'Unknown client')}</strong><br/><small>${esc(client?.client_code||'No client ID')}</small></td><td class="num">${amount(e.deposit_cents)}</td><td>${esc(e.notes||'—')}</td><td>${client?btn('View Client','private-open-from-day','btn-light btn-xs',`data-id="${client.id}"`):'—'}</td></tr>`;
  }).join('');
  return `<article class="panel private-daily-panel">
  <div class="private-daily-heading"><div><div class="eyebrow">Daily coaching activity</div><h2>${esc(niceDay(day,{weekday:'long',month:'long',day:'numeric',year:'numeric'}))}</h2><p>Browse each day to review all private sessions, coaches, charges and payments.</p></div>${dayControls}</div>
@@ -934,6 +934,36 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
   if(!state.debtEntries.some(e=>e.id===id&&!e.voided_at))throw Error('Entry not found.');
   openModal('debt-void',id);break;
  case 'debt-export':debtExport();break;
+ case 'private-day-prev':
+  state.privateDay=addDays(state.privateDay,-1);render();break;
+ case 'private-day-next':
+  if(state.privateDay<today())state.privateDay=addDays(state.privateDay,1);
+  render();break;
+ case 'private-day-today':
+  state.privateDay=today();render();break;
+ case 'private-month-prev':
+  state.privateDay=privateDateInMonth(shiftMonth(monthKey(state.privateDay),-1),state.privateDay.slice(-2));render();break;
+ case 'private-month-next':
+  if(monthKey(state.privateDay)<monthKey(today()))
+   state.privateDay=privateDateInMonth(shiftMonth(monthKey(state.privateDay),1),state.privateDay.slice(-2));
+  render();break;
+ case 'private-day-select':{
+  const candidate=target.dataset.day||'';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(candidate)&&candidate<=today())
+   state.privateDay=candidate;
+  render();break;
+ }
+ case 'private-reset-filters':
+  state.privateListFilter='all';state.privateSearch='';state.privateShowArchived=false;render();break;
+ case 'private-open-from-day':{
+  const client=state.privateClients.find(c=>c.id===id);
+  if(!client)throw Error('Client not found.');
+  state.privateSelected=id;state.privateListFilter='all';state.privateSearch='';
+  if(!client.active)state.privateShowArchived=true;
+  render();
+  setTimeout(()=>document.querySelector('.private-detail')?.scrollIntoView({behavior:'smooth',block:'start'}),0);
+  break;
+ }
  case 'private-retry':await loadPrivateClients();break;
  case 'private-add-client':if(!state.privateLoaded||state.privateError)throw Error('Client database is not ready. Apply the Supabase migration.');openModal('private-client');break;
  case 'private-select-client':if(!state.privateClients.some(c=>c.id===id))throw Error('Client not found.');state.privateSelected=id;render();break;
@@ -1044,7 +1074,15 @@ function updateQuickPreview(){
  if(exhausted.length){hint.textContent+=' · Warning: a member has no remaining benefits.';button.disabled=true}
  else button.disabled=false;
 }
-document.addEventListener('change',e=>{if(e.target.id==='debt-filter'){state.debtFilter=e.target.value;render()}if(e.target.id==='private-show-archived'){state.privateShowArchived=e.target.checked;render()}if(e.target.classList?.contains('quick-seat')||(e.target.name==='played_on'&&state.modal?.type==='quick-team'))updateQuickPreview();if(e.target.id==='team-sort'){state.teamSort=e.target.value;render()}if(e.target.id==='team-filter'){state.teamFilter=e.target.value;render()}if(e.target.id==='team-category'){state.teamCategoryFilter=e.target.value;render()}});
+document.addEventListener('change',e=>{
+ if(e.target.id==='private-client-filter'){state.privateListFilter=e.target.value==='owing'?'owing':'all';render();return}
+ if(e.target.id==='private-client-sort'){state.privateSort=e.target.value==='id'?'id':'name';render();return}
+ if(e.target.id==='private-day-date'){
+  const value=e.target.value;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(value)&&value<=today())state.privateDay=value;
+  render();return;
+ }
+if(e.target.id==='debt-filter'){state.debtFilter=e.target.value;render()}if(e.target.id==='private-show-archived'){state.privateShowArchived=e.target.checked;render()}if(e.target.classList?.contains('quick-seat')||(e.target.name==='played_on'&&state.modal?.type==='quick-team'))updateQuickPreview();if(e.target.id==='team-sort'){state.teamSort=e.target.value;render()}if(e.target.id==='team-filter'){state.teamFilter=e.target.value;render()}if(e.target.id==='team-category'){state.teamCategoryFilter=e.target.value;render()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.modal)closeModal()});
 async function start(){if(!api.configured){renderAuth();return}if(api.getSession()?.access_token){if(idleExpired()){await autoSignOut();return}await loadData()}else renderAuth();}
 start();
