@@ -433,6 +433,9 @@ function privateDailySessionsPanel(){
  <input id="private-day-date" aria-label="Choose session date" type="date" value="${day}" max="${limit}"/>
  <button type="button" class="btn btn-light btn-icon" data-action="private-day-next" title="Next day" aria-label="Next day" ${day>=limit?'disabled':''}>${icon('chevronRight')}</button>
  <button class="btn btn-light" data-action="private-day-today" ${day===limit?'disabled':''}>Today</button></div>`;
+ const weekdayOffset=(new Date(ym+'-01T12:00:00Z').getUTCDay()+6)%7;
+ const calendarHeader=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day=>`<span class="private-calendar-weekday">${day}</span>`).join('');
+ const calendarOffset=Array.from({length:weekdayOffset},()=>'<span class="private-calendar-placeholder" aria-hidden="true"></span>').join('');
  const dayButtons=Array.from({length:days},(_,i)=>{
   const d=ym+'-'+String(i+1).padStart(2,'0'),n=counts[d]||0,disabled=d>limit;
   return `<button type="button" class="private-calendar-day ${day===d?'selected':''} ${n?'has-sessions':''}" data-action="private-day-select" data-day="${d}" ${disabled?'disabled':''} aria-label="${esc(niceDay(d,{weekday:'long',month:'long',day:'numeric',year:'numeric'}))}, ${n} sessions" aria-pressed="${day===d}"><span>${i+1}</span>${n?`<small>${n}</small>`:'<small class="private-calendar-dot">·</small>'}</button>`;
@@ -449,7 +452,7 @@ function privateDailySessionsPanel(){
  return `<article class="panel private-daily-panel">
  <div class="private-daily-heading"><div><div class="eyebrow">Daily coaching activity</div><h2>${esc(niceDay(day,{weekday:'long',month:'long',day:'numeric',year:'numeric'}))}</h2><p>Browse each day to review all private sessions, coaches, charges and payments.</p></div>${dayControls}</div>
  <div class="private-month-nav"><button type="button" class="btn btn-light btn-icon" data-action="private-month-prev" title="Previous month" aria-label="Previous month">${icon('chevronLeft')}</button><strong>${monthLabel(ym)}</strong><small>${monthlySessions.length} sessions this month</small><button type="button" class="btn btn-light btn-icon" data-action="private-month-next" title="Next month" aria-label="Next month" ${ym>=monthKey(limit)?'disabled':''}>${icon('chevronRight')}</button></div>
- <div class="private-calendar-days" role="group" aria-label="Choose day in ${monthLabel(ym)}">${dayButtons}</div>
+ <div class="private-calendar-days" role="group" aria-label="Choose day in ${monthLabel(ym)}">${calendarHeader}${calendarOffset}${dayButtons}</div>
  ${summary}
  <div class="panel-head private-daily-table-title"><div><h2>Sessions on ${niceDay(day,{month:'short',day:'numeric'})}</h2><p>${dailySessions.length} session${dailySessions.length===1?'':'s'} · payments shown are amounts paid at each session</p></div></div>
  <div class="data-table-wrap"><table class="data-table private-daily-table"><thead><tr><th>Client / ID</th><th>Coach</th><th>Session fee</th><th>Paid at session</th><th>Account</th></tr></thead><tbody>${sessionRows||'<tr><td colspan="5" class="panel-empty">No private sessions recorded for this date.</td></tr>'}</tbody></table></div>
@@ -458,8 +461,8 @@ function privateDailySessionsPanel(){
 }
 function privateClientsPage(){
  const ready=state.privateLoaded&&!state.privateError;
- const rows=state.privateClients.filter(c=>(state.privateShowArchived||c.active)&&(!state.privateSearch||[c.name,c.client_code,c.contact].some(v=>String(v||'').toLowerCase().includes(state.privateSearch.toLowerCase())))).sort((a,b)=>a.name.localeCompare(b.name));
- const selected=state.privateClients.find(c=>c.id===state.privateSelected)||state.privateClients.find(c=>c.active)||state.privateClients[0];
+ const rows=state.privateClients.filter(c=>(state.privateShowArchived||c.active)&&(state.privateListFilter!=='owing'||privateClientBalance(c)<0)&&(!state.privateSearch||[c.name,c.client_code,c.contact].some(v=>String(v||'').toLowerCase().includes(state.privateSearch.toLowerCase())))).sort((a,b)=>comparePrivateClients(a,b));
+ const selected=rows.find(c=>c.id===state.privateSelected)||rows[0]||null;
  const active=state.privateClients.filter(c=>c.active),stats=active.map(c=>({client:c,balance:privateClientBalance(c)}));
  const credit=stats.filter(x=>x.balance>0).reduce((sum,x)=>sum+x.balance,0);
  const owed=stats.filter(x=>x.balance<0).reduce((sum,x)=>sum-x.balance,0);
@@ -468,14 +471,22 @@ function privateClientsPage(){
  const headline=heading('Client coaching','Private Sessions','Track client IDs, coaching sessions, payments, prepaid credit, and outstanding balances.',controls);
  if(!ready)return `${headline}<div class="panel"><div class="panel-body"><div class="empty-prompt"><strong>${state.privateLoading?'Loading private sessions…':state.privateError?'Private Sessions setup required':'Loading client records…'}</strong><span>${state.privateError?esc(state.privateError):'Client and coach records are visible only to authorized staff.'}</span>${state.privateError?btn('Try again','private-retry','btn-light'):''}</div></div></div>`;
  const intro=`<section class="finance-grid four-up">${summaryCard('Active clients',active.length,'Client profiles','users',true)}${summaryCard('Sessions recorded',activeSessions.length,'Across all recorded dates','calendar')}${summaryCard('Client credit',amount(credit),'Prepaid balances','wallet')}${summaryCard('Outstanding',amount(owed),'Total amount owed','activity')}</section>`;
- const search=`<div class="private-directory-head"><label class="search">${icon('search')}<input id="private-client-search" placeholder="Search by name or client ID…" autocomplete="off" value="${esc(state.privateSearch)}"/></label><label class="private-archive-check"><input type="checkbox" id="private-show-archived" ${state.privateShowArchived?'checked':''}/> Include inactive clients</label></div>`;
+ const search=`<div class="private-directory-head">
+ <label class="search">${icon('search')}<input id="private-client-search" placeholder="Search by name or client ID…" autocomplete="off" value="${esc(state.privateSearch)}"/></label>
+ <div class="private-directory-selects">
+  <label class="private-filter-label">Show<select id="private-client-filter" class="select" aria-label="Filter clients by balance"><option value="all" ${state.privateListFilter==='all'?'selected':''}>All clients</option><option value="owing" ${state.privateListFilter==='owing'?'selected':''}>Owes us only</option></select></label>
+  <label class="private-filter-label">Sort<select id="private-client-sort" class="select" aria-label="Sort clients"><option value="name" ${state.privateSort==='name'?'selected':''}>Name (A–Z)</option><option value="id" ${state.privateSort==='id'?'selected':''}>Client ID (numeric)</option></select></label>
+ </div>
+ <label class="private-archive-check"><input type="checkbox" id="private-show-archived" ${state.privateShowArchived?'checked':''}/> Include inactive clients</label>
+ </div>`;
+
  const clientButtons=rows.map(c=>{
   const balance=privateClientBalance(c);
   return `<button type="button" class="private-client-row ${selected?.id===c.id?'selected':''}" data-action="private-select-client" data-id="${c.id}"><div class="private-client-heading"><strong>${esc(c.name)}</strong>${c.active?'':tag('Inactive','gray')}</div><small>${esc(c.client_code||'No ID assigned')}</small><span class="private-client-balance ${balance<0?'negative':''}">${privateBalanceLabel(balance)}</span></button>`;
  }).join('')||'<div class="panel-empty">No matching clients.</div>';
- const panel=`<article class="panel private-directory"><div class="panel-head"><div><h2>Clients</h2><p>${rows.length} shown · ${active.length} active</p></div></div>${search}<div class="private-client-list">${clientButtons}</div></article>`;
+ const panel=`<article class="panel private-directory"><div class="panel-head"><div><h2>Clients</h2><p>${rows.length} shown · ${active.length} active${state.privateListFilter==='owing'?' · outstanding balances only':''}</p></div></div>${search}<div class="private-client-list">${clientButtons}</div></article>`;
  if(!selected){
-  return `${headline}${intro}<div class="private-layout">${panel}<article class="panel"><div class="empty-prompt"><strong>No client records yet</strong><span>Add a client to start tracking private coaching.</span>${btn(`${icon('plus')} Add First Client`,'private-add-client','btn-primary')}</div></article></div>`;
+  return `${headline}${intro}${privateDailySessionsPanel()}<div class="private-layout">${panel}<article class="panel"><div class="empty-prompt"><strong>${state.privateClients.length?'No clients match these filters':'No client records yet'}</strong><span>${state.privateClients.length?'Try All clients or clear the search to see the full list.':'Add a client to start tracking private coaching.'}</span>${state.privateClients.length?btn('Show All Clients','private-reset-filters','btn-light'):btn(`${icon('plus')} Add First Client`,'private-add-client','btn-primary')}</div></article></div>`;
  }
  const balance=privateClientBalance(selected),entries=privateClientEntries(selected.id),sessions=entries.filter(e=>e.entry_type==='session');
  let running=Number(selected.opening_balance_cents||0);
@@ -489,7 +500,7 @@ function privateClientsPage(){
  ${history.length?history.map(({entry:e,remaining:v})=>`<tr><td>${niceDay(e.entry_date)}</td><td><strong>${e.entry_type==='session'?'Private session':'Balance top-up'}</strong><br/><small>${e.entry_type==='session'?esc(privateCoachName(e.coach_id)):esc(e.notes||'Deposit')}</small>${e.entry_type==='session'&&e.notes?`<br/><small>${esc(e.notes)}</small>`:''}</td><td>${e.entry_type==='session'?amount(e.session_fee_cents):'—'}</td><td>${amount(e.entry_type==='deposit'?e.deposit_cents:e.paid_cents)}</td><td class="${v<0?'private-negative':''}">${privateBalanceLabel(v)}</td><td>${state.staff?.role==='admin'?btn('Void','private-void-entry','btn-danger btn-xs',`data-id="${e.id}"`):'<span class="tiny">Recorded</span>'}</td></tr>`).join(''):'<tr><td colspan="6" class="panel-empty">No sessions or deposits recorded yet.</td></tr>'}
  </tbody></table></div>
  </div>`;
- return `${headline}${intro}<div class="private-layout">${panel}<article class="panel">${details}</article></div>`;
+ return `${headline}${intro}${privateDailySessionsPanel()}<div class="private-layout">${panel}<article class="panel">${details}</article></div>`;
 }
 
 function exportPrivateClientCSV(){
