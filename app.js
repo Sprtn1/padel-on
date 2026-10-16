@@ -350,7 +350,7 @@ function privateCoachName(id){
 }
 
 function privateClientsPage(){
- const ready=state.privateLoaded&&!state.privateLoading&&!state.privateError;
+ const ready=state.privateLoaded&&!state.privateError;
  const rows=state.privateClients.filter(c=>(state.privateShowArchived||c.active)&&(!state.privateSearch||[c.name,c.client_code,c.contact].some(v=>String(v||'').toLowerCase().includes(state.privateSearch.toLowerCase())))).sort((a,b)=>a.name.localeCompare(b.name));
  const selected=state.privateClients.find(c=>c.id===state.privateSelected)||state.privateClients.find(c=>c.active)||state.privateClients[0];
  const active=state.privateClients.filter(c=>c.active),stats=active.map(c=>({client:c,balance:privateClientBalance(c)}));
@@ -530,7 +530,7 @@ function renderAuth(message=''){
 async function loadPrivateClients(){
  if(!api.getSession()?.access_token||!state.staff||state.privateLoading)return;
  state.privateLoading=true;state.privateError=null;
- if(state.tab==='private-clients')render();
+ if(state.tab==='private-clients'&&!state.privateLoaded)render();
  try{
   const [clients,coaches,entries]=await Promise.all([
    api.listAll('private_clients'),
