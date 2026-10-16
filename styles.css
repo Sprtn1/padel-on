@@ -256,3 +256,16 @@
  .private-daily-nav,.private-month-nav button,.private-calendar-days,.private-directory-selects{display:none!important}
  .private-daily-panel{break-inside:auto}
 }
+
+/* Admin-only account removal / restore controls in Settings. */
+.settings-box.admin-account-box{display:flex;flex-direction:column;gap:10px;min-width:0}
+.admin-account-box .form-field{margin:4px 0 0}
+.admin-account-box .form-input{width:100%;min-width:0;text-overflow:ellipsis}
+.admin-account-status{display:block;color:var(--muted);font-size:11px;line-height:1.6;min-height:20px}
+.admin-account-buttons{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:auto;padding-top:8px}
+.admin-account-buttons .btn{flex:0 1 auto}
+@media(max-width:560px){
+ .admin-account-buttons{flex-direction:column;align-items:stretch}
+ .admin-account-buttons .btn{width:100%}
+ .settings-box.admin-account-box{gap:8px}
+}
