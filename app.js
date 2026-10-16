@@ -496,14 +496,14 @@ function debtModal(type,m){
   const due=person?debtOutstanding(person.id):0;
   const content=`<form id="modal-form" data-save="${isCharge?'save-debt-charge':'save-debt-payment'}">
     ${field('entry_date',isCharge?'Purchase date':'Payment date',today(),'date',`required max="${today()}"`)}
-    ${field('amount',isCharge?'Amount to add to debt ($)':'Amount received ($)','','number',`required min="0.01" step="0.01" max="${isCharge?'1000000000':(due/100).toFixed(2)}" placeholder="${isCharge?'25.00':'40.00'}"`)}
+    ${field('amount',isCharge?'Amount to add to debt ($)':'Amount received ($)','','number',`required min="0.01" max="1000000000" step="0.01" placeholder="${isCharge?'25.00':'11.00'}"`)}
     ${textareaField('notes',isCharge?'Items purchased / notes':'Payment notes (optional)')}
-    <div class="notice">${isCharge?'Adds to the existing amount owed. Previous payments remain recorded.':`Currently owed: ${amount(due)}. A partial payment reduces the balance without closing the account.`}</div>
+    <div class="notice">${isCharge?'Adds to the existing amount owed. Previous payments remain recorded.':`Current account: ${debtBalanceLabel(due)}. You can pay less than you owe or add extra prepaid credit for future purchases.`}</div>
     ${formActions(isCharge?'Add Debt':'Record Payment')}</form>`;
-  return {title:isCharge?'Add Cafeteria Debt':'Record Partial Payment',subtitle:person?.name||'',content};
+  return {title:isCharge?'Add Cafeteria Debt':'Record Payment / Add Credit',subtitle:person?.name||'',content};
  }
  const entry=state.debtEntries.find(e=>e.id===m.id);
- const content=`<div class="notice warn">This entry will remain in the audit log but stop contributing to the balance. Incorrect charges cannot be voided if doing so would leave payments above the remaining total.</div>
+ const content=`<div class="notice warn">This correction is audited and changes the outstanding debt or prepaid credit. The original entry is kept in history as voided.</div>
  <form id="modal-form" data-save="void-debt-entry">${textareaField('reason','Reason for correction')}${formActions('Void Entry',true)}</form>`;
  return {title:'Correct Cafeteria Entry',subtitle:entry?.entry_type==='charge'?'Void a debt charge':'Void a recorded payment',content,danger:true};
 }
@@ -703,10 +703,9 @@ async function saveForm(form){const f=new FormData(form),data=Object.fromEntries
   const isCharge=form.dataset.save==='save-debt-charge';
   const cents=parseUSD(data.amount);
   if(cents<=0)throw Error('Enter an amount greater than zero.');
-  if(!isCharge&&cents>debtOutstanding(person.id))throw Error('The payment exceeds the amount owed.');
   await api.rpc('cafeteria_record_entry',{p_entry_id:m.requestId,p_person_id:person.id,p_entry_type:isCharge?'charge':'payment',p_amount_cents:cents,p_entry_date:data.entry_date,p_notes:(data.notes||'').trim()});
   state.debtSelected=person.id;
-  if(!isCharge)state.debtFilter='all'; // Show paid-in-full accounts after final payment.
+  if(!isCharge)state.debtFilter='all'; // Keep prepaid-credit and settled accounts visible.
   else state.debtFilter='open';
   break;
  }
@@ -823,7 +822,6 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'debt-add-charge':case 'debt-add-payment':{
   const person=state.debtPeople.find(p=>p.id===state.debtSelected);
   if(!person||!person.active)throw Error('Select an active person.');
-  if(act==='debt-add-payment'&&debtOutstanding(person.id)===0)throw Error('This person has no outstanding debt.');
   openModal(act==='debt-add-charge'?'debt-charge':'debt-payment',null,{personId:person.id});break;
  }
  case 'debt-void':
