@@ -28,7 +28,7 @@ function initials(name){return String(name).split(/\s+/).slice(0,2).map(s=>s[0])
 function tag(label,color='green'){return `<span class="tag tag-${color}">${esc(label)}</span>`}
 function btn(label,action,cls='btn-light',more=''){return `<button class="btn ${cls}" data-action="${action}" ${more}>${label}</button>`}
 function toast(message,bad=false){const host=document.getElementById('toast-host');const node=document.createElement('div');node.className=`toast ${bad?'bad':''}`;node.textContent=message;host.append(node);setTimeout(()=>node.remove(),4100)}
-const tabs=[['dashboard','Overview','grid'],['debts','Cafeteria Debts','wallet'],['team','Team Members','users'],['other','Other Benefits','gift'],['finance','Matchmaking','wallet'],['training','Monthly Training','calendar'],['private-clients','Private Sessions','users'],['activity','Game Activity','list'],['reports','Reports','download'],['settings','Settings','settings']];
+const tabs=[['dashboard','Overview','grid'],['debts','Cafeteria Debts','wallet'],['private-clients','Private Sessions','users'],['team','Team Members','users'],['training','Monthly Training','calendar'],['other','Other Benefits','gift'],['finance','Matchmaking','wallet'],['activity','Game Activity','list'],['reports','Reports','download'],['settings','Settings','settings']];
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
