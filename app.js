@@ -341,7 +341,7 @@ function debtBalanceLabel(cents){return cents>0?'Owes '+amount(cents):cents<0?'C
 
 function debtPage(){
  const ready=state.debtLoaded&&!state.debtError;
- const all=state.debtPeople,owed=all.reduce((sum,p)=>sum+Math.max(0,debtOutstanding(p.id)),0);
+ const all=state.debtPeople.filter(p=>!p.deleted_at),owed=all.reduce((sum,p)=>sum+Math.max(0,debtOutstanding(p.id)),0);
  const credit=all.reduce((sum,p)=>sum+Math.max(0,-debtOutstanding(p.id)),0);
  const open=all.filter(p=>debtOutstanding(p.id)>0);
  const paidTotal=state.debtEntries.filter(e=>e.entry_type==='payment'&&!e.voided_at).reduce((sum,e)=>sum+Number(e.amount_cents),0);
@@ -443,11 +443,11 @@ function privateDailySessionsPanel(){
  const summary=`<div class="private-day-summary"><div><span>Sessions</span><strong>${dailySessions.length}</strong></div><div><span>Session charges</span><strong>${amount(fee)}</strong></div><div><span>Paid at sessions</span><strong>${amount(paid)}</strong></div><div><span>Balance top-ups</span><strong>${amount(deposits)}</strong></div></div>`;
  const sessionRows=dailySessions.map(e=>{
   const client=state.privateClients.find(c=>c.id===e.client_id);
-  return `<tr><td><strong>${esc(client?.name||'Unknown client')}</strong><br/><small>${esc(client?.client_code||'No client ID')}</small></td><td>${esc(privateCoachName(e.coach_id))}</td><td class="num">${amount(e.session_fee_cents)}</td><td class="num">${amount(e.paid_cents)}</td><td>${client?btn('View Client','private-open-from-day','btn-light btn-xs',`data-id="${client.id}"`):'—'}</td></tr>`;
+  return `<tr><td><strong>${esc(client?.name||'Unknown client')}</strong><br/><small>${esc(client?.client_code||'No client ID')}</small></td><td>${esc(privateCoachName(e.coach_id))}</td><td class="num">${amount(e.session_fee_cents)}</td><td class="num">${amount(e.paid_cents)}</td><td>${client&&!client.deleted_at?btn('View Client','private-open-from-day','btn-light btn-xs',`data-id="${client.id}"`):'—'}</td></tr>`;
  }).join('');
  const depositRows=dailyDeposits.map(e=>{
   const client=state.privateClients.find(c=>c.id===e.client_id);
-  return `<tr><td><strong>${esc(client?.name||'Unknown client')}</strong><br/><small>${esc(client?.client_code||'No client ID')}</small></td><td class="num">${amount(e.deposit_cents)}</td><td>${esc(e.notes||'—')}</td><td>${client?btn('View Client','private-open-from-day','btn-light btn-xs',`data-id="${client.id}"`):'—'}</td></tr>`;
+  return `<tr><td><strong>${esc(client?.name||'Unknown client')}</strong><br/><small>${esc(client?.client_code||'No client ID')}</small></td><td class="num">${amount(e.deposit_cents)}</td><td>${esc(e.notes||'—')}</td><td>${client&&!client.deleted_at?btn('View Client','private-open-from-day','btn-light btn-xs',`data-id="${client.id}"`):'—'}</td></tr>`;
  }).join('');
  return `<article class="panel private-daily-panel">
  <div class="private-daily-heading"><div><div class="eyebrow">Daily coaching activity</div><h2>${esc(niceDay(day,{weekday:'long',month:'long',day:'numeric',year:'numeric'}))}</h2><p>Browse each day to review all private sessions, coaches, charges and payments.</p></div>${dayControls}</div>
@@ -461,9 +461,9 @@ function privateDailySessionsPanel(){
 }
 function privateClientsPage(){
  const ready=state.privateLoaded&&!state.privateError;
- const rows=state.privateClients.filter(c=>(state.privateShowArchived||c.active)&&(state.privateListFilter!=='owing'||privateClientBalance(c)<0)&&(!state.privateSearch||[c.name,c.client_code,c.contact].some(v=>String(v||'').toLowerCase().includes(state.privateSearch.toLowerCase())))).sort((a,b)=>comparePrivateClients(a,b));
+ const rows=state.privateClients.filter(c=>!c.deleted_at&&(state.privateShowArchived||c.active)&&(state.privateListFilter!=='owing'||privateClientBalance(c)<0)&&(!state.privateSearch||[c.name,c.client_code,c.contact].some(v=>String(v||'').toLowerCase().includes(state.privateSearch.toLowerCase())))).sort((a,b)=>comparePrivateClients(a,b));
  const selected=rows.find(c=>c.id===state.privateSelected)||rows[0]||null;
- const active=state.privateClients.filter(c=>c.active),stats=active.map(c=>({client:c,balance:privateClientBalance(c)}));
+ const active=state.privateClients.filter(c=>c.active&&!c.deleted_at),stats=active.map(c=>({client:c,balance:privateClientBalance(c)}));
  const credit=stats.filter(x=>x.balance>0).reduce((sum,x)=>sum+x.balance,0);
  const owed=stats.filter(x=>x.balance<0).reduce((sum,x)=>sum-x.balance,0);
  const activeSessions=state.privateEntries.filter(r=>r.entry_type==='session'&&!r.voided_at);
@@ -717,7 +717,7 @@ async function loadDebtData(){
   ]);
   if(!api.getSession()?.access_token||idleLogoutStarted)return;
   state.debtPeople=people;state.debtEntries=entries;state.debtLoaded=true;state.debtError=null;
-  if(!people.some(p=>p.id===state.debtSelected))state.debtSelected=people[0]?.id||null;
+  if(!people.some(p=>p.id===state.debtSelected&&!p.deleted_at))state.debtSelected=people.find(p=>!p.deleted_at)?.id||null;
  }catch(e){
   if(api.getSession()?.access_token){
    state.debtError=(e?.message||'Unable to load cafeteria debts')+'. Apply the Cafeteria Debts SQL migration in Supabase.';
@@ -741,8 +741,8 @@ async function loadPrivateClients(){
   if(!api.getSession()?.access_token||idleLogoutStarted)return;
   state.privateClients=clients;state.privateCoaches=coaches;state.privateEntries=entries;
   state.privateLoaded=true;state.privateError=null;
-  if(!clients.some(c=>c.id===state.privateSelected)){
-   state.privateSelected=clients.find(c=>c.active)?.id||clients[0]?.id||null;
+  if(!clients.some(c=>c.id===state.privateSelected&&!c.deleted_at)){
+   state.privateSelected=clients.find(c=>c.active&&!c.deleted_at)?.id||clients.find(c=>!c.deleted_at)?.id||null;
   }
  }catch(e){
   if(api.getSession()?.access_token){
@@ -922,7 +922,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  switch(act){
  case 'debt-retry':await loadDebtData();break;
  case 'debt-new-person':if(!state.debtLoaded||state.debtError)throw Error('Cafeteria database not configured yet.');openModal('debt-person');break;
- case 'debt-select-person':if(!state.debtPeople.some(p=>p.id===id))throw Error('Person not found.');state.debtSelected=id;render();break;
+ case 'debt-select-person':if(!state.debtPeople.some(p=>p.id===id&&!p.deleted_at))throw Error('Person not found.');state.debtSelected=id;render();break;
  case 'debt-edit-person':if(!state.debtSelected)throw Error('Select a person.');openModal('debt-person',null,{personId:state.debtSelected});break;
  case 'debt-add-charge':case 'debt-add-payment':{
   const person=state.debtPeople.find(p=>p.id===state.debtSelected);
@@ -957,7 +957,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
   state.privateListFilter='all';state.privateSearch='';state.privateShowArchived=false;render();break;
  case 'private-open-from-day':{
   const client=state.privateClients.find(c=>c.id===id);
-  if(!client)throw Error('Client not found.');
+  if(!client||client.deleted_at)throw Error('Client has been removed from active account management.');
   state.privateSelected=id;state.privateListFilter='all';state.privateSearch='';
   if(!client.active)state.privateShowArchived=true;
   render();
@@ -966,7 +966,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  }
  case 'private-retry':await loadPrivateClients();break;
  case 'private-add-client':if(!state.privateLoaded||state.privateError)throw Error('Client database is not ready. Apply the Supabase migration.');openModal('private-client');break;
- case 'private-select-client':if(!state.privateClients.some(c=>c.id===id))throw Error('Client not found.');state.privateSelected=id;render();break;
+ case 'private-select-client':if(!state.privateClients.some(c=>c.id===id&&!c.deleted_at))throw Error('Client not found.');state.privateSelected=id;render();break;
  case 'private-edit-client':if(!state.privateSelected)throw Error('Select a client.');openModal('private-client',null,{clientId:state.privateSelected});break;
  case 'private-record-session':if(!state.privateSelected)throw Error('Select a client.');if(!state.privateCoaches.some(c=>c.active))throw Error('Coaches are not set up. Run the private coach setup script.');openModal('private-session',null,{clientId:state.privateSelected});break;
  case 'private-add-balance':if(!state.privateSelected)throw Error('Select a client.');openModal('private-deposit',null,{clientId:state.privateSelected});break;
