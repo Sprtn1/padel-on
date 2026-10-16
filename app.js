@@ -571,8 +571,40 @@ async function loadData(resetTab=false){if(state.loading)return;state.loading=tr
 let working=false;
 async function runMutation(task,success='Saved successfully'){if(working)return;working=true;const b=document.getElementById('save-button');if(b){b.disabled=true;b.textContent='Saving…'}try{await task();state.modal=null;await loadData();toast(success)}catch(e){toast(e?.message||'Could not save. Try again.',true)}finally{working=false;if(b&&b.isConnected){b.disabled=false;b.textContent='Try again'}}}
 function slugify(x){return x.trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Math.random().toString(36).slice(2,6)}
+function privateSignedUSD(raw){
+ const text=String(raw).trim();
+ return text.startsWith('-')?-parseUSD(text.slice(1)):parseUSD(text);
+}
 async function saveForm(form){const f=new FormData(form),data=Object.fromEntries(f.entries()),m=state.modal;
  switch(form.dataset.save){
+ case 'save-private-client':{
+   const name=(data.name||'').trim();
+   if(name.length<2)throw Error('Enter a client name.');
+   if(m.clientId){
+     await api.rpc('private_update_client',{p_client_id:m.clientId,p_name:name,p_client_code:data.client_code?.trim()||null,p_contact:data.contact?.trim()||'',p_notes:data.notes?.trim()||'',p_active:data.active==='true'});
+   }else{
+     const created=await api.rpc('private_add_client',{p_name:name,p_client_code:data.client_code?.trim()||null,p_contact:data.contact?.trim()||'',p_opening_balance_cents:privateSignedUSD(data.opening_balance),p_notes:data.notes?.trim()||''});
+     if(typeof created==='string')state.privateSelected=created;
+   }
+   break;
+ }
+ case 'save-private-session':case 'save-private-deposit':{
+   if(!m.clientId||!state.privateClients.some(c=>c.id===m.clientId&&c.active))throw Error('Choose an active client.');
+   const session=form.dataset.save==='save-private-session';
+   if(session&&!state.privateCoaches.some(c=>c.id===data.coach_id&&c.active))throw Error('Choose a valid coach.');
+   const charge=session?parseUSD(data.session_fee):0;
+   const paid=session?parseUSD(data.paid):0;
+   const deposit=session?0:parseUSD(data.deposit);
+   if(!session&&deposit===0)throw Error('Enter a positive top-up amount.');
+   await api.rpc('private_log_entry',{p_entry_id:m.requestId,p_client_id:m.clientId,p_entry_type:session?'session':'deposit',p_entry_date:data.entry_date,p_coach_id:session?data.coach_id:null,p_session_fee_cents:charge,p_paid_cents:paid,p_deposit_cents:deposit,p_notes:data.notes?.trim()||''});
+   break;
+ }
+ case 'void-private-entry':{
+   if(state.staff?.role!=='admin')throw Error('Only admins can correct ledger entries.');
+   if((data.reason||'').trim().length<4)throw Error('Include a correction reason.');
+   await api.rpc('private_void_entry',{p_entry_id:m.id,p_reason:data.reason.trim()});
+   break;
+ }
  case 'save-quick':{
   const seats=Array.from({length:4},(_,i)=>data[`seat_${i}`]);
   if(seats.some(x=>!x))throw Error('Select all four match participants.');
@@ -644,6 +676,14 @@ function exportFinance(){
 }
 async function handleAction(target){const act=target.dataset.action,id=target.dataset.id;
  switch(act){
+ case 'private-retry':await loadPrivateClients();break;
+ case 'private-add-client':if(!state.privateLoaded||state.privateError)throw Error('Client database is not ready. Apply the Supabase migration.');openModal('private-client');break;
+ case 'private-select-client':if(!state.privateClients.some(c=>c.id===id))throw Error('Client not found.');state.privateSelected=id;render();break;
+ case 'private-edit-client':if(!state.privateSelected)throw Error('Select a client.');openModal('private-client',null,{clientId:state.privateSelected});break;
+ case 'private-record-session':if(!state.privateSelected)throw Error('Select a client.');if(!state.privateCoaches.some(c=>c.active))throw Error('Coaches are not set up. Run the private coach setup script.');openModal('private-session',null,{clientId:state.privateSelected});break;
+ case 'private-add-balance':if(!state.privateSelected)throw Error('Select a client.');openModal('private-deposit',null,{clientId:state.privateSelected});break;
+ case 'private-void-entry':if(state.staff?.role!=='admin')throw Error('Only admins can correct financial entries.');if(!state.privateEntries.some(e=>e.id===id))throw Error('Entry not found.');openModal('private-void',id);break;
+ case 'private-export':exportPrivateClientCSV();break;
  case 'refresh':await loadData();if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
  case 'training-prev-month':
   state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
@@ -717,9 +757,9 @@ document.addEventListener('submit',async e=>{
  }
 });
 document.addEventListener('input',e=>{
- const id=e.target.id;if(id==='team-search'||id==='activity-search'){
+ const id=e.target.id;if(id==='team-search'||id==='activity-search'||id==='private-client-search'){
   const caret=e.target.selectionStart;const value=e.target.value;
-  if(id==='team-search')state.teamSearch=value;else state.activitySearch=value;
+  if(id==='team-search')state.teamSearch=value;else if(id==='activity-search')state.activitySearch=value;else state.privateSearch=value;
   render();const input=document.getElementById(id);input?.focus();input?.setSelectionRange(caret,caret);
  }
 });
@@ -745,7 +785,7 @@ function updateQuickPreview(){
  if(exhausted.length){hint.textContent+=' · Warning: a member has no remaining benefits.';button.disabled=true}
  else button.disabled=false;
 }
-document.addEventListener('change',e=>{if(e.target.classList?.contains('quick-seat')||(e.target.name==='played_on'&&state.modal?.type==='quick-team'))updateQuickPreview();if(e.target.id==='team-sort'){state.teamSort=e.target.value;render()}if(e.target.id==='team-filter'){state.teamFilter=e.target.value;render()}if(e.target.id==='team-category'){state.teamCategoryFilter=e.target.value;render()}});
+document.addEventListener('change',e=>{if(e.target.id==='private-show-archived'){state.privateShowArchived=e.target.checked;render()}if(e.target.classList?.contains('quick-seat')||(e.target.name==='played_on'&&state.modal?.type==='quick-team'))updateQuickPreview();if(e.target.id==='team-sort'){state.teamSort=e.target.value;render()}if(e.target.id==='team-filter'){state.teamFilter=e.target.value;render()}if(e.target.id==='team-category'){state.teamCategoryFilter=e.target.value;render()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.modal)closeModal()});
 async function start(){if(!api.configured){renderAuth();return}if(api.getSession()?.access_token){if(idleExpired()){await autoSignOut();return}await loadData()}else renderAuth();}
 start();
