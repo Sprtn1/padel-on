@@ -13,6 +13,7 @@ PADEL ON is a private, staff-facing club management application hosted as a stat
 - Matchmaking ledgers, monthly settlements, and reporting by authorized staff
 - Monthly training attendance and history
 - Private coaching client IDs, session fees, dated payments, and credit/debt balances
+- A separate, staff-only cafeteria debt ledger with partial payments and outstanding balances
 - Downloadable operational reports
 - Authenticated staff and administrator workflows
 
@@ -29,6 +30,8 @@ Individual entitlements, commission arrangements, actual member records, and oth
 | Restricted operations | Supabase SQL functions and Edge Functions | Source code may be public; credentials must be stored only as server-side secrets |
 
 **A Supabase publishable/anon key is intended for browser use.** It is not an administrator credential. Protect club data with Supabase Row-Level Security (RLS), permissions, and authenticated server-side checks. Do not put a `service_role` key or `sb_secret_` key in `config.js`.
+
+For the independent Cafeteria Debts page (beneath Overview), apply [CAFETERIA_DEBTS_UPGRADE.md](CAFETERIA_DEBTS_UPGRADE.md) before recording payments.
 
 For the staff-only Private Sessions page, follow [PRIVATE_COACHING_UPGRADE.md](PRIVATE_COACHING_UPGRADE.md). The private coach-directory setup script is supplied separately and must not be committed here.
 
