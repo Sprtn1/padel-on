@@ -129,3 +129,41 @@
 @media(max-width:900px){.private-layout{grid-template-columns:1fr}.private-client-list{max-height:310px}.private-directory-head{flex-direction:row;align-items:center}.private-directory-head .search{flex:1}}
 @media(max-width:560px){.private-layout{gap:12px}.private-detail-header{padding:18px 15px 13px;align-items:flex-start}.private-detail-header h2{font-size:18px}.private-balance-box{min-width:105px;padding:10px}.private-balance-box strong{font-size:16px}.private-client-actions{padding:0 15px 14px}.private-client-actions .btn{flex:1}.private-account-note{margin:0 15px 14px}.private-directory-head{flex-direction:column;align-items:stretch}.private-directory-head .search{min-height:43px}}
 @media print{.private-directory,.private-client-actions{display:none!important}.private-layout{display:block}.private-balance-box{background:none}.private-detail-header{padding:8px}}
+
+/* Cafeteria Debts — independent unpaid purchases and partial-payment ledger. */
+.debt-layout{display:grid;grid-template-columns:minmax(260px,.8fr) minmax(0,1.65fr);gap:18px;align-items:start;margin-top:19px}
+.debt-layout .panel{min-width:0}
+.debt-filter-controls{display:flex;gap:9px;align-items:center;padding:0 16px 15px}
+.debt-filter-controls .search{flex:1;min-width:0}
+.debt-filter-controls .search input{width:100%;min-width:0}
+.debt-filter-controls .select{min-width:110px;max-width:150px}
+.debt-people-list{border-top:1px solid var(--stroke);max-height:590px;overflow-y:auto}
+.debt-person-item{display:flex;flex-direction:column;gap:5px;background:white;width:100%;text-align:left;border:0;border-bottom:1px solid #edf1ed;padding:14px 17px;transition:background .15s}
+.debt-person-item:hover,.debt-person-item.selected{background:#effaf4}
+.debt-person-item.selected{box-shadow:inset 4px 0 0 #2aa677}
+.debt-person-item>div{display:flex;align-items:center;justify-content:space-between;gap:9px}
+.debt-person-item strong{color:#213a30;font-size:13px;overflow-wrap:anywhere}
+.debt-person-sub{font-size:11px;color:var(--muted)}
+.debt-person-item b{font-size:15px;font-variant-numeric:tabular-nums}
+.debt-owing{color:#bf543e}
+.debt-clear{color:#078e58}
+.debt-person-header{display:flex;align-items:flex-start;justify-content:space-between;gap:13px;padding:22px 21px 14px}
+.debt-person-header h2{font-family:Manrope,system-ui,sans-serif;font-size:21px;letter-spacing:-.6px;margin:0}
+.debt-person-header p{font-size:12px;color:var(--muted);line-height:1.5;margin:8px 0 0;overflow-wrap:anywhere}
+.debt-person-header .eyebrow{margin-bottom:6px;letter-spacing:1px;font-size:10px}
+.debt-total{min-width:123px;padding:13px 14px;display:flex;flex-direction:column;align-items:flex-end;gap:5px;background:#fff2ed;border-radius:12px}
+.debt-total small{font-size:10px;color:#ad694e;font-weight:750}
+.debt-total strong{font-size:19px;color:#ac4430;font-variant-numeric:tabular-nums;white-space:nowrap}
+.debt-total.cleared{background:#eaf8ef}
+.debt-total.cleared strong{font-size:15px;color:#098453}
+.debt-total.cleared small{color:#5b9474}
+.debt-person-actions{display:flex;flex-wrap:wrap;gap:9px;padding:0 21px 15px}
+.debt-info-text{margin:0 21px 18px;padding:13px 15px;color:#698578;background:#f1f7f3;border-radius:11px;font-size:11px;line-height:1.6}
+.debt-transactions td,.debt-transactions th{min-width:75px}
+.debt-transactions td:nth-child(5){min-width:130px;white-space:normal}
+.debt-transactions td:nth-child(4){font-variant-numeric:tabular-nums;font-weight:750}
+@media(max-width:1050px){.debt-layout{grid-template-columns:minmax(220px,.75fr) minmax(0,1.3fr)}}
+@media(max-width:900px){.debt-layout{grid-template-columns:1fr}.debt-people-list{max-height:310px}}
+@media(max-width:560px){.debt-layout{gap:12px}.debt-person-header{padding:17px 15px 12px}.debt-person-header h2{font-size:18px}.debt-total{padding:11px;min-width:106px}.debt-total strong{font-size:16px}.debt-person-actions{padding:0 15px 14px}.debt-person-actions .btn{flex:1}.debt-info-text{margin:0 15px 14px}.debt-filter-controls{flex-direction:column;align-items:stretch}.debt-filter-controls .select{max-width:none}}
+@media(max-width:830px){.mobile-bar{justify-content:flex-start;overflow-x:auto;scrollbar-width:none}.mobile-bar::-webkit-scrollbar{display:none}.mobile-nav{flex:0 0 75px;min-width:75px}}
+@media print{.debt-directory,.debt-person-actions{display:none!important}.debt-layout{display:block}.debt-person-header{padding:8px}}
