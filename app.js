@@ -192,10 +192,47 @@ function managementAlertPanel(){
   allReady?'<div class="panel-empty">No outstanding management alerts at the moment.</div>':'<div class="panel-empty">Loading client and training alerts…</div>';
  return `<article class="panel"><div class="panel-head"><div><h2>Management alerts</h2><p>High balances: ${amount(MANAGEMENT_HIGH_DEBT_CENTS)}+ · training follows the Beirut calendar</p></div>${alerts.length?tag(String(alerts.length)+' alerts','amber'):''}</div><div class="management-alerts">${content}</div></article>`;
 }
+function overviewExtra(){
+ const todayDate=today(),snapshot=clubFinancialSnapshot(todayDate,'day'),balance=clubBalanceSnapshot();
+ const latest=state.privateLoaded&&!state.privateError?validPrivateEntries()
+  .filter(e=>e.entry_type==='session'&&e.entry_date===todayDate)
+  .sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')):[];
+ const commissionAccounts=state.matchmakers.length?state.matchmakers:[{id:LEGACY_MATCHMAKER_ID,name:'Matchmaking',commission_bps:1500}];
+ const month=monthKey(todayDate);
+ const dueRows=commissionAccounts.map(person=>{
+  const total=personFinancials(month,person);
+  const settlement=state.settlements.find(e=>e.month_key===month+'-01'&&(e.matchmaker_id||LEGACY_MATCHMAKER_ID)===person.id);
+  return {name:person.name,fee:total.fee,settled:settlement?.status==='paid'};
+ }).filter(row=>row.fee>0&&!row.settled);
+ const pending=dueRows.reduce((n,x)=>n+x.fee,0);
+ const overviewMetrics=`<section class="summary management-summary">
+  ${summaryCard('Private sessions today',snapshot.sessions??'—','Completed sessions · today','calendar',true)}
+  ${summaryCard('Cash collected today',snapshot.collected===null?'—':amount(snapshot.collected),'Sessions, top-ups, cafeteria and matchmaking','wallet')}
+  ${summaryCard('Cafeteria owed',balance?amount(balance.cafeteriaOwed):'—','Current outstanding balances','activity')}
+  ${summaryCard('Private coaching owed',balance?amount(balance.privateOwed):'—','Current outstanding client balances','users')}
+ </section>`;
+ const rows=latest.slice(0,8).map(e=>{
+  const client=state.privateClients.find(c=>c.id===e.client_id);
+  return `<tr><td>${esc(client?.name||'Unknown client')}<br/><small>${esc(client?.client_code||'No client ID')}</small></td><td>${esc(privateCoachName(e.coach_id))}</td><td>${amount(e.session_fee_cents)}</td><td>${amount(e.paid_cents)}</td></tr>`;
+ }).join('');
+ const todayPanel=`<article class="panel"><div class="panel-head"><div><h2>Today's private sessions</h2><p>${niceDay(todayDate,{weekday:'long',month:'short',day:'numeric'})} · session fees and amounts received</p></div><button class="link" data-tab="private-clients">View daily log ${icon('arrow')}</button></div>
+ <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Client</th><th>Coach</th><th>Charge</th><th>Paid</th></tr></thead>
+ <tbody>${!state.privateLoaded?'<tr><td colspan="4" class="panel-empty">Loading private sessions…</td></tr>':rows||'<tr><td colspan="4" class="panel-empty">No private sessions recorded today.</td></tr>'}</tbody></table></div></article>`;
+ const commissions=`<article class="panel"><div class="panel-head"><div><h2>Pending matchmaking commissions</h2><p>${monthLabel(month)} · not marked as paid</p></div><button class="link" data-tab="finance">Matchmaking ${icon('arrow')}</button></div><div class="panel-body">
+ <div class="management-commission-total">${amount(pending)}<small>${dueRows.length} unsettled person${dueRows.length===1?'':'s'}</small></div>
+ ${dueRows.length?dueRows.slice(0,5).map(x=>`<div class="management-commission-row"><span>${esc(x.name)}</span><strong>${amount(x.fee)}</strong></div>`).join(''):'<div class="panel-empty">No unpaid commissions recorded this month.</div>'}
+ <p class="management-note">Commission amounts are calculated from matchmaking revenue. A settlement marked Paid is excluded from this reminder.</p>
+ </div></article>`;
+ return `<div class="management-section-label"><h2>Today's club operations</h2><span>${niceDay(todayDate,{weekday:'long',month:'long',day:'numeric'})} · Asia/Beirut</span></div>
+ ${overviewMetrics}
+ <div class="two-col management-panels">${managementAlertPanel()}${commissions}</div>
+ <div class="management-section-label"><h2>Daily coaching activity</h2></div>${todayPanel}`;
+}
 function dashboard(){const normal=normalMembers();const used=normal.reduce((n,m)=>n+status(m).used,0),left=normal.reduce((n,m)=>n+status(m).remain,0),empty=normal.filter(m=>status(m).remain===0).length;const recent=recentActivity(6);return `
 ${heading('Your club, organized','Good day, team.','Here’s what’s happening at PADEL ON this week.',btn(`${icon('plus')} Quick Match`,'quick-team','btn-primary'))}
 <div class="notice" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">${icon('calendar')} <span><strong>Current week:</strong> ${weekLabel(today())} · Counters automatically follow the Beirut calendar week.</span></div>
 <section class="summary">${summaryCard('Active team members',state.members.filter(m=>m.active).length,'','users',true)}${summaryCard('Benefits used',used,'This week · standard members','activity')}${summaryCard('Benefits remaining',left,'Available this week','gift')}${summaryCard('Allowances exhausted',empty,'Members with 0 remaining','shield')}</section>
+${overviewExtra()}
 <section class="two-col"><article class="panel"><div class="panel-head"><div><h2>Recent game activity</h2><p>Last 30 days · latest first</p></div><button class="link" data-tab="activity">View all ${icon('arrow')}</button></div><div class="panel-body">${recent.length?recent.map(a=>`<div class="activity-line"><div class="activity-avatar">${esc(initials(a.names.split(',')[0]))}</div><div class="activity-copy"><strong>${esc(a.names)}</strong><small>${esc(a.type)}</small></div><span class="small-date">${niceDay(a.date)}</span></div>`).join(''):`<div class="empty-prompt">${icon('calendar')}<strong>No new games yet</strong><span>Recorded games will appear here.</span></div>`}</div></article><article class="panel"><div class="panel-head"><div><h2>Quick actions</h2><p>Everything in just a tap</p></div></div><div class="panel-body quick-list"><button class="quick-link" data-action="quick-team">${icon('plus')}<span><strong>Quick Match</strong><small>Choose all four participants</small></span></button><button class="quick-link" data-tab="debts">${icon('wallet')}<span><strong>Cafeteria debts</strong><small>Track unpaid purchases and partial payments</small></span></button><button class="quick-link" data-action="add-nazih">${icon('wallet')}<span><strong>Log matchmaking revenue</strong><small>Separate revenue and commission by matchmaker</small></span></button><button class="quick-link" data-tab="other">${icon('gift')}<span><strong>Other player benefits</strong><small>Free game eligibility</small></span></button><button class="quick-link" data-tab="settings">${icon('settings')}<span><strong>Management settings</strong><small>Members and secure resets</small></span></button></div></article></section>`}
 function teamCategoryOptions(){return '<option value=all>All teams</option>'+TEAM_GROUPS.map(([id,name])=>'<option value='+id+(state.teamCategoryFilter===id?' selected':'')+'>'+esc(name)+'</option>').join('');}
 function groupedMemberCards(members,selected){let out='';for(const [key,label] of TEAM_GROUPS){if(state.teamCategoryFilter!=='all'&&state.teamCategoryFilter!==key)continue;const group=members.filter(m=>(m.team_category||'team')===key);if(!group.length)continue;out+='<section class=team-category-section><div class=team-category-heading><h2>'+esc(label)+'</h2><span>'+group.length+' members</span></div><div class=member-grid>'+group.map(m=>memberCard(m,selected)).join('')+'</div></section>';}return out||'<div class=panel-empty>No matching members.</div>';}
