@@ -32,7 +32,7 @@ const tabs=[['dashboard','Overview','grid'],['debts','Cafeteria Debts','wallet']
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
-const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',settingsPrivateAccountId:'',settingsCafeteriaAccountId:''};
+const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:''};
 // Staff inactivity policy: thirty minutes without user interaction logs out every open tab.
 // Background database polling and token refreshes never extend this timer.
 let lastKnownWeek=weekStart(todayBeirut());
@@ -118,6 +118,79 @@ function recentActivity(max=6,filterName=''){
  const team=state.matches.filter(m=>!m.voided_at).map(m=>({key:m.id,type:m.benefit_type==='free'?'Free Game':'Half-Price',names:state.games.filter(g=>g.match_id===m.id&&!g.voided_at).map(g=>state.members.find(x=>x.id===g.member_id)?.name).filter(Boolean).join(', ')||'Team Game',date:m.played_on,ref:m.id,kind:'team'}));
  const special=state.specialGames.map(g=>({key:g.id,type:g.game_type==='free'?'Free Game':'Paid Game',names:state.special.find(x=>x.id===g.player_id)?.name||'Special Player',date:g.played_on,ref:g.id,kind:'other'}));
  return [...team,...special].filter(g=>!filterName||g.names.toLowerCase().includes(filterName.toLowerCase())).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,max);
+}
+// Club-wide reporting: monetary values are integer USD cents.
+const MANAGEMENT_HIGH_DEBT_CENTS=10000;
+function validPrivateEntries(){return state.privateEntries.filter(e=>!e.voided_at);}
+function validCafeteriaEntries(){return state.debtEntries.filter(e=>!e.voided_at);}
+function clubFinancialSnapshot(period,scope='month'){
+ const inPeriod=date=>typeof date==='string'&&(scope==='day'?date===period:monthKey(date)===period);
+ const sessions=state.privateLoaded&&!state.privateError?validPrivateEntries().filter(e=>e.entry_type==='session'&&inPeriod(e.entry_date)):null;
+ const deposits=state.privateLoaded&&!state.privateError?validPrivateEntries().filter(e=>e.entry_type==='deposit'&&inPeriod(e.entry_date)):null;
+ const cafeCharges=state.debtLoaded&&!state.debtError?validCafeteriaEntries().filter(e=>e.entry_type==='charge'&&inPeriod(e.entry_date)):null;
+ const cafePayments=state.debtLoaded&&!state.debtError?validCafeteriaEntries().filter(e=>e.entry_type==='payment'&&inPeriod(e.entry_date)):null;
+ const matchmaking=state.finance.filter(e=>!e.deleted_at&&inPeriod(e.played_on));
+ const sum=(items,key)=>items?.reduce((total,row)=>total+Number(row[key]||0),0)??null;
+ const privateCharges=sum(sessions,'session_fee_cents'),privatePaid=sum(sessions,'paid_cents'),privateTopups=sum(deposits,'deposit_cents');
+ const cafeteriaCharges=sum(cafeCharges,'amount_cents'),cafeteriaPaid=sum(cafePayments,'amount_cents');
+ const matchmakingCollected=sum(matchmaking,'amount_cents');
+ const matchmakers=state.matchmakers.length?state.matchmakers:[{id:LEGACY_MATCHMAKER_ID,commission_bps:1500,name:'Legacy'}];
+ const commissionTotal=matchmakers.reduce((total,p)=>total+matchmakingFee(
+  sum(matchmaking.filter(e=>(e.matchmaker_id||LEGACY_MATCHMAKER_ID)===p.id),'amount_cents'),p),0);
+ const collected=privatePaid===null||privateTopups===null||cafeteriaPaid===null?null:privatePaid+privateTopups+cafeteriaPaid+matchmakingCollected;
+ return {sessions:sessions?.length??null,privateCharges,privatePaid,privateTopups,cafeteriaCharges,cafeteriaPaid,
+  matchmakingCollected,commissionTotal,collected,matchmakingGames:matchmaking.length,
+  completed:privatePaid!==null&&cafeteriaPaid!==null};
+}
+function clubBalanceSnapshot(){
+ if(!state.privateLoaded||!state.debtLoaded||state.privateError||state.debtError)return null;
+ const p=state.privateClients.filter(c=>!c.deleted_at).map(c=>({person:c,balance:privateClientBalance(c)}));
+ const c=state.debtPeople.filter(c=>!c.deleted_at).map(c=>({person:c,balance:debtOutstanding(c.id)}));
+ return {privateOwed:p.reduce((n,x)=>n+Math.max(0,-x.balance),0),
+  privateCredit:p.reduce((n,x)=>n+Math.max(0,x.balance),0),
+  cafeteriaOwed:c.reduce((n,x)=>n+Math.max(0,x.balance),0),
+  cafeteriaCredit:c.reduce((n,x)=>n+Math.max(0,-x.balance),0),
+  privateRows:p,cafeRows:c};
+}
+function daysLeftInMonth(date){
+ const end=addDays(shiftMonth(monthKey(date),1)+'-01',-1);
+ const from=new Date(date+'T12:00:00Z'),to=new Date(end+'T12:00:00Z');
+ return Math.round((to-from)/86400000);
+}
+function managementAlerts(){
+ const alerts=[],balances=clubBalanceSnapshot();
+ if(balances){
+  for(const x of balances.cafeRows.filter(x=>x.balance>=MANAGEMENT_HIGH_DEBT_CENTS).sort((a,b)=>b.balance-a.balance)){
+   alerts.push({severity:'warning',subject:x.person.name,detail:'Cafeteria balance owed: '+amount(x.balance),kind:'debt',id:x.person.id});
+  }
+  for(const x of balances.privateRows.filter(x=>x.balance<=-MANAGEMENT_HIGH_DEBT_CENTS).sort((a,b)=>a.balance-b.balance)){
+   alerts.push({severity:'warning',subject:x.person.name,detail:'Private coaching amount owed: '+amount(-x.balance),kind:'private',id:x.person.id});
+  }
+  for(const x of balances.privateRows.filter(x=>!x.person.active&&x.balance<0)){
+   if(x.balance<=-MANAGEMENT_HIGH_DEBT_CENTS)continue;
+   alerts.push({severity:'warning',subject:x.person.name,detail:'Inactive private client still owes '+amount(-x.balance),kind:'private',id:x.person.id});
+  }
+  for(const x of balances.cafeRows.filter(x=>!x.person.active&&x.balance>0)){
+   if(x.balance>=MANAGEMENT_HIGH_DEBT_CENTS)continue;
+   alerts.push({severity:'warning',subject:x.person.name,detail:'Inactive cafeteria account owes '+amount(x.balance),kind:'debt',id:x.person.id});
+  }
+ }
+ const ym=monthKey(today());
+ if(state.overviewTrainingMonth===ym&&!state.overviewTrainingError){
+  const trained=new Set(state.overviewTrainingAttendance.filter(a=>!a.voided_at).map(a=>a.member_id));
+  const missing=state.members.filter(m=>m.active&&m.team_category==='rising_stars'&&!trained.has(m.id));
+  const remaining=daysLeftInMonth(today());
+  if(missing.length)alerts.push({severity:remaining<=7?'warning':'info',subject:'Rising Stars monthly training',
+   detail:missing.length+' member'+(missing.length===1?'':'s')+' not yet trained · '+remaining+' day'+(remaining===1?'':'s')+' left this month',kind:'training'});
+ }
+ return alerts;
+}
+function managementAlertPanel(){
+ const alerts=managementAlerts(),allReady=state.privateLoaded&&state.debtLoaded&&state.overviewTrainingMonth===monthKey(today())&&!state.overviewTrainingError;
+ const content=alerts.length?alerts.slice(0,7).map(a=>
+  `<button type="button" class="management-alert ${a.severity}" data-action="management-alert-open" data-kind="${a.kind}" ${a.id?`data-id="${esc(a.id)}"`:''}><span class="management-alert-icon">${icon(a.severity==='warning'?'alert':'info')}</span><span><strong>${esc(a.subject)}</strong><small>${esc(a.detail)}</small></span>${icon('arrow')}</button>`).join(''):
+  allReady?'<div class="panel-empty">No outstanding management alerts at the moment.</div>':'<div class="panel-empty">Loading client and training alerts…</div>';
+ return `<article class="panel"><div class="panel-head"><div><h2>Management alerts</h2><p>High balances: ${amount(MANAGEMENT_HIGH_DEBT_CENTS)}+ · training follows the Beirut calendar</p></div>${alerts.length?tag(String(alerts.length)+' alerts','amber'):''}</div><div class="management-alerts">${content}</div></article>`;
 }
 function dashboard(){const normal=normalMembers();const used=normal.reduce((n,m)=>n+status(m).used,0),left=normal.reduce((n,m)=>n+status(m).remain,0),empty=normal.filter(m=>status(m).remain===0).length;const recent=recentActivity(6);return `
 ${heading('Your club, organized','Good day, team.','Here’s what’s happening at PADEL ON this week.',btn(`${icon('plus')} Quick Match`,'quick-team','btn-primary'))}
