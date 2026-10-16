@@ -105,9 +105,41 @@ function financials(ym=state.month){
  return person?personFinancials(ym,person):getMonthFinance(state.finance,ym);
 }
 function navMarkup(mobile=false){const allowed=tabs.filter(t=>mobile?t[0]!=='settings':true);return allowed.map(([key,title,ico])=>`<button class="${mobile?'mobile-nav':'nav-item'} ${state.tab===key?'active':''}" data-tab="${key}" aria-current="${state.tab===key?'page':'false'}">${icon(ico)}<span>${mobile?title.split(' ')[0]:title}</span></button>`).join('')}
+function globalSearchCandidates(){
+ const out=[];
+ for(const m of state.members.filter(m=>m.active))out.push({kind:'team',id:m.id,title:m.name,sub:groupLabel(m.team_category)});
+ for(const p of state.special.filter(p=>p.active))out.push({kind:'other',id:p.id,title:p.name,sub:'Other Benefits'});
+ if(state.privateLoaded&&!state.privateError){
+  for(const c of state.privateClients.filter(c=>!c.deleted_at)){
+   out.push({kind:'private',id:c.id,title:c.name,sub:'Private Sessions'+(c.client_code?' · ID '+c.client_code:'')+(c.active?'':' · Inactive')});
+  }
+ }
+ if(state.debtLoaded&&!state.debtError){
+  for(const p of state.debtPeople.filter(p=>!p.deleted_at)){
+   out.push({kind:'debt',id:p.id,title:p.name,sub:'Cafeteria Debts'+(p.active?'':' · Inactive')});
+  }
+ }
+ return out;
+}
+function globalSearchResultsHTML(){
+ const q=state.globalSearchQuery.trim().toLowerCase();
+ if(!q)return '<div class="global-search-hint">Search team members, private clients, cafeteria accounts or other benefits by name or customer ID.</div>';
+ const results=globalSearchCandidates().filter(c=>(c.title+' '+c.sub).toLowerCase().includes(q))
+  .sort((a,b)=>a.title.localeCompare(b.title,undefined,{sensitivity:'base'})).slice(0,35);
+ const loading=state.privateLoading||state.debtLoading;
+ return `${results.map(c=>`<button type="button" class="global-search-result" data-action="global-search-open-result" data-kind="${esc(c.kind)}" data-id="${esc(c.id)}"><span class="global-search-result-icon">${icon(c.kind==='debt'?'wallet':c.kind==='other'?'gift':'users')}</span><span><strong>${esc(c.title)}</strong><small>${esc(c.sub)}</small></span>${icon('arrow')}</button>`).join('')||'<div class="global-search-hint">No matching accounts found.</div>'}${loading?'<div class="global-search-hint">Still loading client directories…</div>':''}`;
+}
+function updateGlobalSearchResults(){
+ const box=document.getElementById('global-search-results');
+ if(box&&state.globalSearchOpen)box.innerHTML=globalSearchResultsHTML();
+}
+function globalSearchOverlay(){
+ if(!state.globalSearchOpen)return '';
+ return `<div class="global-search-layer"><div class="global-search-backdrop" data-action="global-search-close"></div><section class="global-search-dialog" role="dialog" aria-modal="true" aria-label="Search across PADEL ON"><div class="global-search-header">${icon('search')}<input id="global-search-input" placeholder="Search members, customers, client IDs…" autocomplete="off" spellcheck="false" value="${esc(state.globalSearchQuery)}" aria-label="Search PADEL ON"/><button type="button" class="btn btn-light btn-icon" data-action="global-search-close" aria-label="Close search">${icon('close')}</button></div><div id="global-search-results" class="global-search-results">${globalSearchResultsHTML()}</div><div class="global-search-footer">Search is available only to signed-in PADEL ON staff.</div></section></div>`;
+}
 function shell(){
  const name=state.staff?.email?.split('@')[0]||'Staff';
- return `<div class="app-layout"><aside class="sidebar"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><div class="brand-sub">Club management</div><nav class="menu">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></aside><main class="main"><header class="topbar"><div><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Private management · Asia/Beirut local time</div></div></main><nav class="mobile-bar">${navMarkup(true)}</nav></div><div id="modal-root">${state.modal?modalMarkup():''}</div>`;
+ return `<div class="app-layout"><aside class="sidebar"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><div class="brand-sub">Club management</div><nav class="menu">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></aside><main class="main"><header class="topbar"><div><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Private management · Asia/Beirut local time</div></div></main><nav class="mobile-bar">${navMarkup(true)}</nav></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
 }
 function heading(eyebrow,title,desc,actions=''){return `<div class="heading-row"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${desc}</p></div>${actions?`<div class="heading-actions">${actions}</div>`:''}</div>`}
 function summaryCard(label,num,sub,ico,feature=false){return `<article class="summary-card ${feature?'feature':''}"><div class="card-top"><span class="label">${label}</span><span class="metric-icon">${icon(ico)}</span></div><div class="metric num">${num}</div><div class="submetric">${sub}</div></article>`}
