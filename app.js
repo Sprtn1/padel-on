@@ -475,6 +475,35 @@ function render(){app.innerHTML=shell()}
 function field(name,label,value='',type='text',attr=''){return `<label class="form-field"><span>${label}</span><input class="form-input" name="${name}" type="${type}" value="${esc(value)}" ${attr}/></label>`}
 function selectField(name,label,options,selected){return `<label class="form-field"><span>${label}</span><select class="form-input" name="${name}">${options.map(([val,lbl])=>`<option value="${esc(val)}" ${val===selected?'selected':''}>${esc(lbl)}</option>`).join('')}</select></label>`}
 function textareaField(name,label,value=''){return `<label class="form-field"><span>${label}</span><textarea class="form-input" name="${name}" maxlength="500">${esc(value)}</textarea></label>`}
+function debtModal(type,m){
+ const person=state.debtPeople.find(p=>p.id===m.personId);
+ if(type==='debt-person'){
+  const edit=Boolean(person),title=edit?'Edit Cafeteria Account':'New Cafeteria Account';
+  const content=`<form id="modal-form" data-save="save-debt-person">
+  ${field('name','Person name',person?.name||'','text','required minlength="2" maxlength="120"')}
+  ${edit?selectField('active','Account status',[['true','Active'],['false','Inactive']],person.active?'true':'false'):field('initial_debt','Initial amount owed ($)','0.00','number','required min="0" max="1000000000" step="0.01"')}
+  ${edit?'':field('entry_date','Date of starting debt',today(),'date',`required max="${today()}"`)}
+  ${textareaField('notes','Notes (optional)',person?.notes||'')}
+  <div class="notice">${edit?'Historical purchases and payments remain unchanged.':'Enter a starting debt now, or leave $0.00 and add purchases later.'}</div>
+  ${formActions(edit?'Save Person':'Create Person')}</form>`;
+  return {title,subtitle:edit?'Rename or update this account without losing its history.':'New cafeteria credit account · independent from coaching',content};
+ }
+ if(type==='debt-charge'||type==='debt-payment'){
+  const isCharge=type==='debt-charge';
+  const due=person?debtOutstanding(person.id):0;
+  const content=`<form id="modal-form" data-save="${isCharge?'save-debt-charge':'save-debt-payment'}">
+    ${field('entry_date',isCharge?'Purchase date':'Payment date',today(),'date',`required max="${today()}"`)}
+    ${field('amount',isCharge?'Amount to add to debt ($)':'Amount received ($)','','number',`required min="0.01" step="0.01" max="${isCharge?'1000000000':(due/100).toFixed(2)}" placeholder="${isCharge?'25.00':'40.00'}"`)}
+    ${textareaField('notes',isCharge?'Items purchased / notes':'Payment notes (optional)')}
+    <div class="notice">${isCharge?'Adds to the existing amount owed. Previous payments remain recorded.':`Currently owed: ${amount(due)}. A partial payment reduces the balance without closing the account.`}</div>
+    ${formActions(isCharge?'Add Debt':'Record Payment')}</form>`;
+  return {title:isCharge?'Add Cafeteria Debt':'Record Partial Payment',subtitle:person?.name||'',content};
+ }
+ const entry=state.debtEntries.find(e=>e.id===m.id);
+ const content=`<div class="notice warn">This entry will remain in the audit log but stop contributing to the balance. Incorrect charges cannot be voided if doing so would leave payments above the remaining total.</div>
+ <form id="modal-form" data-save="void-debt-entry">${textareaField('reason','Reason for correction')}${formActions('Void Entry',true)}</form>`;
+ return {title:'Correct Cafeteria Entry',subtitle:entry?.entry_type==='charge'?'Void a debt charge':'Void a recorded payment',content,danger:true};
+}
 function privateClientModal(type,m){
  const client=state.privateClients.find(c=>c.id===m.clientId);
  if(type==='private-client'){
@@ -520,6 +549,10 @@ function privateClientModal(type,m){
  return {title:'Void Financial Entry',subtitle:entry?.entry_type==='session'?'Cancel incorrect session record':'Cancel incorrect balance top-up',content,danger:true};
 }
 function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',danger=false,action='';switch(m.type){
+ case 'debt-person':case 'debt-charge':case 'debt-payment':case 'debt-void':{
+  const dialog=debtModal(m.type,m);
+  title=dialog.title;subtitle=dialog.subtitle;content=dialog.content;danger=Boolean(dialog.danger);break;
+ }
  case 'private-client':case 'private-session':case 'private-deposit':case 'private-void':{
   const details=privateClientModal(m.type,m);
   title=details.title;subtitle=details.subtitle;content=details.content;danger=Boolean(details.danger);break;
@@ -570,7 +603,7 @@ function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',d
  return `<div class="modal-backdrop" id="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-head"><div><h2>${esc(title)}</h2><p>${esc(subtitle)}</p></div><button class="modal-close" data-action="close-modal" aria-label="Close">${icon('close')}</button></div><div class="modal-body">${content}</div></div></div>`
 }
 function formActions(text,danger=false){return `<div class="modal-actions">${btn('Cancel','close-modal','btn-light')}<button type="submit" class="btn ${danger?'btn-danger':'btn-primary'}" id="save-button">${esc(text)}</button></div>`}
-function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance','training','private-session','private-deposit'].includes(type)?{requestId:crypto.randomUUID()}:{}),...(['finance','settlement'].includes(type)?{personId:selectedMatchmaker()?.id||null}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();},0)}
+function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance','training','private-session','private-deposit','debt-person','debt-charge','debt-payment'].includes(type)?{requestId:crypto.randomUUID()}:{}),...(['finance','settlement'].includes(type)?{personId:selectedMatchmaker()?.id||null}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();},0)}
 function closeModal(){state.modal=null;document.getElementById('modal-root').innerHTML=''}
 function renderAuth(message=''){
  app.innerHTML=`<main class="auth-wrap"><section class="auth-lead"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><h1>The team.<br/><em>All in one place.</em></h1><p>Weekly padel benefits, special players, and matchmaking revenue—securely tracked together.</p></section><section class="auth-card"><div class="eyebrow">Private club workspace</div><h2>Welcome back</h2><p class="sub">Sign in with your PADEL ON staff account.</p>${!api.configured?'<div class="auth-error">Database not configured. Set the Supabase URL and publishable key in <strong>config.js</strong>, then follow README.md.</div>':''}${message?`<div class="auth-error">${esc(message)}</div>`:''}<form id="login-form">${field('email','Email address','','email','required autocomplete="email"')}${field('password','Password','','password','required autocomplete="current-password"')}<button class="btn btn-primary" ${!api.configured?'disabled':''} type="submit">Sign In ${icon('arrow')}</button></form><div class="auth-foot">Authorized PADEL ON staff only · Protected by Supabase Auth</div></section></main>`;
