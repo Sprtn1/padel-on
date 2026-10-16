@@ -6,7 +6,7 @@ This is an independent cafeteria credit ledger, separate from **Private Sessions
 
 1. Select the existing PADEL ON project at [Supabase](https://supabase.com/dashboard).
 2. Open **SQL Editor → New query**.
-3. Copy the complete [Cafeteria Debts migration](supabase/migrations/20261016_cafeteria_debts.sql), paste, and **Run**.
+3. Copy the complete [Cafeteria Debts migration](supabase/migrations/20261016_cafeteria_debts.sql), paste, and **Run**. Then apply the [Prepaid Credit upgrade](supabase/migrations/20261016_cafeteria_prepaid_credit.sql) to enable extra payments and customer credit.
 4. Reload the site and open **Cafeteria Debts**, directly under **Overview**. The Overview Quick Actions section also has a shortcut.
 5. Initially the page should show **zero people, zero outstanding debt, and zero payments**. Add only actual cafeteria customer debt records.
 
@@ -18,7 +18,7 @@ This SQL creates two independent tables, not an extension of `private_clients` o
 
 **Add debt:** Select an active person, choose the purchase date, enter the amount added to what they owe, and optionally note the purchased items. New charges increase the amount owed.
 
-**Record payment:** Select a person with a positive unpaid amount, enter the amount received and date, and optionally note payment details. The payment reduces but does **not** automatically close the account if any debt remains. Overpayment is rejected by the database.
+**Record payment / add credit:** Select an active person, enter any positive amount received (even if they owe nothing), date, and optional payment details. The payment reduces the debt. Any amount above the debt becomes **prepaid customer credit**, which automatically offsets future cafeteria charges. There is no weekly or monthly credit reset.
 
 For example:
 
@@ -28,19 +28,26 @@ For example:
 | First partial payment | $40 | $60 |
 | Second partial payment | $20 | $40 |
 | Final payment | $40 | $0 — Paid in full |
-| New cafeteria purchase later | $15 | $15 — Unpaid again |
+| Extra prepaid payment | $11 | $11 credit |
+| New cafeteria purchase | $7 | $4 credit |
+| Another purchase | $10 | $6 owed |
 
-**Person list:** Search by name and filter to **Unpaid**, **All people**, or **Paid in full**. The history and account remain available after the balance reaches zero. Each entry stores an occurrence date plus the database recording timestamp. Running totals use the **order of recording**, preserving consistent balances even for backdated purchases.
+**Person list:** Search by name and filter to **All people**, **Unpaid**, **Prepaid credit**, or **Paid in full**. The history and account remain available after the balance reaches zero. Each entry stores an occurrence date plus the database recording timestamp. Running totals use the **order of recording**, preserving consistent balances even for backdated purchases.
 
 **Edit person:** Staff may rename an account or change its notes/active status without rewriting financial history. Inactive accounts remain in history and totals but cannot accept additional purchases or payments until reactivated.
 
-**Correct a mistake:** Only admins can **void** an incorrect debt or payment with a reason. Corrections are audited. The database will reject voiding an old charge if that would leave the total valid payments greater than valid charges.
+**Correct a mistake:** Only admins can **void** an incorrect debt or payment with a reason. Corrections are audited. Voiding a charge can create additional prepaid credit; voiding a payment can reopen a debt. The signed balance is recalculated from all remaining transactions.
 
 **Export statement:** Download a selected person's complete cafeteria statement as CSV. Keep it private and do not upload it to this public repository.
 
 ## Accounting formula
 
-`Outstanding = total active debt charges − total active payments`
+`Signed balance = total active debt charges − total active payments`
+
+- Positive signed balance: money still owed to the cafeteria.
+- Zero: paid in full.
+- Negative signed balance: prepaid credit (`abs(signed balance)`), available to cover future purchases.
+- Club-wide **Outstanding debt** totals positive balances only; **Prepaid credit** totals negative balances separately, so the two cannot accidentally cancel one another in summary cards.
 
 There is **no relationship to private coaching credit**, so a client can have a positive coaching account balance and separately owe money to the cafeteria.
 
@@ -59,7 +66,7 @@ There is **no relationship to private coaching credit**, so a client can have a 
 2. Record a $100 charge and a $40 payment. The account must still show $60 outstanding.
 3. Record another $60 payment. Status should change to **Paid in full** and the account should be visible under **All people** and **Paid in full**.
 4. Record another charge; the balance should reopen.
-5. Try to record a payment larger than the debt: the backend must reject it.
+5. Pay $11 more than the remaining debt; the account should display **$11 prepaid credit**. A later $7 cafeteria charge should leave **$4 credit**. Verify the credit persists after refreshing the page.
 6. Confirm a staff account can add people, debts and payments. Only an admin should be able to void.
 7. Confirm the private-coaching client balances and other club records are completely unchanged.
 8. Verify the exported CSV agrees with the dashboard balances.
