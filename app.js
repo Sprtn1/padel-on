@@ -752,10 +752,11 @@ function adminAccountManagementCards(){
  ${btn('Remove Account','settings-cafe-remove','btn-danger',!cafe||cafe.deleted_at||!cafeZero?'disabled':'')}
  ${btn('Restore Account','settings-cafe-restore','btn-light',!cafe||!cafe.deleted_at?'disabled':'')}</div></article>`;
 }
-function settingsPage(){const admin=state.staff?.role==='admin';return `${heading('Administration','Settings','Manage allowances, update players, and protect sensitive changes.',btn(`${icon('logout')} Sign out`,'signout','btn-light'))}<div class="notice warn">${icon('shield')} Manual resets are verified by a server-side Supabase Edge Function. The reset code is never exposed in the public website files.</div><div class="settings-grid"><article class="panel settings-box"><h3>Team roster</h3><p>Create team members, edit weekly allowances, and deactivate members while keeping their history.</p>${btn(`${icon('plus')} Add Member`,'new-member','btn-primary',admin?'':'disabled')}${btn(`${icon('edit')} Edit Member`,'choose-member-edit','btn-light',admin?'':'disabled')}</article><article class="panel settings-box"><h3>Manual weekly reset</h3><p>Reset a member or everyone for the active week. A reset changes the counting baseline but does not remove game records.</p>${btn('Reset One Member','reset-one','btn-light',admin?'':'disabled')}${btn('Reset All Members','reset-all','btn-danger',admin?'':'disabled')}</article><article class="panel settings-box"><h3>Database & security</h3><p>Live records use Supabase with Row-Level Security. Administrators can manage the roster and settlements.</p><div class="flex">${tag('Connected','green')}${tag((state.staff?.role||'Staff').toUpperCase(),'gray')}</div></article><article class="panel settings-box"><h3>Financial archive</h3><p>Matchmaking records are retained indefinitely unless deleted by an authorized staff member. Download a monthly CSV for your records.</p>${btn(`${icon('download')} Export Selected Month`,'export-finance','btn-light')}</article>${admin?'<article class="panel settings-box"><h3>Order Counter</h3><p>Count stock items, prepare a complete restocking message, and copy it for WhatsApp.</p>'+btn(icon('list')+' Open Order Counter','open-order-counter','btn-primary')+'</article>':''}${admin?'<article class="panel settings-box"><h3>Reem\'s Items List</h3><p>Prepare Reem\'s delivery order separately from the original supplier list. Copy the complete message for WhatsApp.</p>'+btn(icon('list')+' Open Reem\'s Items List','open-reem-items','btn-primary')+'</article>':''}${admin?adminAccountManagementCards():''}</div>${admin?'<div class="archive-note">To add new staff accounts, create them in Supabase Auth and authorize them in the staff_profiles table. Do not share login passwords.</div>':''}`}
-function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'debts':return debtPage();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return state.staff?.role==='admin'&&api.getSession()?.access_token?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return state.staff?.role==='admin'&&api.getSession()?.access_token?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
+function canUseOrderLists(){return Boolean(api.getSession()?.access_token&&['admin','staff'].includes(state.staff?.role));}
+function settingsPage(){const admin=state.staff?.role==='admin';const listsEnabled=canUseOrderLists();return `${heading('Administration','Settings','Manage allowances, update players, and protect sensitive changes.',btn(`${icon('logout')} Sign out`,'signout','btn-light'))}<div class="notice warn">${icon('shield')} Manual resets are verified by a server-side Supabase Edge Function. The reset code is never exposed in the public website files.</div><div class="settings-grid"><article class="panel settings-box"><h3>Team roster</h3><p>Create team members, edit weekly allowances, and deactivate members while keeping their history.</p>${btn(`${icon('plus')} Add Member`,'new-member','btn-primary',admin?'':'disabled')}${btn(`${icon('edit')} Edit Member`,'choose-member-edit','btn-light',admin?'':'disabled')}</article><article class="panel settings-box"><h3>Manual weekly reset</h3><p>Reset a member or everyone for the active week. A reset changes the counting baseline but does not remove game records.</p>${btn('Reset One Member','reset-one','btn-light',admin?'':'disabled')}${btn('Reset All Members','reset-all','btn-danger',admin?'':'disabled')}</article><article class="panel settings-box"><h3>Database & security</h3><p>Live records use Supabase with Row-Level Security. Administrators can manage the roster and settlements.</p><div class="flex">${tag('Connected','green')}${tag((state.staff?.role||'Staff').toUpperCase(),'gray')}</div></article><article class="panel settings-box"><h3>Financial archive</h3><p>Matchmaking records are retained indefinitely unless deleted by an authorized staff member. Download a monthly CSV for your records.</p>${btn(`${icon('download')} Export Selected Month`,'export-finance','btn-light')}</article>${listsEnabled?'<article class="panel settings-box"><h3>Order Counter</h3><p>Count stock items, prepare a complete restocking message, and copy it for WhatsApp.</p>'+btn(icon('list')+' Open Order Counter','open-order-counter','btn-primary')+'</article>':''}${listsEnabled?'<article class="panel settings-box"><h3>Reem\'s Items List</h3><p>Prepare Reem\'s delivery order separately from the original supplier list. Copy the complete message for WhatsApp.</p>'+btn(icon('list')+' Open Reem\'s Items List','open-reem-items','btn-primary')+'</article>':''}${admin?adminAccountManagementCards():''}</div>${admin?'<div class="archive-note">To add new staff accounts, create them in Supabase Auth and authorize them in the staff_profiles table. Do not share login passwords.</div>':''}`}
+function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'debts':return debtPage();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
 function render(){
- if(['order-counter','reem-items'].includes(state.tab)&&(state.staff?.role!=='admin'||!api.getSession()?.access_token))state.tab='settings';
+ if(['order-counter','reem-items'].includes(state.tab)&&!canUseOrderLists())state.tab='settings';
  const searchFocus=state.globalSearchOpen&&document.activeElement?.id==='global-search-input';
  const cursor=searchFocus?document.activeElement.selectionStart:null;
  app.innerHTML=shell();
@@ -1211,23 +1212,23 @@ function exportFinance(){
 async function handleAction(target){const act=target.dataset.action,id=target.dataset.id;
  switch(act){
  case 'open-reem-items':
-  if(state.staff?.role!=='admin'||!api.getSession()?.access_token)throw Error('Administrators only.');
+  if(!canUseOrderLists())throw Error('Authorized staff only.');
   state.tab='reem-items';state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});break;
  case 'reem-back':
-  if(state.staff?.role!=='admin'||!api.getSession()?.access_token)throw Error('Administrators only.');
+  if(!canUseOrderLists())throw Error('Authorized staff only.');
   state.tab='settings';render();window.scrollTo({top:0,behavior:'instant'});break;
  case 'reem-filter':case 'reem-step':case 'reem-clear':case 'reem-copy':
-  if(state.tab!=='reem-items'||state.staff?.role!=='admin'||!api.getSession()?.access_token)throw Error('Administrators only.');
+  if(state.tab!=='reem-items'||!canUseOrderLists())throw Error('Authorized staff only.');
   if(await reemItems.reemAction(target,toast))render();
   break;
  case 'open-order-counter':
-  if(state.staff?.role!=='admin'||!api.getSession()?.access_token)throw Error('Administrators only.');
+  if(!canUseOrderLists())throw Error('Authorized staff only.');
   state.tab='order-counter';state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});break;
  case 'order-back':
-  if(state.staff?.role!=='admin'||!api.getSession()?.access_token)throw Error('Administrators only.');
+  if(!canUseOrderLists())throw Error('Authorized staff only.');
   state.tab='settings';render();window.scrollTo({top:0,behavior:'instant'});break;
  case 'order-filter':case 'order-step':case 'order-clear':case 'order-copy':
-  if(state.tab!=='order-counter'||state.staff?.role!=='admin'||!api.getSession()?.access_token)throw Error('Administrators only.');
+  if(state.tab!=='order-counter'||!canUseOrderLists())throw Error('Authorized staff only.');
   if(await orderCounter.orderAction(target,toast))render();
   break;
  case 'management-alert-toggle':
@@ -1418,7 +1419,7 @@ document.addEventListener('submit',async e=>{
  }
 });
 document.addEventListener('input',e=>{
- if(e.target.dataset?.reemInput && state.tab==='reem-items' && state.staff?.role==='admin' && api.getSession()?.access_token){
+ if(e.target.dataset?.reemInput && state.tab==='reem-items' && canUseOrderLists()){
   const type=reemItems.reemInput(e.target);
   if(type==='search'){
    const cursor=e.target.selectionStart;
@@ -1428,7 +1429,7 @@ document.addEventListener('input',e=>{
   }
   return;
  }
- if(e.target.dataset?.orderInput && state.tab==='order-counter' && state.staff?.role==='admin' && api.getSession()?.access_token){
+ if(e.target.dataset?.orderInput && state.tab==='order-counter' && canUseOrderLists()){
   const type=orderCounter.orderInput(e.target);
   if(type==='search'){
    const cursor=e.target.selectionStart;
@@ -1472,8 +1473,8 @@ function updateQuickPreview(){
  else button.disabled=false;
 }
 document.addEventListener('change',e=>{
- if(e.target.dataset?.reemInput==='quantity' && state.tab==='reem-items' && state.staff?.role==='admin' && api.getSession()?.access_token){render();return;}
- if(e.target.dataset?.orderInput==='quantity' && state.tab==='order-counter' && state.staff?.role==='admin' && api.getSession()?.access_token){render();return;}
+ if(e.target.dataset?.reemInput==='quantity' && state.tab==='reem-items' && canUseOrderLists()){render();return;}
+ if(e.target.dataset?.orderInput==='quantity' && state.tab==='order-counter' && canUseOrderLists()){render();return;}
  if(e.target.id==='settings-private-account'){state.settingsPrivateAccountId=e.target.value;render();return}
  if(e.target.id==='settings-cafeteria-account'){state.settingsCafeteriaAccountId=e.target.value;render();return}
 
