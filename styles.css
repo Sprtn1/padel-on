@@ -429,3 +429,29 @@
  .mobile-settings-nav{flex:0 0 74px;min-width:74px;align-self:stretch;justify-content:center;border-left:1px solid rgba(178,222,194,.22);background:#10251d;padding-left:4px;padding-right:4px}
  .mobile-settings-nav.active{background:#1e4131;color:#62e4a7}
 }
+
+/* Editable supplier catalogs — shared by Order Counter and Reem's Items List. */
+.order-add-form{padding:16px 17px;background:#f7fbf8;border-bottom:1px solid var(--stroke,#e5ebe7)}
+.order-add-form>label{display:block;font-size:12px;font-weight:800;color:var(--ink,#172b24);margin-bottom:9px}
+.order-add-fields{display:flex;gap:9px;align-items:stretch}
+.order-add-fields>.form-input{flex:1;min-width:0}
+.order-add-fields>.btn{flex-shrink:0}
+.order-add-form small{font-size:10px;line-height:1.6;color:var(--muted,#73847e);display:block;margin-top:8px}
+.order-remove-btn{border:1px solid #f3cecd;color:#a7423f;background:#fff7f7;font-weight:750;font-size:19px;display:grid;place-items:center;min-width:31px;width:31px;height:34px;border-radius:9px;flex-shrink:0;line-height:1}
+.order-remove-btn:hover,.order-remove-btn:focus-visible{background:#ffe9e7;border-color:#e7a5a2;outline:2px solid transparent}
+.order-removed{border-top:1px solid var(--stroke,#e5ebe7);padding:13px 17px 16px;background:#fafcfa}
+.order-removed summary{cursor:pointer;font-size:12px;font-weight:800;color:#42634f;list-style-position:inside}
+.order-removed-list{padding-top:11px;display:grid;gap:7px}
+.order-removed-item{display:flex;align-items:center;justify-content:space-between;gap:11px;border:1px solid #e1e9e4;padding:9px 11px;border-radius:10px;background:white}
+.order-removed-item span{font-size:12px;overflow-wrap:anywhere;min-width:0}
+.order-removed-item .btn{min-width:70px}
+.order-removed-list>p{margin:4px 0;color:var(--muted,#73847e);font-size:11px}
+@media(max-width:600px){
+ .order-add-form{padding:12px}
+ .order-add-fields{gap:7px}
+ .order-add-fields>.btn{padding:9px 11px}
+ .order-remove-btn{min-width:29px;width:29px;height:33px}
+ .order-item{flex-wrap:wrap;align-items:center}
+ .order-product-info{flex-basis:125px}
+ .order-stepper{margin-left:auto}
+}
