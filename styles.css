@@ -419,3 +419,13 @@
  .order-message-fields{grid-template-columns:1fr;gap:10px}
  .order-result{min-height:230px}
 }
+
+/* Mobile Settings is pinned, while the other tabs remain horizontally swipeable. */
+@media(max-width:830px){
+ .mobile-bar{overflow:hidden;justify-content:flex-start;gap:0;padding-left:0}
+ .mobile-nav-scroll{display:flex;align-items:center;min-width:0;flex:1 1 auto;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+ .mobile-nav-scroll::-webkit-scrollbar{display:none}
+ .mobile-nav-scroll>.mobile-nav{flex:0 0 75px;min-width:75px}
+ .mobile-settings-nav{flex:0 0 74px;min-width:74px;align-self:stretch;justify-content:center;border-left:1px solid rgba(178,222,194,.22);background:#10251d;padding-left:4px;padding-right:4px}
+ .mobile-settings-nav.active{background:#1e4131;color:#62e4a7}
+}
