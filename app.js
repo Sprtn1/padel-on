@@ -1217,7 +1217,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'reem-back':
   if(!canUseOrderLists())throw Error('Authorized staff only.');
   state.tab='settings';render();window.scrollTo({top:0,behavior:'instant'});break;
- case 'reem-filter':case 'reem-step':case 'reem-clear':case 'reem-copy':
+ case 'reem-filter':case 'reem-step':case 'reem-clear':case 'reem-copy':case 'reem-remove-item':case 'reem-restore-item':
   if(state.tab!=='reem-items'||!canUseOrderLists())throw Error('Authorized staff only.');
   if(await reemItems.reemAction(target,toast))render();
   break;
@@ -1227,7 +1227,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'order-back':
   if(!canUseOrderLists())throw Error('Authorized staff only.');
   state.tab='settings';render();window.scrollTo({top:0,behavior:'instant'});break;
- case 'order-filter':case 'order-step':case 'order-clear':case 'order-copy':
+ case 'order-filter':case 'order-step':case 'order-clear':case 'order-copy':case 'order-remove-item':case 'order-restore-item':
   if(state.tab!=='order-counter'||!canUseOrderLists())throw Error('Authorized staff only.');
   if(await orderCounter.orderAction(target,toast))render();
   break;
@@ -1406,6 +1406,17 @@ document.addEventListener('click',async e=>{
  const action=e.target.closest('[data-action]');if(action){try{await handleAction(action)}catch(err){toast(err.message,true)}}
 });
 document.addEventListener('submit',async e=>{
+ if(e.target.dataset?.save==='order-add-item' || e.target.dataset?.save==='reem-add-item'){
+  e.preventDefault();
+  const isReem=e.target.dataset.save==='reem-add-item';
+  if(!canUseOrderLists() || state.tab!==(isReem?'reem-items':'order-counter')){
+   toast('Authorized staff only.',true);return;
+  }
+  const name=new FormData(e.target).get('item_name');
+  const ok=isReem?reemItems.reemAddItem(name,toast):orderCounter.orderAddItem(name,toast);
+  if(ok)render();
+  return;
+ }
  if(e.target.id==='login-form'){
  e.preventDefault();if(working)return;working=true;const f=new FormData(e.target);const button=e.target.querySelector('[type=submit]');button.disabled=true;button.textContent='Signing in…';
  try{await api.login(f.get('email'),f.get('password'));beginStaffSession();await loadData(true)}catch(err){renderAuth(err.message)}finally{working=false}return;
