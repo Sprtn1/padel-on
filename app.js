@@ -1,6 +1,7 @@
 // Each page load uses a fresh module graph to avoid stale GitHub Pages assets.
 const assetVersion = new URL(import.meta.url).searchParams.get('v') || Date.now().toString(36);
 const api = await import(`./lib/api.js?v=${assetVersion}`);
+const orderCounter = await import(`./lib/order-counter-ui.js?v=${assetVersion}`);
 const {getWeeklyStatus,getMonthFinance} = await import(`./lib/logic.js?v=${assetVersion}`);
 const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD,commission} = await import(`./lib/date.js?v=${assetVersion}`);
 const app=document.getElementById('app');
@@ -88,7 +89,7 @@ window.addEventListener('storage',event=>{
 window.addEventListener('pageshow',checkStaffInactivity);
 setInterval(checkStaffInactivity,5000);
 
-function titleFor(){return tabs.find(x=>x[0]===state.tab)?.[1]||'Dashboard'}
+function titleFor(){return state.tab==='order-counter'?'Order Counter':tabs.find(x=>x[0]===state.tab)?.[1]||'Dashboard'}
 function today(){return todayBeirut()}
 function normalMembers(){return state.members.filter(m=>m.active&&!m.unlimited)}
 function status(m,date=today()){const past=state.historyWeek!==weekStart(today())&&weekStart(date)===state.historyWeek?state.historyData:null;return getWeeklyStatus(m,date,state.balances,past?.games||state.games,past?.resets||state.resets);}
@@ -750,9 +751,10 @@ function adminAccountManagementCards(){
  ${btn('Remove Account','settings-cafe-remove','btn-danger',!cafe||cafe.deleted_at||!cafeZero?'disabled':'')}
  ${btn('Restore Account','settings-cafe-restore','btn-light',!cafe||!cafe.deleted_at?'disabled':'')}</div></article>`;
 }
-function settingsPage(){const admin=state.staff?.role==='admin';return `${heading('Administration','Settings','Manage allowances, update players, and protect sensitive changes.',btn(`${icon('logout')} Sign out`,'signout','btn-light'))}<div class="notice warn">${icon('shield')} Manual resets are verified by a server-side Supabase Edge Function. The reset code is never exposed in the public website files.</div><div class="settings-grid"><article class="panel settings-box"><h3>Team roster</h3><p>Create team members, edit weekly allowances, and deactivate members while keeping their history.</p>${btn(`${icon('plus')} Add Member`,'new-member','btn-primary',admin?'':'disabled')}${btn(`${icon('edit')} Edit Member`,'choose-member-edit','btn-light',admin?'':'disabled')}</article><article class="panel settings-box"><h3>Manual weekly reset</h3><p>Reset a member or everyone for the active week. A reset changes the counting baseline but does not remove game records.</p>${btn('Reset One Member','reset-one','btn-light',admin?'':'disabled')}${btn('Reset All Members','reset-all','btn-danger',admin?'':'disabled')}</article><article class="panel settings-box"><h3>Database & security</h3><p>Live records use Supabase with Row-Level Security. Administrators can manage the roster and settlements.</p><div class="flex">${tag('Connected','green')}${tag((state.staff?.role||'Staff').toUpperCase(),'gray')}</div></article><article class="panel settings-box"><h3>Financial archive</h3><p>Matchmaking records are retained indefinitely unless deleted by an authorized staff member. Download a monthly CSV for your records.</p>${btn(`${icon('download')} Export Selected Month`,'export-finance','btn-light')}</article>${admin?adminAccountManagementCards():''}</div>${admin?'<div class="archive-note">To add new staff accounts, create them in Supabase Auth and authorize them in the staff_profiles table. Do not share login passwords.</div>':''}`}
-function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'debts':return debtPage();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();default:return dashboard()}}
+function settingsPage(){const admin=state.staff?.role==='admin';return `${heading('Administration','Settings','Manage allowances, update players, and protect sensitive changes.',btn(`${icon('logout')} Sign out`,'signout','btn-light'))}<div class="notice warn">${icon('shield')} Manual resets are verified by a server-side Supabase Edge Function. The reset code is never exposed in the public website files.</div><div class="settings-grid"><article class="panel settings-box"><h3>Team roster</h3><p>Create team members, edit weekly allowances, and deactivate members while keeping their history.</p>${btn(`${icon('plus')} Add Member`,'new-member','btn-primary',admin?'':'disabled')}${btn(`${icon('edit')} Edit Member`,'choose-member-edit','btn-light',admin?'':'disabled')}</article><article class="panel settings-box"><h3>Manual weekly reset</h3><p>Reset a member or everyone for the active week. A reset changes the counting baseline but does not remove game records.</p>${btn('Reset One Member','reset-one','btn-light',admin?'':'disabled')}${btn('Reset All Members','reset-all','btn-danger',admin?'':'disabled')}</article><article class="panel settings-box"><h3>Database & security</h3><p>Live records use Supabase with Row-Level Security. Administrators can manage the roster and settlements.</p><div class="flex">${tag('Connected','green')}${tag((state.staff?.role||'Staff').toUpperCase(),'gray')}</div></article><article class="panel settings-box"><h3>Financial archive</h3><p>Matchmaking records are retained indefinitely unless deleted by an authorized staff member. Download a monthly CSV for your records.</p>${btn(`${icon('download')} Export Selected Month`,'export-finance','btn-light')}</article>${admin?'<article class="panel settings-box"><h3>Order Counter</h3><p>Count stock items, prepare a complete restocking message, and copy it for WhatsApp.</p>'+btn(icon('list')+' Open Order Counter','open-order-counter','btn-primary')+'</article>':''}${admin?adminAccountManagementCards():''}</div>${admin?'<div class="archive-note">To add new staff accounts, create them in Supabase Auth and authorize them in the staff_profiles table. Do not share login passwords.</div>':''}`}
+function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'debts':return debtPage();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return state.staff?.role==='admin'&&api.getSession()?.access_token?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
 function render(){
+ if(state.tab==='order-counter'&&(state.staff?.role!=='admin'||!api.getSession()?.access_token))state.tab='settings';
  const searchFocus=state.globalSearchOpen&&document.activeElement?.id==='global-search-input';
  const cursor=searchFocus?document.activeElement.selectionStart:null;
  app.innerHTML=shell();
@@ -1207,6 +1209,16 @@ function exportFinance(){
 }
 async function handleAction(target){const act=target.dataset.action,id=target.dataset.id;
  switch(act){
+ case 'open-order-counter':
+  if(state.staff?.role!=='admin'||!api.getSession()?.access_token)throw Error('Administrators only.');
+  state.tab='order-counter';state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});break;
+ case 'order-back':
+  if(state.staff?.role!=='admin'||!api.getSession()?.access_token)throw Error('Administrators only.');
+  state.tab='settings';render();window.scrollTo({top:0,behavior:'instant'});break;
+ case 'order-filter':case 'order-step':case 'order-clear':case 'order-copy':
+  if(state.tab!=='order-counter'||state.staff?.role!=='admin'||!api.getSession()?.access_token)throw Error('Administrators only.');
+  if(await orderCounter.orderAction(target,toast))render();
+  break;
  case 'management-alert-toggle':
   state.alertExpanded=!state.alertExpanded;render();break;
  case 'management-alert-open':{
@@ -1373,7 +1385,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
  if(e.target.id==='modal-backdrop'){closeModal();return;}
- const tab=e.target.closest('[data-tab]');if(tab){state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard')loadClubSources();if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();
+ const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard')loadClubSources();if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();
  if(state.tab==='settings'&&state.staff?.role==='admin'){
   await Promise.all([loadPrivateClients(),loadDebtData()]);
   if(state.tab==='settings'&&api.getSession()?.access_token)render();
@@ -1395,6 +1407,16 @@ document.addEventListener('submit',async e=>{
  }
 });
 document.addEventListener('input',e=>{
+ if(e.target.dataset?.orderInput && state.tab==='order-counter' && state.staff?.role==='admin' && api.getSession()?.access_token){
+  const type=orderCounter.orderInput(e.target);
+  if(type==='search'){
+   const cursor=e.target.selectionStart;
+   render();
+   const input=document.getElementById('order-search');
+   input?.focus();if(cursor!==null)input?.setSelectionRange(cursor,cursor);
+  }
+  return;
+ }
  if(e.target.id==='global-search-input'){
   state.globalSearchQuery=e.target.value;
   updateGlobalSearchResults();return;
@@ -1429,6 +1451,7 @@ function updateQuickPreview(){
  else button.disabled=false;
 }
 document.addEventListener('change',e=>{
+ if(e.target.dataset?.orderInput==='quantity' && state.tab==='order-counter' && state.staff?.role==='admin' && api.getSession()?.access_token){render();return;}
  if(e.target.id==='settings-private-account'){state.settingsPrivateAccountId=e.target.value;render();return}
  if(e.target.id==='settings-cafeteria-account'){state.settingsCafeteriaAccountId=e.target.value;render();return}
 
