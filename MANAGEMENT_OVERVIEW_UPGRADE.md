@@ -70,7 +70,7 @@ Before daily use, verify:
 4. Monthly training attendance prevents a member from being listed as untrained after attendance is recorded.
 5. Monthly financial CSV agrees with its source ledgers and does not add service charges to payments as if both were cash received.
 6. Global search finds a member, private client by numeric ID, cafeteria account and Other Benefits player.
-7. Global search is inaccessible when signed out and the 30-minute inactivity logout remains active.
+7. Global search is inaccessible when signed out and the 6-hour inactivity logout remains active.
 8. Existing week resets, Private Sessions and Cafeteria transactions continue working unchanged.
 
 A live browser and Supabase authorization test is still recommended; code-level tests do not validate your actual hosted RLS deployment.
