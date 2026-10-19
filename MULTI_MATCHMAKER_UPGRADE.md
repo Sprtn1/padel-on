@@ -38,7 +38,7 @@ If a person's rate is different, confirm it with management **before** adding th
 
 - Supabase RLS restricts the `matchmakers` directory to authenticated PADEL ON staff. Game and payment permissions remain as they were.
 - Existing Nazih rows and settlements are associated with a single stable ID, not duplicated or reset.
-- The original 15% calculator, weekly member entitlements, monthly training sessions, 30-minute inactivity sign-out, and periodic data refresh are unchanged.
+- The original 15% calculator, weekly member entitlements, monthly training sessions, 6-hour inactivity sign-out, and periodic data refresh are unchanged.
 - No reset code or Supabase secret needs to be entered into GitHub.
 
 ## Validate before daily use
