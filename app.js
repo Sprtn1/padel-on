@@ -35,11 +35,11 @@ const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Risi
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
 const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
-// Staff inactivity policy: thirty minutes without user interaction logs out every open tab.
+// Staff inactivity policy: six hours without user interaction logs out every open tab.
 // Background database polling and token refreshes never extend this timer.
 let lastKnownWeek=weekStart(todayBeirut());
 let lastKnownMonth=monthKey(todayBeirut());
-const IDLE_LIMIT_MS=30*60*1000;
+const IDLE_LIMIT_MS=6*60*60*1000;
 const IDLE_ACTIVITY_KEY='padelon_staff_last_activity_v1';
 const AUTH_STORAGE_KEY='padelon_auth_v1';
 let lastActivityWrite=0;
@@ -65,7 +65,7 @@ async function autoSignOut(){
  state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';
  // api.signOut clears the local authentication token before contacting Supabase.
  const remoteLogout=api.signOut();
- renderAuth('Signed out after 30 minutes of inactivity. Please sign in again.');
+ renderAuth('Signed out after 6 hours of inactivity. Please sign in again.');
  try{await remoteLogout}finally{idleLogoutStarted=false}
 }
 function activityFromStaff(){
