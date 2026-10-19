@@ -58,7 +58,7 @@ There is **no relationship to private coaching credit**, so a client can have a 
 - Multiple staff payment submissions for the same person are serialized by a database row lock. Payments above the actual balance are rejected, even during concurrent updates.
 - Entries are never hard-deleted. Admin voids store who corrected an entry, when and why, and also write an audit record.
 - No client names, debt amounts, credentials, or cashier details are included in public SQL.
-- The existing 30-minute inactivity logout and 30-second refresh are retained.
+- The current 6-hour inactivity logout and 30-second refresh are retained.
 
 ## Validation before daily use
 
