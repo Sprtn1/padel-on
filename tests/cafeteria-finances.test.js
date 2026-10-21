@@ -136,3 +136,29 @@ test('saving closing cash updates the daily reconciliation without a manual good
  assert.match(widget.page(),/\$80\.00/);
  assert.doesNotMatch(widget.page(),/Enter closing cash first/);
 });
+
+test('separate paid-player updates can save concurrently without overwriting each other',async()=>{
+ const entry={
+  id:'basketball-1',category:'basketball_courts',name:'Match',
+  amount_cents:3600,checkmarks:[false,false,false,false,false,false]
+ };
+ const calls=[];
+ const api={
+  getSession:()=>({access_token:'token'}),
+  listAll:async(table)=>table==='cafeteria_finance_entries'?[entry]:[],
+  rpc:async(name,args)=>{calls.push({name,...args});await Promise.resolve();}
+ };
+ const widget=createCafeteriaFinances({
+  api,heading:()=>'',icon:()=>'',amount:n=>'$'+n/100,today:()=> '2026-10-21',
+  addDays:()=> '2026-10-20',rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const player1={dataset:{cafeMarker:'basketball-1',markerIndex:'0'},checked:true};
+ const player6={dataset:{cafeMarker:'basketball-1',markerIndex:'5'},checked:true};
+ await Promise.all([widget.change(player1),widget.change(player6)]);
+ assert.deepEqual(calls.map(c=>[c.name,c.p_player_no,c.p_paid]),[
+  ['cafeteria_finance_set_player_paid',1,true],
+  ['cafeteria_finance_set_player_paid',6,true]
+ ]);
+ assert.deepEqual(entry.checkmarks,[true,false,false,false,false,true]);
+});
