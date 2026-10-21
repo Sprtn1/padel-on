@@ -576,3 +576,40 @@ test('Whish table displays one summed row per name with expandable individual tr
  assert.equal(opening,60+30+10+500-200-100);
  assert.match(adminHtml,/Goods Sold \(automatic\)/);
 });
+
+test('Arabic PDF export action downloads the selected daily data without writing documents to Supabase',async()=>{
+ const seen=[],writes=[];
+ const day='2026-10-21';
+ const cash=[{id:'c1',entry_date:day,category:'padel_courts',amount_cents:4000,name:'Game A'}];
+ const receipts=[{id:'p1',entry_date:day,entry_type:'session',client_id:'id1',paid_cents:1500}];
+ const wallet=[{id:'w1',entry_date:day,entry_type:'deposit',name:'Goods Sold',amount_cents:700}];
+ const widget=createCafeteriaFinances({
+  api:{
+   getSession:()=>({access_token:'token'}),
+   listAll:async(table)=>{
+    if(table==='cafeteria_finance_entries')return cash;
+    if(table==='cafeteria_finance_days')return [{closing_cash_cents:5000}];
+    if(table==='private_ledger_entries')return receipts;
+    if(table==='private_clients')return [{id:'id1',name:'Ali',client_code:'CL-1'}];
+    if(table==='whish_ledger_entries')return wallet;
+    if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
+    throw Error('Unexpected source '+table);
+   },
+   rpc:async(...args)=>writes.push(args)
+  },
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=>day,addDays:()=> '2026-10-20',rerender:()=>{},toast:()=>{},
+  isAdmin:()=>false,exportArabicPdf:payload=>{seen.push(payload);return 2}
+ });
+ await widget.load();
+ assert.match(widget.page(),/data-action="cafe-export-arabic-pdf"/);
+ await widget.action({dataset:{action:'cafe-export-arabic-pdf'}});
+ assert.equal(seen.length,1);
+ assert.equal(seen[0].date,day);
+ assert.equal(seen[0].closingCash,5000);
+ assert.equal(seen[0].whishOpening,60);
+ assert.equal(seen[0].rows[0].name,'Game A');
+ assert.equal(seen[0].privatePayments[0].clientCode,'CL-1');
+ assert.equal(seen[0].whishRows[0].name,'Goods Sold');
+ assert.equal(writes.length,0);
+});
