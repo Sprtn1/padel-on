@@ -8,7 +8,9 @@ import {
 } from '../lib/cafeteria-finances.js';
 
 test('all cashbook categories exist and fixed rental price is $2',()=>{
- assert.equal(CAFE_CATEGORIES.length,14);
+ assert.equal(CAFE_CATEGORIES.length,16);
+ const rental=CAFE_CATEGORIES.findIndex(c=>c.id==='racket_rental');
+ assert.deepEqual(CAFE_CATEGORIES.slice(rental+1,rental+3).map(c=>c.id),['clothes','racket_sold']);
  assert.equal(CAFE_RENTAL_PRICE_CENTS,200);
  assert.deepEqual(CAFE_CATEGORIES.filter(x=>x.kind==='court').map(x=>x.label),['Padel Courts','Pickleball Courts','Basketball Courts']);
 });
@@ -281,4 +283,47 @@ test('private payments show unassigned client IDs clearly and escape client fiel
  assert.match(paymentsTable,/<td>&lt;Client A&gt;<\/td><td>Not assigned<\/td>/);
  assert.match(paymentsTable,/<td>Client B<\/td><td>B&amp;007<\/td>/);
  assert.equal((paymentsTable.match(/<tr>/g)||[]).length,3);
+});
+
+test('Clothes and Racket Sold support repeated independently priced transactions',()=>{
+ const clothes1=cafeEntryFromForm('clothes',{amount:'12.50'});
+ const clothes2=cafeEntryFromForm('clothes',{amount:'19.00'});
+ const racket1=cafeEntryFromForm('racket_sold',{amount:'80.00',name:'Blue model'});
+ const racket2=cafeEntryFromForm('racket_sold',{amount:'125.99'});
+ assert.deepEqual([clothes1.amount_cents,clothes2.amount_cents,racket1.amount_cents,racket2.amount_cents],[1250,1900,8000,12599]);
+ assert.deepEqual([clothes1.quantity,racket1.quantity],[1,1]);
+ assert.deepEqual([clothes1.unit_price_cents,racket1.unit_price_cents],[0,0]);
+ assert.equal(racket1.name,'Blue model');
+ const totals=cafeReconciliation([clothes1,clothes2,racket1,racket2],30000);
+ assert.equal(totals.income,23749);
+ assert.equal(totals.goodsSold,6251);
+ assert.equal(totals.count,4);
+ assert.throws(()=>cafeEntryFromForm('clothes',{amount:'0'}));
+ assert.throws(()=>cafeEntryFromForm('racket_sold',{amount:'not a number'}));
+});
+test('Clothes and Racket Sold appear below Racket Rental and can add multiple entries',async()=>{
+ const saved=[
+  {id:'c1',category:'clothes',amount_cents:1500,name:'Shirt'},
+  {id:'c2',category:'clothes',amount_cents:2900,name:'Shorts'},
+  {id:'r1',category:'racket_sold',amount_cents:8500,name:'Racket model A'},
+  {id:'r2',category:'racket_sold',amount_cents:9000,name:'Racket model B'}
+ ];
+ const widget=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),listAll:async(table)=>
+   table==='cafeteria_finance_entries'?saved:table==='cafeteria_finance_days'?[{closing_cash_cents:30000}]:[]},
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=> '2026-10-21',addDays:()=> '2026-10-20',rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const html=widget.page();
+ assert.ok(html.indexOf('<h3>Racket Rental</h3>')<html.indexOf('<h3>Clothes</h3>'));
+ assert.ok(html.indexOf('<h3>Clothes</h3>')<html.indexOf('<h3>Racket Sold</h3>'));
+ assert.match(html,/data-category="clothes"/);
+ assert.match(html,/data-category="racket_sold"/);
+ assert.match(html,/Shirt/);
+ assert.match(html,/Shorts/);
+ assert.match(html,/Racket model A/);
+ assert.match(html,/Racket model B/);
+ assert.match(html,/\$44\.00/);
+ assert.match(html,/\$175\.00/);
 });
