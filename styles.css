@@ -473,3 +473,70 @@
 .settings-followup-column{display:grid;grid-auto-rows:max-content;align-content:start;gap:20px;min-width:0}
 .settings-followup-column>.panel{min-width:0}
 @media(max-width:560px){.settings-followup-grid{grid-template-columns:1fr}}
+
+
+/* Cafeteria Finances – compact daily cashbook inspired by the handwritten sheet. */
+.cafe-datebar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid var(--stroke);border-radius:15px;padding:15px 18px;margin:0 0 17px}
+.cafe-datebar>div:first-child{display:grid;gap:5px}
+.cafe-datebar strong{display:flex;gap:8px;align-items:center;font-size:13px;color:#233f33}
+.cafe-datebar strong svg{width:17px;height:17px;color:var(--green)}
+.cafe-datebar small{color:var(--muted);font-size:11px}
+.cafe-date-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.cafe-date-actions input{height:40px;border:1px solid #dce7df;border-radius:9px;padding:0 10px;color:#224338;font-weight:750;background:#fff;max-width:160px}
+.cafe-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.cafe-summary article{padding:18px 19px;border:1px solid #e0ebe3;border-radius:14px;background:#fff;display:grid;gap:9px}
+.cafe-summary span{color:var(--muted);font-size:11px;font-weight:700}
+.cafe-summary strong{font:800 clamp(17px,2vw,25px) Manrope,sans-serif;letter-spacing:-.5px;color:#1c3e2d}
+.cafe-summary article:nth-child(2) strong{color:#a45940}
+.cafe-summary article:nth-child(3){background:#edf9f2;border-color:#d4eddf}
+.cafe-note{background:#f2f8f4;border:1px solid #dceae0;border-radius:11px;display:flex;align-items:flex-start;gap:9px;padding:11px 14px;color:#577268;font-size:11px;line-height:1.6}
+.cafe-note svg{color:#25885d;width:16px;height:16px}
+.cafe-section-title{margin:25px 0 13px;font:800 16px Manrope,sans-serif;color:#1b3930}
+.cafe-court-grid,.cafe-category-grid{display:grid;gap:15px;align-items:start}
+.cafe-court-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cafe-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cafe-category-card{padding:19px 18px;min-width:0}
+.cafe-category-top{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:14px}
+.cafe-category-top h3{font:800 13px Manrope,sans-serif;color:#203c30;margin:0}
+.cafe-category-top>strong{color:#14865a;background:#eaf8ef;border-radius:8px;padding:6px 9px;font-size:12px;white-space:nowrap}
+.cafe-entry-form{border-radius:11px;padding:13px;background:#f6faf7;border:1px solid #edf2ed;margin-bottom:12px}
+.cafe-form-fields{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin-bottom:10px}
+.cafe-input-label{display:grid;gap:6px;color:#526c5e;font-size:11px;font-weight:700;min-width:105px;flex:1 1 110px}
+.cafe-input-label input{width:100%;min-width:0;height:38px;padding:8px 10px;border:1px solid #dfe9e1;border-radius:9px;color:#254438;font-size:12px;background:#fff}
+.cafe-input-label input:focus,.cafe-date-actions input:focus{border-color:#19a269;outline:2px solid #dcf5e4}
+.cafe-fixed-rate{display:grid;gap:5px;color:#6a8675;font-size:10px;padding-bottom:8px}
+.cafe-fixed-rate strong{font-size:12px;color:#254938}
+.cafe-entry-form>.btn{min-height:34px;white-space:normal}
+.cafe-entry-form>.btn svg{height:15px;width:15px}
+.cafe-new-marks{display:flex;gap:7px;align-items:center;justify-content:space-between;width:100%;flex-wrap:wrap;font-size:11px;color:#728679}
+.cafe-marks{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.cafe-marks label{display:flex;gap:2px;align-items:center;font-size:10px;color:#5e7d68;cursor:pointer}
+.cafe-marks input{width:16px;height:16px;margin:0;accent-color:#148c60;cursor:pointer}
+.cafe-marks span{font-size:10px}
+.cafe-ledger-entry{border-top:1px solid #edf1ed;padding:10px 0;display:grid;gap:7px}
+.cafe-ledger-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cafe-entry-description{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
+.cafe-entry-description strong{font-size:11px;color:#2b4739}
+.cafe-entry-description small{font-size:10px;color:#8a9b92}
+.cafe-entry-actions{display:flex;align-items:center;gap:9px;flex-shrink:0}
+.cafe-entry-actions b{font-size:12px;color:#214737}
+.cafe-remove{width:25px;height:25px;display:grid;place-items:center;border:0;border-radius:7px;background:#fff0ed;color:#be655b}
+.cafe-remove svg{height:13px;width:13px}
+.cafe-no-entries{padding:8px 0 3px;color:#a1b0a6;font-size:11px}
+.cafe-goods-pending{margin-top:18px;padding:18px;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.cafe-goods-pending h3{font-size:13px;color:#1e4232;margin:0 0 6px}
+.cafe-goods-pending p{font-size:11px;color:#70887b;line-height:1.6;margin:0}
+.cafe-goods-pending>span{font-size:10px;font-weight:800;color:#997938;background:#fff6de;border:1px solid #f4e9c9;border-radius:20px;padding:7px 10px}
+.cafe-footnote{color:#8ca296;font-size:11px;line-height:1.7;padding:10px 1px}
+@media(max-width:1160px){.cafe-court-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:830px){.cafe-court-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:730px){.cafe-court-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){
+ .cafe-court-grid,.cafe-category-grid{grid-template-columns:1fr}
+ .cafe-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .cafe-summary article{padding:14px}
+ .cafe-datebar{padding:13px}
+ .cafe-date-actions{width:100%}
+ .cafe-date-actions input{max-width:unset;flex:1;min-width:125px}
+ .cafe-category-card{padding:16px}
+}
