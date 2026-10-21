@@ -1444,7 +1444,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'prev-month':state.month=shiftMonth(state.month,-1);render();break;
  case 'next-month':if(state.month<monthKey(today())){state.month=shiftMonth(state.month,1);render()}break;
  case 'export-finance':exportFinance();break;
- case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
+ case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;cafeteriaFinances.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
  }}
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
@@ -1600,6 +1600,15 @@ setInterval(()=>{
    if(state.trainingMonth===lastKnownMonth){state.trainingMonth=currentMonth;state.trainingLoadedMonth=null;}
    lastKnownMonth=currentMonth;
  }
- if(api.configured&&api.getSession()&&state.staff&&!state.modal&&!working&&!document.hidden)loadData();
+ if(api.configured&&api.getSession()&&state.staff&&!state.modal&&!working&&!document.hidden){
+  // Keep unsaved daily cashbook forms intact while staff is entering transactions.
+  if(state.tab==='cafeteria-finances'){
+   if(!document.activeElement?.closest('.cafe-entry-form'))void cafeteriaFinances.load(true);
+  }else loadData();
+ }
 },30000);
-document.addEventListener('visibilitychange',()=>{if(document.hidden)return;checkStaffInactivity();if(!idleExpired()&&api.getSession()&&state.staff&&!state.modal)loadData()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)return;checkStaffInactivity();if(!idleExpired()&&api.getSession()&&state.staff&&!state.modal){
+  if(state.tab==='cafeteria-finances'){
+   if(!document.activeElement?.closest('.cafe-entry-form'))void cafeteriaFinances.load(true);
+  }else loadData();
+ }});
