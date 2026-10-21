@@ -540,3 +540,29 @@
  .cafe-date-actions input{max-width:unset;flex:1;min-width:125px}
  .cafe-category-card{padding:16px}
 }
+
+/* End-of-day cash drawer and automatically reconciled cafeteria sales. */
+.cafe-closing-box{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:19px 21px;margin:17px 0 13px}
+.cafe-closing-box h3{font-size:14px;font-weight:800;color:#1d3930;margin:0 0 7px}
+.cafe-closing-box p{font-size:11px;color:#758c7e;line-height:1.6;margin:0;max-width:470px}
+.cafe-closing-form{display:flex;align-items:flex-end;gap:9px;flex-wrap:wrap}
+.cafe-closing-form .cafe-input-label{min-width:145px;flex:1 1 145px}
+.cafe-closing-form .btn{min-height:38px}
+.cafe-closing-form .btn svg{width:15px;height:15px}
+.cafe-goods-pending .cafe-goods-result{display:grid;gap:5px;justify-items:end}
+.cafe-goods-result strong{font:800 23px Manrope,sans-serif;color:#1b8355;letter-spacing:-.4px}
+.cafe-goods-result span{color:#799183;font-size:11px}
+.cafe-goods-pending.difference{border-color:#edb5af;background:#fffaf8}
+.cafe-goods-pending.difference .cafe-goods-result strong{color:#b0443c}
+.cafe-goods-pending.reconciled{background:#f5fcf8;border-color:#cfe9dc}
+.cafe-difference-warning{font-weight:750;color:#b0443c!important;margin-top:7px!important}
+.cafe-existing-marks{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
+.cafe-existing-marks>span{font-size:10px;color:#819488}
+.cafe-summary article:nth-child(4) strong{font-size:clamp(15px,1.6vw,22px);overflow-wrap:anywhere}
+@media(max-width:560px){
+ .cafe-closing-box{padding:15px;align-items:stretch}
+ .cafe-closing-form{width:100%}
+ .cafe-closing-form .btn{flex:1}
+ .cafe-goods-pending .cafe-goods-result{justify-items:start}
+ .cafe-goods-result strong{font-size:21px}
+}
