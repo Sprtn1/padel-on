@@ -4,7 +4,7 @@ import {
   CAFE_CATEGORIES, CAFE_RENTAL_PRICE_CENTS, cafeMoneyCents,
   cafeQuantity, cafeEntryFromForm, cafeTotals, cafeReconciliation,
   cafePlayerCount, cafeNonnegativeCents, cafePrivatePayments,
-  whishSummary, whishFormEntry,
+  whishSummary, whishFormEntry, WHISH_DESCRIPTION_PRESETS,
   cafePrivatePaymentsTotal, createCafeteriaFinances
 } from '../lib/cafeteria-finances.js';
 
@@ -466,4 +466,54 @@ test('Whish payments can be added repeatedly and update balance with ledger date
  assert.match(html,/Alice/);
  assert.match(html,/Bob/);
  assert.match(html,/Supplies/);
+});
+
+test('Whish preset names are correct and offered only in their own sections',async()=>{
+ assert.deepEqual(WHISH_DESCRIPTION_PRESETS.deposit,['Goods Sold','Padel Courts']);
+ assert.deepEqual(WHISH_DESCRIPTION_PRESETS.withdrawal,['Transfer from Whish to Miscellaneous Cash Box']);
+ const widget=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),listAll:async(table)=>table==='whish_wallet_settings'?[{opening_balance_cents:60}]:[]},
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),today:()=> '2026-10-21',
+  addDays:()=> '2026-10-20',rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const page=widget.page();
+ const deposit=page.split('<h3>Whish Deposits</h3>')[1].split('</section>')[0];
+ const withdrawal=page.split('<h3>Whish Withdrawals</h3>')[1].split('</section>')[0];
+ assert.match(deposit,/Goods Sold/);
+ assert.match(deposit,/Padel Courts/);
+ assert.doesNotMatch(deposit,/Miscellaneous Cash Box/);
+ assert.match(withdrawal,/Transfer from Whish to Miscellaneous Cash Box/);
+ assert.doesNotMatch(withdrawal,/Goods Sold/);
+ assert.match(deposit,/name="name" required maxlength="120"/);
+ assert.match(withdrawal,/name="amount" required type="number"/);
+ assert.match(page,/data-action="cafe-whish-preset"/);
+});
+
+test('Whish preset fills name but allows custom editing and never saves on click',async()=>{
+ const calls=[];
+ const widget=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),listAll:async()=>[],rpc:async(...args)=>calls.push(args)},
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),today:()=> '2026-10-21',
+  addDays:()=> '2026-10-20',rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const input={value:'',focus(){this.focused=true}};
+ const form={dataset:{whishType:'deposit'},querySelector:()=>input};
+ const button=(type,index)=>({
+  dataset:{action:'cafe-whish-preset',whishType:type,presetIndex:String(index)},closest:()=>form
+ });
+ await widget.action(button('deposit',0));
+ assert.equal(input.value,'Goods Sold');
+ await widget.action(button('deposit',1));
+ assert.equal(input.value,'Padel Courts');
+ input.value='Custom client transfer';
+ assert.equal(input.value,'Custom client transfer');
+ form.dataset.whishType='withdrawal';
+ await widget.action(button('withdrawal',0));
+ assert.equal(input.value,'Transfer from Whish to Miscellaneous Cash Box');
+ assert.ok(input.focused);
+ assert.equal(calls.length,0);
+ let rejected=false;try{await widget.action(button('withdrawal',22))}catch{rejected=true}
+ assert.ok(rejected);
 });
