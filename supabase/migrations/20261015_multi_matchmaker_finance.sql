@@ -50,7 +50,7 @@ drop policy if exists matchmakers_staff_read on public.matchmakers;
 create policy matchmakers_staff_read on public.matchmakers
  for select to authenticated using(public.is_staff());
 grant select on public.matchmakers to authenticated;
--- Names/rates cannot be modified from the public client, only through trusted SQL.
+-- Names and active status are not client-editable. A later migration allows only admins to update commission_bps through a column-scoped RLS policy.
 
 commit;
 
