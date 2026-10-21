@@ -602,7 +602,8 @@ test('Arabic PDF export action downloads the selected daily data without writing
   isAdmin:()=>false,exportArabicPdf:payload=>{seen.push(payload);return 2}
  });
  await widget.load();
- assert.match(widget.page(),/data-action="cafe-export-arabic-pdf"/);
+ // Export stays implemented but is intentionally not offered in the UI yet.
+ assert.doesNotMatch(widget.page(),/data-action="cafe-export-arabic-pdf"/);
  await widget.action({dataset:{action:'cafe-export-arabic-pdf'}});
  assert.equal(seen.length,1);
  assert.equal(seen[0].date,day);
