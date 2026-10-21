@@ -612,3 +612,16 @@
 .whish-quick-options{display:flex;flex-wrap:wrap;gap:6px}
 .whish-preset-btn{min-height:31px;padding:6px 10px!important;font-size:10px;line-height:1.35;text-align:left;white-space:normal;max-width:100%}
 .whish-preset-btn:hover{border-color:#159367;color:#137a50}
+
+/* Whish: aggregate identical descriptions for the day, preserving each entry underneath. */
+.whish-group-label{font-weight:750;color:#344b3c}
+.whish-group-details{margin-top:7px;max-width:100%;font-size:10px;color:#618070}
+.whish-group-details summary{cursor:pointer;color:#167b53;font-weight:700;line-height:1.5;white-space:normal;list-style-position:inside}
+.whish-group-details summary:hover{text-decoration:underline}
+.whish-group-items{margin-top:8px;padding:6px 8px;background:#f5faf6;border:1px solid #e7eee8;border-radius:8px;min-width:0}
+.whish-group-item{display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:7px;padding:6px 0}
+.whish-group-item+.whish-group-item{border-top:1px solid #e5eee8}
+.whish-group-item>span{min-width:55px;color:#6d8576;font-size:10px}
+.whish-group-item>strong{margin-left:auto;font-size:11px;color:#265b40;white-space:nowrap}
+.whish-group-item .cafe-remove{flex:0 0 25px}
+.whish-correction-hint{font-size:10px;color:#789385;white-space:nowrap}
