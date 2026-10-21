@@ -1458,7 +1458,7 @@ document.addEventListener('click',async e=>{
  const action=e.target.closest('[data-action]');if(action){try{await handleAction(action)}catch(err){toast(err.message,true)}}
 });
 document.addEventListener('submit',async e=>{
- if(e.target.dataset?.cafeSave==='entry'||e.target.dataset?.cafeSave==='closing'){
+ if(['entry','closing','whish'].includes(e.target.dataset?.cafeSave)){
   e.preventDefault();
   if(state.tab!=='cafeteria-finances'||!state.staff){toast('Authorized staff only.',true);return;}
   try{await cafeteriaFinances.submit(e.target)}catch(err){toast(err.message||'Unable to save entry.',true)}
