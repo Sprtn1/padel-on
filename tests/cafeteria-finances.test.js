@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {
   CAFE_CATEGORIES, CAFE_RENTAL_PRICE_CENTS, cafeMoneyCents,
   cafeQuantity, cafeEntryFromForm, cafeTotals, cafeReconciliation,
-  cafePlayerCount, cafeNonnegativeCents, createCafeteriaFinances
+  cafePlayerCount, cafeNonnegativeCents, cafePrivatePayments,
+  cafePrivatePaymentsTotal, createCafeteriaFinances
 } from '../lib/cafeteria-finances.js';
 
 test('all cashbook categories exist and fixed rental price is $2',()=>{
@@ -161,4 +162,94 @@ test('separate paid-player updates can save concurrently without overwriting eac
   ['cafeteria_finance_set_player_paid',6,true]
  ]);
  assert.deepEqual(entry.checkmarks,[true,false,false,false,false,true]);
+});
+
+
+test('private session receipts include paid sessions and deposits, not fees or voids',()=>{
+ const source=[
+  {id:'s1',entry_date:'2026-10-21',entry_type:'session',client_id:'a',session_fee_cents:10000,paid_cents:2500,created_at:'2026-10-21T08:00:00Z'},
+  {id:'d1',entry_date:'2026-10-21',entry_type:'deposit',client_id:'b',deposit_cents:3000,created_at:'2026-10-21T09:00:00Z'},
+  {id:'s2',entry_date:'2026-10-21',entry_type:'session',client_id:'a',session_fee_cents:5000,paid_cents:0},
+  {id:'void',entry_date:'2026-10-21',entry_type:'deposit',client_id:'a',deposit_cents:9999,voided_at:'2026-10-21T12:00:00Z'},
+  {id:'older',entry_date:'2026-10-20',entry_type:'session',client_id:'a',paid_cents:1500},
+ ];
+ const clients=[{id:'a',name:'Alex'}, {id:'b',name:'Sam'}];
+ const receipts=cafePrivatePayments(source,clients,'2026-10-21');
+ assert.deepEqual(receipts.map(r=>[r.id,r.clientName,r.type,r.amount_cents]),[
+  ['s1','Alex','Session payment',2500],
+  ['d1','Sam','Deposit / top-up',3000]
+ ]);
+ assert.equal(cafePrivatePaymentsTotal(receipts),5500);
+ const cashbook=[
+  {category:'padel_courts',amount_cents:6000},
+  {category:'general_payment',amount_cents:1200}
+ ];
+ const totals=cafeReconciliation(cashbook,18000,receipts);
+ assert.equal(totals.income,11500);
+ assert.equal(totals.totalGenerated,19200);
+ assert.equal(totals.goodsSold,7700);
+});
+
+test('private payments render as a read-only daily table and update on refresh',async()=>{
+ let extraPayment=0;
+ const queries=[];
+ const api={
+  getSession:()=>({access_token:'token'}),
+  listAll:async(table,filter)=>{
+   queries.push([table,filter]);
+   if(table==='cafeteria_finance_entries')return [
+    {category:'padel_courts',name:'Court',amount_cents:6000,checkmarks:[false,false,false,false]}
+   ];
+   if(table==='cafeteria_finance_days')return [{closing_cash_cents:12000}];
+   if(table==='private_clients')return [{id:'client1',name:'Jamie & Co'}];
+   if(table==='private_ledger_entries')return [
+    {id:'pay-1',entry_type:'session',entry_date:'2026-10-21',client_id:'client1',paid_cents:2500,session_fee_cents:8000},
+    ...(extraPayment?[{id:'pay-2',entry_type:'deposit',entry_date:'2026-10-21',client_id:'client1',deposit_cents:extraPayment}]:[])
+   ];
+   throw Error('Unexpected source '+table);
+  }
+ };
+ const widget=createCafeteriaFinances({
+  api,heading:()=>'',icon:()=>'',amount:cents=>'$'+(cents/100).toFixed(2),
+  today:()=> '2026-10-21',
+  addDays:()=> '2026-10-20',rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ let html=widget.page();
+ assert.match(html,/Client Private Sessions Payments/);
+ assert.match(html,/Jamie &amp; Co/);
+ assert.match(html,/Session payment/);
+ assert.match(html,/\$25\.00/);
+ // Closing 120, other income 60+25, Goods Sold 35.
+ assert.match(html,/\$35\.00/);
+ assert.ok(queries.some(([table,filter])=>table==='private_ledger_entries'&&filter.startsWith('entry_date=eq.2026-10-21')));
+ const card=html.split('cafe-private-payments-card')[1].split('</section>')[0];
+ assert.doesNotMatch(card,/data-cafe-save/);
+ assert.doesNotMatch(card,/data-action="cafe-void"/);
+ extraPayment=1500;
+ await widget.load(true);
+ html=widget.page();
+ assert.match(html,/Deposit \/ top-up/);
+ assert.match(html,/\$40\.00/);
+ assert.match(html,/\$20\.00/);
+});
+
+test('private-payment feed errors prevent incomplete reconciliation',async()=>{
+ const api={
+  getSession:()=>({access_token:'token'}),
+  listAll:async(table)=>{
+   if(table==='private_ledger_entries')throw Error('Private Sessions temporarily unavailable');
+   if(table==='cafeteria_finance_days')return [{closing_cash_cents:12000}];
+   return [];
+  }
+ };
+ const widget=createCafeteriaFinances({
+  api,heading:()=>'',icon:()=>'',amount:cents=>'$'+(cents/100).toFixed(2),
+  today:()=> '2026-10-21',
+  addDays:()=> '2026-10-20',rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const html=widget.page();
+ assert.match(html,/Private Sessions temporarily unavailable/);
+ assert.doesNotMatch(html,/Goods Sold \(automatic\)/);
 });
