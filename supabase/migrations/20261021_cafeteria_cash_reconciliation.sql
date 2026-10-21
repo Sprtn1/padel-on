@@ -86,7 +86,7 @@ begin
    then raise exception 'Quantity must be between 1 and 9999'; end if;
  if p_unit_price_cents is null or p_unit_price_cents not between 0 and 100000000000
    then raise exception 'Invalid unit price'; end if;
- if array_ndims(v_markers)<>1 or array_length(v_markers,1)<>case when p_category='basketball_courts' then 6 else 4 end or array_position(v_markers,null) is not null
+ if array_ndims(v_markers)<>1 or ((p_category='basketball_courts' and array_length(v_markers,1)<>6) or (p_category<>'basketball_courts' and array_length(v_markers,1)<>4)) or array_position(v_markers,null) is not null
    then raise exception 'Incorrect number of player payment markers'; end if;
  if p_category in ('grips','balls','racket_rental') then
    if p_unit_price_cents<1 or p_amount_cents<>p_quantity*p_unit_price_cents
@@ -128,7 +128,7 @@ begin
  select * into v_previous from public.cafeteria_finance_entries where id=p_entry_id for update;
  if not found or v_previous.voided_at is not null then raise exception 'Entry not found'; end if;
  if p_checkmarks is null or array_ndims(p_checkmarks)<>1
-   or array_length(p_checkmarks,1)<>case when v_previous.category='basketball_courts' then 6 else 4 end
+   or ((v_previous.category='basketball_courts' and array_length(p_checkmarks,1)<>6) or (v_previous.category<>'basketball_courts' and array_length(p_checkmarks,1)<>4))
    or array_position(p_checkmarks,null) is not null
    then raise exception 'Incorrect number of player payment markers'; end if;
  if v_previous.category not in ('padel_courts','pickleball_courts','basketball_courts')
