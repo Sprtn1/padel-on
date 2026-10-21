@@ -4,6 +4,7 @@ const api = await import(`./lib/api.js?v=${assetVersion}`);
 const orderCounter = await import(`./lib/order-counter-ui.js?v=${assetVersion}`);
 const reemItems = await import(`./lib/reem-items-ui.js?v=${assetVersion}`);
 const cafeteriaFinanceModule = await import(`./lib/cafeteria-finances.js?v=${assetVersion}`);
+const arabicDailyPdf = await import(`./lib/arabic-daily-pdf.js?v=${assetVersion}`);
 const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus} = await import(`./lib/logic.js?v=${assetVersion}`);
 const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = await import(`./lib/date.js?v=${assetVersion}`);
 const app=document.getElementById('app');
@@ -40,7 +41,8 @@ const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[
 const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
  api,heading,icon,amount,today,addDays,
  rerender:()=>{if(state.tab==='cafeteria-finances'&&api.getSession()?.access_token)render()},
- toast,isAdmin:()=>state.staff?.role==='admin'
+ toast,isAdmin:()=>state.staff?.role==='admin',
+ exportArabicPdf:data=>arabicDailyPdf.downloadArabicDailySheet(data)
 });
 // Staff inactivity policy: six hours without user interaction logs out every open tab.
 // Background database polling and token refreshes never extend this timer.
