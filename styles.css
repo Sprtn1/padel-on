@@ -581,3 +581,27 @@
 .cafe-auto-payments td:last-child{font-weight:800;text-align:right;white-space:nowrap;color:#16845a}
 .cafe-auto-payments th:last-child{text-align:right}
 .cafe-private-payments-card>.btn{align-self:start}
+
+
+/* Independent Whish wallet ledger, below the physical Payments & Expenses cards. */
+.whish-section{margin-top:25px}
+.whish-section>.cafe-section-title{margin-top:0}
+.whish-note{margin-bottom:13px}
+.whish-balance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px}
+.whish-balance-card,.whish-day-card{padding:18px 20px;display:grid;align-content:start;gap:8px;min-width:0}
+.whish-balance-card{background:#effaf4;border-color:#c9ebd8}
+.whish-balance-card>span,.whish-day-card>span{font-size:11px;font-weight:800;color:#658274}
+.whish-balance-card>strong{font-size:clamp(20px,3vw,28px);font-weight:850;color:#137748;letter-spacing:-.5px}
+.whish-balance-card small,.whish-day-card small{font-size:10px;color:#7d9485;line-height:1.6}
+.whish-day-card>div{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.whish-day-card>div strong{font-size:18px;color:#137d51}
+.whish-day-card>div strong+strong{color:#b35b46}
+.whish-negative{color:#b0443c!important;font-weight:750}
+.whish-tables{align-items:start}
+.whish-transaction-card{min-width:0}
+.whish-transaction-card .cafe-entry-form{margin-bottom:14px}
+.whish-table th:nth-child(2),.whish-table td:nth-child(2){white-space:nowrap;text-align:right}
+.whish-table .whish-action-col,.whish-table td:last-child:has(.cafe-remove){width:72px;text-align:center}
+.whish-table td:last-child:has(.cafe-remove){font-weight:normal}
+.whish-table td:last-child:has(.cafe-remove) .cafe-remove{margin:0 auto}
+@media(max-width:560px){.whish-balance-grid{grid-template-columns:1fr}.whish-balance-card,.whish-day-card{padding:16px}}
