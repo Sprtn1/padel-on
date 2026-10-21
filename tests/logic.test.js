@@ -37,3 +37,12 @@ test('exact cent parsing and month shift',()=>{
  assert.equal(parseUSD('45.30'),4530);assert.equal(parseUSD('0.01'),1);assert.throws(()=>parseUSD('12.345'));
  assert.equal(shiftMonth('2026-12',1),'2027-01');assert.equal(addDays('2026-12-31',1),'2027-01-01');
 });
+
+test('Other Benefits weekly free game is limited to one free game per Monday-Sunday week',()=>{
+ const {getWeeklyFreeGameStatus}=await import('../lib/logic.js');
+ const player={id:'p1'};
+ const games=[{player_id:'p1',played_on:'2026-10-13',game_type:'free'},{player_id:'p1',played_on:'2026-10-14',game_type:'paid'}];
+ assert.deepEqual(getWeeklyFreeGameStatus(player,'2026-10-18',games),{weekStart:'2026-10-12',weekEnd:'2026-10-18',used:1,available:false});
+ assert.deepEqual(getWeeklyFreeGameStatus(player,'2026-10-19',games),{weekStart:'2026-10-19',weekEnd:'2026-10-25',used:0,available:true});
+ assert.deepEqual(getWeeklyFreeGameStatus(player,'2026-10-15',[{player_id:'p2',played_on:'2026-10-14',game_type:'free'}]).available,true);
+});
