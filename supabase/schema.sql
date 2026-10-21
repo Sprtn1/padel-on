@@ -71,7 +71,7 @@ create table if not exists public.other_players (
  slug text not null unique,
  name text not null,
  current_counter integer not null default 0 check(current_counter>=0),
- status text not null default 'needs_confirmation' check(status in ('needs_confirmation','next_free','counting','rule_not_configured')),
+ status text not null default 'needs_confirmation' check(status in ('needs_confirmation','next_free','counting','rule_not_configured','alternating_free_paid','one_free_per_week')),
  threshold integer check(threshold between 1 and 100),
  active boolean not null default true
 );
