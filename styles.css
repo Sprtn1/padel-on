@@ -566,3 +566,18 @@
  .cafe-goods-pending .cafe-goods-result{justify-items:start}
  .cafe-goods-result strong{font-size:21px}
 }
+
+
+/* Imported Private Sessions receipts are read-only in the daily cashbook. */
+.cafe-private-payments-card{display:flex;flex-direction:column;gap:12px}
+.cafe-private-payments-card .cafe-category-top{margin-bottom:0}
+.cafe-private-payments-card .cafe-auto-payment-info{font-size:11px;color:#6b8375;line-height:1.6;margin:0}
+.cafe-auto-payments-wrap{overflow-x:auto;width:100%;border:1px solid #e8efea;border-radius:10px}
+.cafe-auto-payments{width:100%;border-collapse:collapse;text-align:left;font-size:11px}
+.cafe-auto-payments th{background:#f7faf8;color:#7d9185;font-weight:800;font-size:10px;white-space:nowrap}
+.cafe-auto-payments th,.cafe-auto-payments td{padding:10px 9px;border-bottom:1px solid #ecf1ed}
+.cafe-auto-payments tr:last-child td{border-bottom:0}
+.cafe-auto-payments td{color:#344b3c;overflow-wrap:anywhere}
+.cafe-auto-payments td:last-child{font-weight:800;text-align:right;white-space:nowrap;color:#16845a}
+.cafe-auto-payments th:last-child{text-align:right}
+.cafe-private-payments-card>.btn{align-self:start}
