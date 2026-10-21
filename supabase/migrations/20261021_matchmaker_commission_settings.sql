@@ -13,7 +13,8 @@ create policy matchmakers_admin_update
   with check (public.is_admin());
 
 -- Column-level privilege prevents client-side edits to names or active status.
-grant update (commission_bps) on public.matchmakers to authenticated;
+revoke update on table public.matchmakers from public, anon, authenticated;
+grant update (commission_bps) on table public.matchmakers to authenticated;
 
 -- Record who changed a rate and preserve before/after values for audit.
 drop trigger if exists matchmaker_commission_audit on public.matchmakers;
