@@ -4,6 +4,7 @@ import {
   CAFE_CATEGORIES, CAFE_RENTAL_PRICE_CENTS, cafeMoneyCents,
   cafeQuantity, cafeEntryFromForm, cafeTotals, cafeReconciliation,
   cafePlayerCount, cafeNonnegativeCents, cafePrivatePayments,
+  whishSummary, whishFormEntry,
   cafePrivatePaymentsTotal, createCafeteriaFinances
 } from '../lib/cafeteria-finances.js';
 
@@ -326,4 +327,139 @@ test('Clothes and Racket Sold appear below Racket Rental and can add multiple en
  assert.match(html,/Racket model B/);
  assert.match(html,/\$44\.00/);
  assert.match(html,/\$175\.00/);
+});
+
+test('Whish balance starts at 60 cents and tracks separate deposit and withdrawal rows',()=>{
+ const entries=[
+  {id:'a',entry_type:'deposit',entry_date:'2026-10-20',amount_cents:5000},
+  {id:'b',entry_type:'deposit',entry_date:'2026-10-21',amount_cents:425},
+  {id:'c',entry_type:'withdrawal',entry_date:'2026-10-21',amount_cents:2100},
+  {id:'d',entry_type:'withdrawal',entry_date:'2026-10-21',amount_cents:9999,voided_at:'2026-10-21T12:00:00Z'}
+ ];
+ assert.deepEqual(whishSummary(entries,60),{opening:60,deposits:5425,withdrawals:2100,balance:3385,count:3});
+ assert.deepEqual(whishSummary(entries,60,'2026-10-20'),{opening:60,deposits:5000,withdrawals:0,balance:5060,count:1});
+ assert.deepEqual(whishSummary([]),{opening:60,deposits:0,withdrawals:0,balance:60,count:0});
+ assert.deepEqual(whishFormEntry('deposit',{name:'  Alex ',amount:'15.25'}),{
+  entry_type:'deposit',name:'Alex',amount_cents:1525
+ });
+ assert.deepEqual(whishFormEntry('withdrawal',{name:'Shop',amount:'8.99'}),{
+  entry_type:'withdrawal',name:'Shop',amount_cents:899
+ });
+ assert.throws(()=>whishFormEntry('cash',{name:'Alex',amount:'15'}));
+ assert.throws(()=>whishFormEntry('deposit',{name:'  ',amount:'15'}));
+ assert.throws(()=>whishFormEntry('withdrawal',{name:'Alex',amount:'-1'}));
+});
+
+test('Whish is excluded from all physical cash and Goods Sold calculations',()=>{
+ const cashbook=[
+  {category:'padel_courts',amount_cents:5000},
+  {category:'coaches',amount_cents:1000}
+ ];
+ const previous=cafeReconciliation(cashbook,9000);
+ const whish=[
+  {entry_date:'2026-10-21',entry_type:'deposit',amount_cents:25000},
+  {entry_date:'2026-10-21',entry_type:'withdrawal',amount_cents:6000}
+ ];
+ assert.deepEqual(cafeReconciliation(cashbook,9000),previous);
+ assert.equal(previous.income,5000);
+ assert.equal(previous.expenses,1000);
+ assert.equal(previous.totalGenerated,10000);
+ assert.equal(previous.goodsSold,5000);
+ assert.equal(whishSummary(whish,60).balance,19060);
+});
+
+test('Whish cards show independent daily history and current balance across dates',async()=>{
+ const requests=[];
+ const whish=[
+  {id:'x1',entry_date:'2026-10-20',entry_type:'deposit',name:'Prior day',amount_cents:2000},
+  {id:'x2',entry_date:'2026-10-21',entry_type:'deposit',name:'Alice',amount_cents:1200},
+  {id:'x3',entry_date:'2026-10-21',entry_type:'deposit',name:'Clothes <sale>',amount_cents:2500},
+  {id:'x4',entry_date:'2026-10-21',entry_type:'withdrawal',name:'Bank & Fees',amount_cents:800},
+  {id:'x5',entry_date:'2026-10-21',entry_type:'withdrawal',name:'Correction',amount_cents:10000,voided_at:'x'}
+ ];
+ const widget=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),listAll:async(table,filter)=>{
+   requests.push([table,filter]);
+   if(table==='whish_ledger_entries')return whish;
+   if(table==='whish_wallet_settings')return [{id:1,opening_balance_cents:60}];
+   if(table==='cafeteria_finance_days')return [{closing_cash_cents:10000}];
+   return [];
+  }},
+  heading:()=>'',icon:()=>'',amount:cents=>'$'+(cents/100).toFixed(2),
+  today:()=> '2026-10-21',addDays:()=> '2026-10-20',
+  rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const html=widget.page();
+ assert.match(html,/Whish Deposits/);
+ assert.match(html,/Whish Withdrawals/);
+ assert.match(html,/data-whish-type="deposit"/);
+ assert.match(html,/data-whish-type="withdrawal"/);
+ assert.match(html,/Current Whish balance/);
+ assert.match(html,/\$49\.60/);
+ assert.match(html,/\$37\.00/);
+ assert.match(html,/\$8\.00/);
+ assert.match(html,/Clothes &lt;sale&gt;/);
+ assert.match(html,/Bank &amp; Fees/);
+ assert.doesNotMatch(html,/<td>Prior day<\/td>/);
+ assert.doesNotMatch(html,/<td>Correction<\/td>/);
+ assert.doesNotMatch(html,/data-action="cafe-whish-void"/);
+ assert.ok(requests.some(([table])=>table==='whish_ledger_entries'));
+ assert.match(html,/Goods Sold \(automatic\)/);
+ // No physical sales or payments: Goods Sold must remain $100.00, not changed by Whish.
+ assert.match(html,/\$100\.00/);
+});
+
+test('Whish payments can be added repeatedly and update balance with ledger date',async()=>{
+ const whish=[];
+ const recorded=[];
+ const api={
+  getSession:()=>({access_token:'token'}),
+  listAll:async(table)=>{
+   if(table==='whish_ledger_entries')return whish.slice();
+   if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
+   return [];
+  },
+  rpc:async(name,args)=>{
+   recorded.push({name,args});
+   if(name==='whish_record_entry')whish.push({
+    id:args.p_entry_id,entry_date:args.p_entry_date,entry_type:args.p_entry_type,
+    name:args.p_name,amount_cents:args.p_amount_cents
+   });
+  }
+ };
+ const widget=createCafeteriaFinances({
+  api,heading:()=>'',icon:()=>'',amount:cents=>'$'+(cents/100).toFixed(2),
+  today:()=> '2026-10-21',addDays:()=> '2026-10-20',rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const oldFormData=globalThis.FormData;
+ const oldCrypto=globalThis.crypto;
+ try{
+  let data={name:'Alice',amount:'10.00'};
+  globalThis.FormData=class{entries(){return Object.entries(data)[Symbol.iterator]();}};
+  if(!globalThis.crypto?.randomUUID)globalThis.crypto={randomUUID:()=> 'test-uuid'};
+  const form=type=>({dataset:{cafeSave:'whish',whishType:type},
+   querySelector:()=>({disabled:false,isConnected:false})});
+  await widget.submit(form('deposit'));
+  data={name:'Bob',amount:'2.50'};
+  await widget.submit(form('deposit'));
+  data={name:'Supplies',amount:'5.00'};
+  await widget.submit(form('withdrawal'));
+ }finally{
+  globalThis.FormData=oldFormData;
+  if(oldCrypto===undefined)delete globalThis.crypto;else globalThis.crypto=oldCrypto;
+ }
+ assert.equal(recorded.length,3);
+ assert.deepEqual(recorded.map(r=>[r.name,r.args.p_entry_type,r.args.p_amount_cents]),[
+  ['whish_record_entry','deposit',1000],
+  ['whish_record_entry','deposit',250],
+  ['whish_record_entry','withdrawal',500]
+ ]);
+ assert.ok(recorded.every(r=>r.args.p_entry_date==='2026-10-21'));
+ const html=widget.page();
+ assert.match(html,/\$8\.10/);
+ assert.match(html,/Alice/);
+ assert.match(html,/Bob/);
+ assert.match(html,/Supplies/);
 });
