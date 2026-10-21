@@ -173,11 +173,11 @@ test('private session receipts include paid sessions and deposits, not fees or v
   {id:'void',entry_date:'2026-10-21',entry_type:'deposit',client_id:'a',deposit_cents:9999,voided_at:'2026-10-21T12:00:00Z'},
   {id:'older',entry_date:'2026-10-20',entry_type:'session',client_id:'a',paid_cents:1500},
  ];
- const clients=[{id:'a',name:'Alex'}, {id:'b',name:'Sam'}];
+ const clients=[{id:'a',name:'Alex',client_code:'P-1001'}, {id:'b',name:'Sam',client_code:'P-1002'}];
  const receipts=cafePrivatePayments(source,clients,'2026-10-21');
- assert.deepEqual(receipts.map(r=>[r.id,r.clientName,r.type,r.amount_cents]),[
-  ['s1','Alex','Session payment',2500],
-  ['d1','Sam','Deposit / top-up',3000]
+ assert.deepEqual(receipts.map(r=>[r.id,r.clientName,r.clientCode,r.type,r.amount_cents]),[
+  ['s1','Alex','P-1001','Session payment',2500],
+  ['d1','Sam','P-1002','Deposit / top-up',3000]
  ]);
  assert.equal(cafePrivatePaymentsTotal(receipts),5500);
  const cashbook=[
@@ -201,7 +201,7 @@ test('private payments render as a read-only daily table and update on refresh',
     {category:'padel_courts',name:'Court',amount_cents:6000,checkmarks:[false,false,false,false]}
    ];
    if(table==='cafeteria_finance_days')return [{closing_cash_cents:12000}];
-   if(table==='private_clients')return [{id:'client1',name:'Jamie & Co'}];
+   if(table==='private_clients')return [{id:'client1',name:'Jamie & Co',client_code:'PS-0042'}];
    if(table==='private_ledger_entries')return [
     {id:'pay-1',entry_type:'session',entry_date:'2026-10-21',client_id:'client1',paid_cents:2500,session_fee_cents:8000},
     ...(extraPayment?[{id:'pay-2',entry_type:'deposit',entry_date:'2026-10-21',client_id:'client1',deposit_cents:extraPayment}]:[])
@@ -218,7 +218,8 @@ test('private payments render as a read-only daily table and update on refresh',
  let html=widget.page();
  assert.match(html,/Client Private Sessions Payments/);
  assert.match(html,/Jamie &amp; Co/);
- assert.match(html,/Session payment/);
+ assert.match(html,/<th>Client name<\/th><th>Client ID<\/th><th>Payment type<\/th><th>Amount paid<\/th>/);
+ assert.match(html,/<td>Jamie &amp; Co<\/td><td>PS-0042<\/td><td>Session payment<\/td><td>\$25\.00<\/td>/);
  assert.match(html,/\$25\.00/);
  // Closing 120, other income 60+25, Goods Sold 35.
  assert.match(html,/\$35\.00/);
@@ -230,6 +231,7 @@ test('private payments render as a read-only daily table and update on refresh',
  await widget.load(true);
  html=widget.page();
  assert.match(html,/Deposit \/ top-up/);
+ assert.match(html,/<td>Jamie &amp; Co<\/td><td>PS-0042<\/td><td>Deposit \/ top-up<\/td><td>\$15\.00<\/td>/);
  assert.match(html,/\$40\.00/);
  assert.match(html,/\$20\.00/);
 });
@@ -252,4 +254,31 @@ test('private-payment feed errors prevent incomplete reconciliation',async()=>{
  const html=widget.page();
  assert.match(html,/Private Sessions temporarily unavailable/);
  assert.doesNotMatch(html,/Goods Sold \(automatic\)/);
+});
+
+test('private payments show unassigned client IDs clearly and escape client fields',async()=>{
+ const source=[
+  {id:'a1',entry_date:'2026-10-21',entry_type:'deposit',client_id:'a',deposit_cents:1000},
+  {id:'b1',entry_date:'2026-10-21',entry_type:'session',client_id:'b',paid_cents:2300}
+ ];
+ const clients=[
+  {id:'a',name:'<Client A>',client_code:null},
+  {id:'b',name:'Client B',client_code:'B&007'}
+ ];
+ const receipts=cafePrivatePayments(source,clients,'2026-10-21');
+ assert.deepEqual(receipts.map(p=>p.clientCode),[null,'B&007']);
+ const widget=createCafeteriaFinances({
+  api:{
+   getSession:()=>({access_token:'token'}),
+   listAll:async(table)=>table==='private_ledger_entries'?source:table==='private_clients'?clients:[]
+  },
+  heading:()=>'',icon:()=>'',amount:cents=>'$'+(cents/100).toFixed(2),
+  today:()=> '2026-10-21',addDays:()=> '2026-10-20',
+  rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const paymentsTable=widget.page().match(/<table class="cafe-auto-payments">([\s\S]*?)<\/table>/)?.[1]||'';
+ assert.match(paymentsTable,/<td>&lt;Client A&gt;<\/td><td>Not assigned<\/td>/);
+ assert.match(paymentsTable,/<td>Client B<\/td><td>B&amp;007<\/td>/);
+ assert.equal((paymentsTable.match(/<tr>/g)||[]).length,3);
 });
