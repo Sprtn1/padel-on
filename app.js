@@ -1449,7 +1449,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
  if(e.target.id==='modal-backdrop'){closeModal();return;}
- const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard')loadClubSources();if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await cafeteriaFinances.load();
+ const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard')loadClubSources();if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);
  if(state.tab==='settings'&&state.staff?.role==='admin'){
   await Promise.all([loadPrivateClients(),loadDebtData()]);
   if(state.tab==='settings'&&api.getSession()?.access_token)render();
