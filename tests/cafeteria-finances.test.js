@@ -4,7 +4,7 @@ import {
   CAFE_CATEGORIES, CAFE_RENTAL_PRICE_CENTS, cafeMoneyCents,
   cafeQuantity, cafeEntryFromForm, cafeTotals, cafeReconciliation,
   cafePlayerCount, cafeNonnegativeCents, cafePrivatePayments,
-  whishSummary, whishFormEntry, WHISH_DESCRIPTION_PRESETS,
+  whishSummary, whishFormEntry, WHISH_DESCRIPTION_PRESETS, groupWhishTransactions,
   cafePrivatePaymentsTotal, createCafeteriaFinances
 } from '../lib/cafeteria-finances.js';
 
@@ -516,4 +516,63 @@ test('Whish preset fills name but allows custom editing and never saves on click
  assert.equal(calls.length,0);
  let rejected=false;try{await widget.action(button('withdrawal',22))}catch{rejected=true}
  assert.ok(rejected);
+});
+
+test('identical Whish names automatically sum, but different case, dates, types and voids stay separate',()=>{
+ const entries=[
+  {id:'d1',entry_date:'2026-10-21',entry_type:'deposit',name:'Goods Sold',amount_cents:30},
+  {id:'d2',entry_date:'2026-10-21',entry_type:'deposit',name:'Padel Courts',amount_cents:500},
+  {id:'d3',entry_date:'2026-10-21',entry_type:'deposit',name:'Goods Sold',amount_cents:10},
+  {id:'d4',entry_date:'2026-10-21',entry_type:'deposit',name:'goods sold',amount_cents:90},
+  {id:'d5',entry_date:'2026-10-20',entry_type:'deposit',name:'Goods Sold',amount_cents:80},
+  {id:'w1',entry_date:'2026-10-21',entry_type:'withdrawal',name:'Goods Sold',amount_cents:20},
+  {id:'w2',entry_date:'2026-10-21',entry_type:'withdrawal',name:'Goods Sold',amount_cents:50},
+  {id:'void',entry_date:'2026-10-21',entry_type:'deposit',name:'Goods Sold',amount_cents:999,voided_at:'2026-10-21T13:00:00Z'}
+ ];
+ const deposits=groupWhishTransactions(entries,'2026-10-21','deposit');
+ assert.deepEqual(deposits.map(x=>[x.name,x.amount_cents,x.count]),[
+  ['Goods Sold',40,2],['Padel Courts',500,1],['goods sold',90,1]
+ ]);
+ assert.deepEqual(deposits[0].entries.map(x=>x.id),['d1','d3']);
+ const withdrawals=groupWhishTransactions(entries,'2026-10-21','withdrawal');
+ assert.deepEqual(withdrawals.map(x=>[x.name,x.amount_cents,x.count]),[['Goods Sold',70,2]]);
+ const originalWallet=whishSummary(entries,60);
+ assert.equal(originalWallet.balance,60+30+500+10+90+80-20-50);
+ assert.deepEqual(entries[0].amount_cents,30); // Original entries are not replaced.
+ assert.throws(()=>groupWhishTransactions(entries,'2026-10-21','invalid'));
+});
+
+test('Whish table displays one summed row per name with expandable individual transactions and correction actions',async()=>{
+ const items=[
+  {id:'d1',entry_date:'2026-10-21',entry_type:'deposit',name:'Goods Sold',amount_cents:30},
+  {id:'d2',entry_date:'2026-10-21',entry_type:'deposit',name:'Goods Sold',amount_cents:10},
+  {id:'d3',entry_date:'2026-10-21',entry_type:'deposit',name:'Padel Courts',amount_cents:500},
+  {id:'w1',entry_date:'2026-10-21',entry_type:'withdrawal',name:'Misc Cash',amount_cents:200},
+  {id:'w2',entry_date:'2026-10-21',entry_type:'withdrawal',name:'Misc Cash',amount_cents:100}
+ ];
+ const build=isAdmin=>createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),listAll:async table=>
+   table==='whish_ledger_entries'?items:table==='whish_wallet_settings'?[{opening_balance_cents:60}]:[]},
+  heading:()=>'',icon:()=>'',amount:cents=>'$'+(cents/100).toFixed(2),
+  today:()=> '2026-10-21',addDays:()=> '2026-10-20',rerender:()=>{},toast:()=>{},isAdmin:()=>isAdmin
+ });
+ const staff=build(false);await staff.load();
+ const html=staff.page();
+ const deposits=html.split('<h3>Whish Deposits</h3>')[1].split('</section>')[0];
+ const withdrawals=html.split('<h3>Whish Withdrawals</h3>')[1].split('</section>')[0];
+ assert.equal((deposits.match(/<tr><td><span class="whish-group-label">Goods Sold<\/span>/g)||[]).length,1);
+ assert.match(deposits,/<td>\$0\.40<\/td>/);
+ assert.match(deposits,/<summary>2 transactions · View details<\/summary>/);
+ assert.match(deposits,/<span>Entry 1<\/span><strong>\$0\.30<\/strong>/);
+ assert.match(deposits,/<span>Entry 2<\/span><strong>\$0\.10<\/strong>/);
+ assert.match(withdrawals,/<span class="whish-group-label">Misc Cash<\/span>/);
+ assert.match(withdrawals,/<td>\$3\.00<\/td>/);
+ assert.doesNotMatch(deposits,/data-action="cafe-whish-void"/);
+ const admin=build(true);await admin.load();
+ const adminHtml=admin.page();
+ for(const id of ['d1','d2','d3','w1','w2'])assert.match(adminHtml,new RegExp('data-id="'+id+'"'));
+ assert.equal((adminHtml.match(/data-action="cafe-whish-void"/g)||[]).length,5);
+ const opening=whishSummary(items,60).balance;
+ assert.equal(opening,60+30+10+500-200-100);
+ assert.match(adminHtml,/Goods Sold \(automatic\)/);
 });
