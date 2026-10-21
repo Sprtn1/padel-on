@@ -54,7 +54,7 @@ begin
       else jsonb_build_object('closing_cash_cents',v_previous.closing_cash_cents) end,
  jsonb_build_object('closing_cash_cents',p_closing_cash_cents));
  return p_day_date;
-end;$;
+end;$$;
 
 -- Existing staff-only entry functions, updated to support six Basketball players.
 create or replace function public.cafeteria_finance_record_entry(
@@ -116,7 +116,7 @@ begin
   jsonb_build_object('date',p_entry_date,'category',p_category,'name',v_name,'amount_cents',p_amount_cents,
     'quantity',p_quantity,'unit_price_cents',p_unit_price_cents,'markers',v_markers));
  return p_entry_id;
-end;$;
+end;$$;
 
 create or replace function public.cafeteria_finance_set_marks(
  p_entry_id uuid,p_checkmarks boolean[]
@@ -138,7 +138,7 @@ begin
  insert into public.audit_logs(actor,action,entity,entity_id,before_data,after_data)
  values(auth.uid(),'UPDATE','cafeteria_finance_entries',p_entry_id::text,
    jsonb_build_object('markers',v_previous.checkmarks),jsonb_build_object('markers',p_checkmarks));
-end;$;
+end;$$;
 
 revoke all on function public.cafeteria_finance_set_closing_cash(date,bigint) from public,anon;
 grant execute on function public.cafeteria_finance_set_closing_cash(date,bigint) to authenticated;
