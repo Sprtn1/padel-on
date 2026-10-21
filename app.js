@@ -1458,7 +1458,7 @@ document.addEventListener('click',async e=>{
  const action=e.target.closest('[data-action]');if(action){try{await handleAction(action)}catch(err){toast(err.message,true)}}
 });
 document.addEventListener('submit',async e=>{
- if(e.target.dataset?.cafeSave==='entry'){
+ if(e.target.dataset?.cafeSave==='entry'||e.target.dataset?.cafeSave==='closing'){
   e.preventDefault();
   if(state.tab!=='cafeteria-finances'||!state.staff){toast('Authorized staff only.',true);return;}
   try{await cafeteriaFinances.submit(e.target)}catch(err){toast(err.message||'Unable to save entry.',true)}
@@ -1603,12 +1603,12 @@ setInterval(()=>{
  if(api.configured&&api.getSession()&&state.staff&&!state.modal&&!working&&!document.hidden){
   // Keep unsaved daily cashbook forms intact while staff is entering transactions.
   if(state.tab==='cafeteria-finances'){
-   if(!document.activeElement?.closest('.cafe-entry-form'))void cafeteriaFinances.load(true);
+   if(!document.activeElement?.closest('.cafe-entry-form, .cafe-closing-form'))void cafeteriaFinances.load(true);
   }else loadData();
  }
 },30000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)return;checkStaffInactivity();if(!idleExpired()&&api.getSession()&&state.staff&&!state.modal){
   if(state.tab==='cafeteria-finances'){
-   if(!document.activeElement?.closest('.cafe-entry-form'))void cafeteriaFinances.load(true);
+   if(!document.activeElement?.closest('.cafe-entry-form, .cafe-closing-form'))void cafeteriaFinances.load(true);
   }else loadData();
  }});
