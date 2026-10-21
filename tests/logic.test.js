@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {weekStart,weekEnd,shiftMonth,commission,parseUSD,addDays} from '../lib/date.js';
-import {getWeeklyStatus,getMonthFinance} from '../lib/logic.js';
+import {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus} from '../lib/logic.js';
 
 test('Beirut business week starts Monday and ends Sunday',()=>{
  assert.equal(weekStart('2026-10-15'),'2026-10-12');
@@ -39,7 +39,6 @@ test('exact cent parsing and month shift',()=>{
 });
 
 test('Other Benefits weekly free game is limited to one free game per Monday-Sunday week',()=>{
- const {getWeeklyFreeGameStatus}=await import('../lib/logic.js');
  const player={id:'p1'};
  const games=[{player_id:'p1',played_on:'2026-10-13',game_type:'free'},{player_id:'p1',played_on:'2026-10-14',game_type:'paid'}];
  assert.deepEqual(getWeeklyFreeGameStatus(player,'2026-10-18',games),{weekStart:'2026-10-12',weekEnd:'2026-10-18',used:1,available:false});
