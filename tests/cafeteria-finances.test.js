@@ -91,7 +91,9 @@ test('page shows saved cash, auto Goods Sold and six basketball player-paid tick
  ];
  const api={
   getSession:()=>({access_token:'token'}),
-  listAll:async(table)=>table==='cafeteria_finance_days'?[{closing_cash_cents:5000}]:entries
+  listAll:async(table)=>table==='cafeteria_finance_days'?[{closing_cash_cents:5000}]:
+     table==='whish_wallet_settings'?[{opening_balance_cents:60}]:
+     table==='whish_ledger_entries'?[]:entries
  };
  const widget=createCafeteriaFinances({
   api,heading:()=>'<h1>Cafeteria Finances</h1>',icon:()=>'',amount:cents=>'$'+(cents/100).toFixed(2),
@@ -204,6 +206,8 @@ test('private payments render as a read-only daily table and update on refresh',
     {category:'padel_courts',name:'Court',amount_cents:6000,checkmarks:[false,false,false,false]}
    ];
    if(table==='cafeteria_finance_days')return [{closing_cash_cents:12000}];
+   if(table==='whish_ledger_entries')return [];
+   if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
    if(table==='private_clients')return [{id:'client1',name:'Jamie & Co',client_code:'PS-0042'}];
    if(table==='private_ledger_entries')return [
     {id:'pay-1',entry_type:'session',entry_date:'2026-10-21',client_id:'client1',paid_cents:2500,session_fee_cents:8000},
