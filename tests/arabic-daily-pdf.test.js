@@ -88,7 +88,7 @@ test('All Whish transactions are kept separate from the cash drawer',()=>{
  assert.equal(changed.walletBalance-sheet.walletBalance,20000);
 });
 
-test('Local PDF has a letter-sized Arabic main sheet and appendices without uploads',async()=>{
+test('Local PDF has exactly one letter-sized Arabic accounting sheet without uploads',async()=>{
  const prev=globalThis.document;
  const calls=[];
  // This tiny JPEG payload is only for mocking the canvas API in the PDF unit test.
@@ -103,22 +103,24 @@ test('Local PDF has a letter-sized Arabic main sheet and appendices without uplo
    return {getContext:()=>fakeContext,toDataURL:()=>mockJpeg,width:1346,height:1742};
   }};
   const x=sample();
-  // More than 42 records: the export must add multiple continuation pages.
+  // Even when details exceed the original page, no continuation pages are exported.
   for(let i=0;i<95;i++)x.rows.push({entry_date:DAY,category:'other_income',name:'Extra '+i,amount_cents:100});
   const {pdf,pages}=makeArabicDailySheetPdf(x);
-  assert.equal(pages,4);
+  assert.equal(pages,1);
   assert.equal(pdf.type,'application/pdf');
   const data=Buffer.from(await pdf.arrayBuffer());
   const content=data.toString('latin1');
   assert.ok(content.startsWith('%PDF-1.4\n'));
   assert.ok(content.endsWith('%%EOF\n'));
   assert.match(content,/\/MediaBox \[0 0 612 792\]/);
-  assert.match(content,/\/Count 4/);
+  assert.match(content,/\/Count 1/);
   assert.match(content,/startxref\n\d+\n%%EOF/);
   assert.ok(calls.some(label=>label.includes('مبيعات في الصندوق')));
   assert.ok(calls.some(label=>label.includes('مجموع خروج صندوق وش')));
   assert.ok(calls.some(label=>label.includes('الصندوق القديم')));
-  assert.ok(calls.some(label=>label.includes('تفاصيل القيود النقدية')));
+  assert.ok(!calls.some(label=>label.includes('تفاصيل القيود النقدية')));
+  assert.ok(!calls.some(label=>label.includes('تفاصيل صندوق وش')));
+  assert.ok(!calls.some(label=>label.includes('توجد قيود إضافية في صفحات التفاصيل')));
  }finally{globalThis.document=prev;}
 });
 
@@ -140,7 +142,7 @@ test('Download uses a browser-only Blob URL and never invokes an HTTP upload',()
   globalThis.URL={createObjectURL:()=>{urlCreated++;return 'blob:local'},revokeObjectURL(){}};
   globalThis.setTimeout=fn=>fn();
   const pages=downloadArabicDailySheet(sample());
-  assert.equal(pages,2);
+  assert.equal(pages,1);
   assert.equal(clicked,1);
   assert.equal(urlCreated,1);
   assert.equal(name,'padel-on-daily-sheet-2026-10-21.pdf');
@@ -236,7 +238,7 @@ test('PDF paints opening cash headers and only the prescribed bottom closing-cas
  }finally{globalThis.document=save;}
 });
 
-test('Whish duplicate and overflowing groups get a separate Arabic appendix, not a cash detail page',async()=>{
+test('Whish overflowing groups remain in prepared data without creating extra PDF pages',async()=>{
  const sheetInput=sample();
  sheetInput.whishRows.push(
   {entry_date:DAY,entry_type:'deposit',name:'Goods Sold',amount_cents:300},
@@ -257,9 +259,9 @@ test('Whish duplicate and overflowing groups get a separate Arabic appendix, not
    getContext:()=>ctx,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q==',width:1346,height:1742
   })};
   const {pages}=makeArabicDailySheetPdf(sheetInput);
-  assert.equal(pages,3);
-  assert.ok(labels.some(v=>v==='تفاصيل القيود النقدية'));
-  assert.ok(labels.some(v=>v==='تفاصيل صندوق وش'));
+  assert.equal(pages,1);
+  assert.ok(!labels.some(v=>v==='تفاصيل القيود النقدية'));
+  assert.ok(!labels.some(v=>v==='تفاصيل صندوق وش'));
  }finally{globalThis.document=prev}
 });
 
