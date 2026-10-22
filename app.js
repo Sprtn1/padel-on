@@ -345,7 +345,7 @@ function reportRange(){
 async function loadReport(){
  const [start,end]=reportRange(),mode=state.reportMode;
  const request=++reportSeq;
- void clubInsights.loadReport(start,end);
+ void clubInsights.loadReport(start,end,true);
  state.reportLoading=true;state.reportData=null;state.reportKey=`${mode}:${start}`;
  render();
  try{
@@ -1416,7 +1416,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'private-add-balance':if(!state.privateSelected)throw Error('Select a client.');openModal('private-deposit',null,{clientId:state.privateSelected});break;
  case 'private-void-entry':if(state.staff?.role!=='admin')throw Error('Only admins can correct financial entries.');if(!state.privateEntries.some(e=>e.id===id))throw Error('Entry not found.');openModal('private-void',id);break;
  case 'private-export':exportPrivateClientCSV();break;
- case 'refresh':await loadData();if(state.tab==='dashboard')void clubInsights.loadOverview(true);if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview();}if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
+ case 'refresh':await loadData();if(state.tab==='dashboard')void clubInsights.loadOverview(true);if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview(true);}if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
  case 'training-prev-month':
   state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
  case 'training-next-month':
@@ -1580,6 +1580,11 @@ function updateQuickPreview(){
  if(exhausted.length){hint.textContent+=' · Warning: a member has no remaining benefits.';button.disabled=true}
  else button.disabled=false;
 }
+// A native details element preserves its open state across full-page rerenders.
+document.addEventListener('toggle',e=>{
+ if(state.tab==='cafeteria-finances'&&e.target?.dataset?.cafeFold)
+  cafeteriaFinances.rememberFold(e.target.dataset.cafeFold,e.target.open);
+},true);
 document.addEventListener('change',e=>{
  if((e.target.id==='cafe-finance-date'||e.target.id==='cafe-quick-category'||e.target.dataset?.cafeMarker)&&state.tab==='cafeteria-finances'){
   void cafeteriaFinances.change(e.target).catch(err=>toast(err.message||'Could not update finances.',true));return;
