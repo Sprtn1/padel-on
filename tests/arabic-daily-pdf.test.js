@@ -9,8 +9,8 @@ const sample=()=>({
   {entry_date:DAY,category:'padel_courts',name:'Padel A',amount_cents:13400},
   {entry_date:DAY,category:'basketball_courts',name:'Match',amount_cents:1000},
   {entry_date:DAY,category:'gymnastics',name:'Class',amount_cents:10000},
-  {entry_date:DAY,category:'grips',name:'Grip',amount_cents:1400},
-  {entry_date:DAY,category:'balls',name:'Balls',amount_cents:2000},
+  {entry_date:DAY,category:'grips',name:'Grip',amount_cents:1400,quantity:3},
+  {entry_date:DAY,category:'balls',name:'Balls',amount_cents:2000,quantity:2},
   {entry_date:DAY,category:'racket_rental',name:'Rental',amount_cents:200},
   {entry_date:DAY,category:'cafeteria_stock',name:'Water',amount_cents:23900},
   {entry_date:DAY,category:'coaches',name:'Coach',amount_cents:3600},
@@ -20,6 +20,10 @@ const sample=()=>({
  privatePayments:[
   {entry_date:DAY,type:'Session payment',clientName:'Client 1',clientCode:'PS-42',amount_cents:2500},
   {entry_date:DAY,type:'Deposit / top-up',clientName:'Client 2',clientCode:'PS-72',amount_cents:1000}
+ ],
+ privateSessions:[
+  {entry_date:DAY,clientName:'Jana Bleibel',clientCode:'2',sessionFeeCents:3000,paidAtSessionCents:0},
+  {entry_date:DAY,clientName:'Ali Akhdar',clientCode:'49',sessionFeeCents:2500,paidAtSessionCents:0}
  ],
  whishRows:[
   {entry_date:DAY,entry_type:'deposit',name:'Goods Sold',amount_cents:1180},
@@ -38,8 +42,15 @@ test('Arabic sheet matches the numbered account structure without inventing miss
  assert.equal(sheet.amountRows.find(x=>x[0]==='ملعب بادل')[1],13400);
  assert.equal(sheet.amountRows.find(x=>x[0]==='ملعب باسكت')[1],1000);
  assert.equal(sheet.amountRows.find(x=>x[0]==='صف تدريب جمناستك')[1],10000);
- assert.equal(sheet.amountRows.find(x=>x[0]==='طابات / جربات')[1],3400);
- assert.equal(sheet.amountRows.find(x=>x[0]==='مشترك - جلسات خاصة')[2],'401');
+ assert.equal(sheet.amountRows.find(x=>x[0].startsWith('طابات (2) / جربات (3)'))[1],3400);
+ assert.equal(sheet.amountRows.find(x=>x[0].includes('Client 1')&&x[0].includes('PS-42'))[2],'401');
+ assert.equal(sheet.amountRows.find(x=>x[0].includes('Client 2')&&x[0].includes('PS-72'))[1],1000);
+ assert.equal(sheet.trainingRows[0].clientName,'Jana Bleibel');
+ assert.equal(sheet.trainingRows[0].clientCode,'2');
+ assert.equal(sheet.trainingRows[0].sessionFeeCents,3000);
+ assert.equal(sheet.trainingRows[1].clientName,'Ali Akhdar');
+ assert.equal(sheet.trainingRows[1].clientCode,'49');
+ assert.equal(sheet.trainingRows[1].sessionFeeCents,2500);
  assert.equal(sheet.expenseRows.find(x=>x[0]==='مدرب')[2],'631');
  assert.equal(sheet.expenseRows.find(x=>x[0]==='مشتريات بوظة / ماء')[1],23900);
  assert.equal(sheet.whishDepositsToday,2580);
@@ -138,4 +149,89 @@ test('Download uses a browser-only Blob URL and never invokes an HTTP upload',()
   globalThis.URL=saved.URL;
   globalThis.setTimeout=saved.setTimeout;
  }
+});
+
+test('special named income and expense categories map only to their own lines',()=>{
+ const x=sample();
+ x.rows.push(
+  {entry_date:DAY,category:'classes',amount_cents:2200},
+  {entry_date:DAY,category:'pt_gym',amount_cents:1700},
+  {entry_date:DAY,category:'pickleball_courts',amount_cents:1200},
+  {entry_date:DAY,category:'other_income',name:'Basketball Academy',amount_cents:2900},
+  {entry_date:DAY,category:'other_income',name:'Summer Course',amount_cents:3200},
+  {entry_date:DAY,category:'other_income',name:'Shoes',amount_cents:1800},
+  {entry_date:DAY,category:'other_income',name:'Unlisted Income',amount_cents:400},
+  {entry_date:DAY,category:'racket_sold',name:'New racket',amount_cents:7000},
+  {entry_date:DAY,category:'other_expense',name:'Family Debt',amount_cents:1400},
+  {entry_date:DAY,category:'other_expense',name:'Stationery',amount_cents:320},
+  {entry_date:DAY,category:'general_payment',amount_cents:500}
+ );
+ const sheet=prepareArabicDailySheet(x);
+ const row=label=>sheet.amountRows.find(r=>r[0]===label);
+ const paid=label=>sheet.expenseRows.find(r=>r[0]===label);
+ assert.equal(row('ملعب بيكل بول')[1],1200);
+ assert.equal(row('صف تدريب طابق أول')[1],2200);
+ assert.equal(row('صف جم')[1],1700);
+ assert.equal(row('أكاديمية باسكت')[1],2900);
+ assert.equal(row('دورة الصيف')[1],3200);
+ assert.equal(row('أحذية')[1],1800);
+ assert.equal(row('طاولة بينغ بونغ')[1],null);
+ assert.equal(row('مبيع متفرقات')[1],null);
+ assert.equal(paid('دين عائلة')[1],1400);
+ assert.equal(paid('صرف متفرقات / نادي')[1],500);
+ assert.equal(paid('Stationery')[1],320);
+ assert.ok(sheet.details.some(r=>r.section==='إيرادات أخرى'&&r.name==='Unlisted Income'));
+ assert.ok(sheet.details.some(r=>r.section==='بيع راكات'&&r.name==='New racket'));
+ assert.equal(sheet.receipts,31500+2200+1700+1200+2900+3200+1800+400+7000);
+ assert.equal(sheet.expenses,27500+1400+320+500);
+});
+test('extra client payments and miscellaneous entries survive overflow into details',()=>{
+ const x=sample();
+ for(let i=0;i<12;i++){
+  x.privatePayments.push({entry_date:DAY,type:'Deposit / top-up',clientName:'Person '+i,clientCode:String(i+10),amount_cents:100+i});
+  x.privateSessions.push({entry_date:DAY,clientName:'Training '+i,clientCode:String(100+i),sessionFeeCents:3000+i,paidAtSessionCents:0});
+  x.rows.push({entry_date:DAY,category:'other_expense',name:'Expense '+i,amount_cents:500+i});
+ }
+ const sheet=prepareArabicDailySheet(x);
+ assert.equal(sheet.amountRows.length,18);
+ assert.equal(sheet.expenseRows.length,8);
+ assert.equal(sheet.trainingRows.length,14);
+ assert.ok(sheet.overflowIncome.length>0);
+ assert.ok(sheet.overflowExpenses.length>0);
+ assert.equal(sheet.overflowTraining.length,6);
+ assert.ok(sheet.details.some(d=>d.name==='Training 11'&&d.identifier==='111'));
+ assert.ok(sheet.details.some(d=>d.name==='Expense 11'));
+ assert.ok(sheet.details.some(d=>d.name.includes('Person 11')));
+});
+test('Whish balance reflects the complete wallet, but its daily rows use selected date only',()=>{
+ const x=sample();
+ const old=prepareArabicDailySheet(x);
+ x.whishRows.push({entry_date:'2026-10-22',entry_type:'deposit',name:'Later transfer',amount_cents:3000});
+ const now=prepareArabicDailySheet(x);
+ assert.equal(now.walletBalance,old.walletBalance+3000);
+ assert.equal(now.whishDepositsToday,old.whishDepositsToday);
+ assert.ok(!now.whishIn.some(e=>e.name==='Later transfer'));
+ assert.equal(now.expenses,old.expenses);
+ assert.equal(now.totalGenerated,old.totalGenerated);
+});
+test('PDF paints opening cash headers and only the prescribed bottom closing-cash value',async()=>{
+ const save=globalThis.document;
+ const paints=[];
+ const ctx={save(){},restore(){},scale(){},fillRect(){},strokeRect(){},beginPath(){},moveTo(){},
+  lineTo(){},stroke(){},fillText(value,x,y){paints.push({value:String(value),x,y});}};
+ try{
+  globalThis.document={createElement:()=>({
+   width:1346,height:1742,getContext:()=>ctx,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q=='
+  })};
+  const x=sample();x.closingCash=15000;
+  makeArabicDailySheetPdf(x);
+  // Cash header: expenses $275.00; sales generated $425.00.
+  assert.ok(paints.some(p=>p.value==='275.00'&&p.y===86));
+  assert.ok(paints.some(p=>p.value==='425.00'&&p.y===86));
+  // Closing cash only goes in نقداً بعد صرف اليوم on the right.
+  assert.ok(paints.some(p=>p.value==='150.00'&&p.y===709&&p.x>300));
+  assert.ok(!paints.some(p=>p.value==='150.00'&&p.y===709&&p.x<300));
+  assert.ok(paints.some(p=>p.value==='Jana Bleibel'));
+  assert.ok(paints.some(p=>p.value==='Ali Akhdar'));
+ }finally{globalThis.document=save;}
 });
