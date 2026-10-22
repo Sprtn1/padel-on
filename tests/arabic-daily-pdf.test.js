@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {prepareArabicDailySheet,makeArabicDailySheetPdf,downloadArabicDailySheet} from '../lib/arabic-daily-pdf.js';
+import {prepareArabicDailySheet,makeArabicDailySheetPdf,downloadArabicDailySheet,formatArabicPdfAmount} from '../lib/arabic-daily-pdf.js';
 
 const DAY='2026-10-21';
 const sample=()=>({
@@ -225,12 +225,12 @@ test('PDF paints opening cash headers and only the prescribed bottom closing-cas
   })};
   const x=sample();x.closingCash=15000;
   makeArabicDailySheetPdf(x);
-  // Cash header: expenses $275.00; sales generated $425.00.
-  assert.ok(paints.some(p=>p.value==='275.00'&&p.y===86));
-  assert.ok(paints.some(p=>p.value==='425.00'&&p.y===86));
+  // Cash header: whole dollars display without decimals.
+  assert.ok(paints.some(p=>p.value==='275'&&p.y===86));
+  assert.ok(paints.some(p=>p.value==='425'&&p.y===86));
   // Closing cash only goes in نقداً بعد صرف اليوم on the right.
-  assert.ok(paints.some(p=>p.value==='150.00'&&p.y===709&&p.x>300));
-  assert.ok(!paints.some(p=>p.value==='150.00'&&p.y===709&&p.x<300));
+  assert.ok(paints.some(p=>p.value==='150'&&p.y===709&&p.x>300));
+  assert.ok(!paints.some(p=>p.value==='150'&&p.y===709&&p.x<300));
   assert.ok(paints.some(p=>p.value==='جانا بليبل'));
   assert.ok(paints.some(p=>p.value==='علي أخضر'));
  }finally{globalThis.document=save;}
@@ -326,4 +326,43 @@ test('Training hours prefers corrected Arabic spelling but never changes client 
  assert.equal(prepared.receipts,31500);
  assert.equal(prepared.whishDepositsToday,2580);
  assert.equal(prepared.details.filter(e=>e.section==='ساعات تدريب')[0].name,'جنى بليبل');
+});
+
+test('Arabic PDF shows integer amounts without decimals and rounds fractional dollars to one decimal',()=>{
+ const cases=[
+  [null,''],[undefined,''],[0,'0'],[1,'0'],[4,'0'],[5,'0.1'],
+  [9,'0.1'],[10,'0.1'],[14,'0.1'],[15,'0.2'],[95,'1'],
+  [100,'1'],[104,'1'],[105,'1.1'],[124,'1.2'],[125,'1.3'],
+  [12340,'123.4'],[12344,'123.4'],[12345,'123.5'],
+  [12349,'123.5'],[12355,'123.6'],[12999,'130'],
+  [100000,'1,000'],[-1005,'-10.1'],[-4,'0'],[-5,'-0.1']
+ ];
+ for(const [cents,shown] of cases)assert.equal(formatArabicPdfAmount(cents),shown);
+});
+
+test('Arabic PDF applies rounded optional decimal format to cash, Whish and training amounts',()=>{
+ const prev=globalThis.document,shown=[];
+ const ctx={save(){},restore(){},scale(){},fillRect(){},strokeRect(){},beginPath(){},
+  moveTo(){},lineTo(){},stroke(){},fillText(v){shown.push(String(v))}};
+ try{
+  globalThis.document={createElement:()=>({
+   getContext:()=>ctx,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q==',width:1346,height:1742
+  })};
+  const x=sample();
+  x.rows[0].amount_cents=13455;     // $134.55 -> 134.6
+  x.rows[6].amount_cents=23905;     // $239.05 -> 239.1
+  x.privateSessions[0].sessionFeeCents=3055; // $30.55 -> 30.6
+  x.whishRows[0].amount_cents=1185; // $11.85 -> 11.9
+  x.closingCash=15005;            // $150.05 -> 150.1
+  makeArabicDailySheetPdf(x);
+  for(const expected of ['134.6','239.1','30.6','11.9','150.1','1','100'])
+   assert.ok(shown.includes(expected),'Expected rounded PDF amount '+expected);
+  for(const raw of ['134.55','239.05','30.55','11.85','150.05','100.00'])
+   assert.ok(!shown.includes(raw),'Unrounded amount leaked into PDF: '+raw);
+  // Source cents stay unchanged for reconciliation even when the PDF rounds their display.
+  const sheet=prepareArabicDailySheet(x);
+  assert.equal(sheet.amountRows.find(r=>r[0]==='ملعب بادل')[1],13455);
+  assert.equal(sheet.whishIn.find(r=>r.name==='مبيع متفرقات').amount_cents,1185);
+  assert.equal(sheet.closingCash,15005);
+ }finally{globalThis.document=prev}
 });
