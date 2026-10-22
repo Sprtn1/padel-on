@@ -37,7 +37,7 @@ const tabs=[['dashboard','Overview','grid'],['cafeteria-finances','Cafeteria Fin
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
-const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
+const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
 // The daily cashbook owns its own dated Supabase query and does not mix with other ledgers.
 const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
  api,heading,icon,amount,today,addDays,
@@ -337,6 +337,7 @@ async function loadHistoryWeek(newWeek){
  finally{if(seq===historySeq){state.historyLoading=false;render()}}
 }
 function reportRange(){
+ if(state.reportMode==='day')return [state.reportDay,state.reportDay];
  if(state.reportMode==='week')return [state.reportWeek,addDays(state.reportWeek,6)];
  const first=state.reportMonth+'-01',last=addDays(shiftMonth(state.reportMonth,1)+'-01',-1);
  return [first,last];
@@ -409,14 +410,14 @@ function consolidatedFinancePanel(ym){
 }
 function reportsPage(){
  const [start,end]=reportRange();
- const weekly=state.reportMode==='week',m=reportMetrics();
- const title=weekly?weekLabel(state.reportWeek):monthLabel(state.reportMonth);
+ const weekly=state.reportMode==='week',daily=state.reportMode==='day',m=reportMetrics();
+ const title=daily?state.reportDay:weekly?weekLabel(state.reportWeek):monthLabel(state.reportMonth);
  return `${heading('Operations overview','Weekly & Monthly Reports','',btn(`${icon('download')} Export CSV`,'export-report','btn-primary',!m?'disabled':'')+btn('Print / Save PDF','print-report','btn-light',!m?'disabled':''))}
-<div class="report-mode"><button class="btn ${weekly?'btn-primary':'btn-light'}" data-action="report-mode-week">Weekly report</button><button class="btn ${!weekly?'btn-primary':'btn-light'}" data-action="report-mode-month">Monthly report</button></div>
-<div class="period-control"><div><strong>${icon('calendar')} ${title}</strong><small>${weekly?'Weekly benefits and records':'Monthly games and matchmaking revenue'} · Asia/Beirut dates</small></div><div class="period-buttons"><button class="btn btn-light" data-action="report-prev" aria-label="Previous ${weekly?'week':'month'}">${icon('chevronLeft')}</button><button class="btn btn-light" data-action="report-next" ${(weekly?state.reportWeek>=weekStart(today()):state.reportMonth>=monthKey(today()))?'disabled':''} aria-label="Next ${weekly?'week':'month'}">${icon('chevronRight')}</button></div></div>
+<div class="report-mode"><button class="btn ${daily?'btn-primary':'btn-light'}" data-action="report-mode-day">Daily report</button><button class="btn ${weekly?'btn-primary':'btn-light'}" data-action="report-mode-week">Weekly report</button><button class="btn ${!weekly?'btn-primary':'btn-light'}" data-action="report-mode-month">Monthly report</button></div>
+<div class="period-control"><div><strong>${icon('calendar')} ${title}</strong><small>${daily?'Daily activity and cash count':weekly?'Weekly benefits and records':'Monthly games and matchmaking revenue'} · Asia/Beirut dates</small></div><div class="period-buttons"><button class="btn btn-light" data-action="report-prev" aria-label="Previous ${daily?'day':weekly?'week':'month'}">${icon('chevronLeft')}</button><button class="btn btn-light" data-action="report-next" ${(daily?state.reportDay>=today():weekly?state.reportWeek>=weekStart(today()):state.reportMonth>=monthKey(today()))?'disabled':''} aria-label="Next ${daily?'day':weekly?'week':'month'}">${icon('chevronRight')}</button></div></div>
 ${!m?`<div class="panel-empty">${state.reportLoading?'Loading report from Supabase…':'No report loaded. Use the period arrows to retry.'}</div>`:`
 <section class="finance-grid">${summaryCard('Team matches',m.validMatches.length,'Matches recorded in selected period','calendar',true)}${summaryCard('Benefit uses',weekly?m.weekUsed:m.games.length,weekly?'Includes imported opening balances':'Dated transactions only','gift')}${summaryCard('Free / Half-price',`${m.free} / ${m.half}`,'Per-member benefit entries','activity')}</section>
-${weekly?`<div class="notice">Historical balances use the member's current configured allowance. Imported opening balances are counted as weekly usage; reset events are respected.</div>`:`<section class="finance-grid">${summaryCard('Matchmaking revenue',amount(m.monthFinance.total),'All matchmaking personnel','wallet',true)}${summaryCard('Total commissions',amount(m.monthFinance.fee),'Sum of independent monthly commissions','coins')}${summaryCard('Other benefit games',m.special,'Special-player entries this month','users')}</section>${matchmakingBreakdownHTML(m.breakdown)}${consolidatedFinancePanel(state.reportMonth)}`}
+${daily?'':weekly?`<div class="notice">Historical balances use the member's current configured allowance. Imported opening balances are counted as weekly usage; reset events are respected.</div>`:`<section class="finance-grid">${summaryCard('Matchmaking revenue',amount(m.monthFinance.total),'All matchmaking personnel','wallet',true)}${summaryCard('Total commissions',amount(m.monthFinance.fee),'Sum of independent monthly commissions','coins')}${summaryCard('Other benefit games',m.special,'Special-player entries this month','users')}</section>${matchmakingBreakdownHTML(m.breakdown)}${consolidatedFinancePanel(state.reportMonth)}`}
 ${clubInsights.reportHTML(start,end)}
 <article class="panel"><div class="panel-head"><div><h2>Team member breakdown</h2><p>${title} · ${m.rows.length} members with activity</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Member</th><th>Category</th><th>Games logged</th><th>Free</th><th>Half-price</th><th>${weekly?'Week used':'Monthly total'}</th>${weekly?'<th>Remaining*</th>':''}</tr></thead><tbody>${m.rows.length?m.rows.map(r=>`<tr><td><strong>${esc(r.member.name)}</strong></td><td>${esc(groupLabel(r.member.team_category))}</td><td>${r.played}</td><td>${r.free}</td><td>${r.half}</td><td><strong>${r.used}</strong></td>${weekly?`<td>${r.member.unlimited?'Unlimited':r.remaining}</td>`:''}</tr>`).join(''):`<tr><td colspan="${weekly?7:6}" class="panel-empty">No benefits recorded for this period.</td></tr>`}</tbody></table></div></article>
 <div class="archive-note">${weekly?'* Remaining benefits use current allowances and historical reset events.':'Financial totals use permanent saved matchmaking records. The monthly game counts exclude imported balances.'} No report action edits any records.</div>
@@ -424,12 +425,12 @@ ${clubInsights.reportHTML(start,end)}
 }
 function exportReport(){
  const m=reportMetrics();if(!m)throw Error('Load the report before exporting.');
- const weekly=state.reportMode==='week',period=weekly?state.reportWeek:state.reportMonth;
- const rows=[['PADEL ON',weekly?'Weekly Game Report':'Monthly Game Report',period],
+ const weekly=state.reportMode==='week',daily=state.reportMode==='day',period=daily?state.reportDay:weekly?state.reportWeek:state.reportMonth;
+ const rows=[['PADEL ON',state.reportMode==='day'?'Daily Operations Report':weekly?'Weekly Game Report':'Monthly Game Report',period],
   ['Team matches',m.validMatches.length],['Logged benefit uses',m.games.length],
   ['Free entries',m.free],['Half-price entries',m.half],['Other-player games',m.special]];
  if(weekly)rows.push(['Weekly used (including opening balances)',m.weekUsed]);
- else {const finance=clubFinancialSnapshot(state.reportMonth,'month');rows.push([],['CLUB FINANCIAL OVERVIEW',state.reportMonth],['Cash received across tracked operations USD',finance.collected===null?'Not loaded':(finance.collected/100).toFixed(2)],['Private session fees (charges) USD',finance.privateCharges===null?'Not loaded':(finance.privateCharges/100).toFixed(2)],['Private payments at sessions USD',finance.privatePaid===null?'Not loaded':(finance.privatePaid/100).toFixed(2)],['Private balance top-ups USD',finance.privateTopups===null?'Not loaded':(finance.privateTopups/100).toFixed(2)],['Cafeteria purchases charged USD',finance.cafeteriaCharges===null?'Not loaded':(finance.cafeteriaCharges/100).toFixed(2)],['Cafeteria payments received USD',finance.cafeteriaPaid===null?'Not loaded':(finance.cafeteriaPaid/100).toFixed(2)],['Matchmaking collections USD',(finance.matchmakingCollected/100).toFixed(2)],['Matchmaking commissions USD',(finance.commissionTotal/100).toFixed(2)]);
+ else if(!daily) {const finance=clubFinancialSnapshot(state.reportMonth,'month');rows.push([],['CLUB FINANCIAL OVERVIEW',state.reportMonth],['Cash received across tracked operations USD',finance.collected===null?'Not loaded':(finance.collected/100).toFixed(2)],['Private session fees (charges) USD',finance.privateCharges===null?'Not loaded':(finance.privateCharges/100).toFixed(2)],['Private payments at sessions USD',finance.privatePaid===null?'Not loaded':(finance.privatePaid/100).toFixed(2)],['Private balance top-ups USD',finance.privateTopups===null?'Not loaded':(finance.privateTopups/100).toFixed(2)],['Cafeteria purchases charged USD',finance.cafeteriaCharges===null?'Not loaded':(finance.cafeteriaCharges/100).toFixed(2)],['Cafeteria payments received USD',finance.cafeteriaPaid===null?'Not loaded':(finance.cafeteriaPaid/100).toFixed(2)],['Matchmaking collections USD',(finance.matchmakingCollected/100).toFixed(2)],['Matchmaking commissions USD',(finance.commissionTotal/100).toFixed(2)]);
 const currentBalances=clubBalanceSnapshot();
 rows.push([],['CURRENT BALANCES (LIVE SNAPSHOT, NOT MONTH-END)'],
  ['Current private coaching outstanding USD',currentBalances.privateOwed===null?'Not loaded':(currentBalances.privateOwed/100).toFixed(2)],
@@ -1433,14 +1434,17 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'team-prev-week':await loadHistoryWeek(addDays(state.historyWeek,-7));break;
  case 'team-next-week':await loadHistoryWeek(addDays(state.historyWeek,7));break;
  case 'team-current-week':await loadHistoryWeek(weekStart(today()));break;
+ case 'report-mode-day':state.reportMode='day';await loadReport();break;
  case 'report-mode-week':state.reportMode='week';await loadReport();break;
  case 'report-mode-month':state.reportMode='month';await loadReport();break;
  case 'report-prev':
-  if(state.reportMode==='week')state.reportWeek=addDays(state.reportWeek,-7);
+  if(state.reportMode==='day')state.reportDay=addDays(state.reportDay,-1);
+  else if(state.reportMode==='week')state.reportWeek=addDays(state.reportWeek,-7);
   else state.reportMonth=shiftMonth(state.reportMonth,-1);
   await loadReport();break;
  case 'report-next':
-  if(state.reportMode==='week'&&state.reportWeek<weekStart(today()))state.reportWeek=addDays(state.reportWeek,7);
+  if(state.reportMode==='day'&&state.reportDay<today())state.reportDay=addDays(state.reportDay,1);
+  else if(state.reportMode==='week'&&state.reportWeek<weekStart(today()))state.reportWeek=addDays(state.reportWeek,7);
   else if(state.reportMode==='month'&&state.reportMonth<monthKey(today()))state.reportMonth=shiftMonth(state.reportMonth,1);
   await loadReport();break;
  case 'export-report':exportReport();break;
