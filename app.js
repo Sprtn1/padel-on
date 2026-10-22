@@ -5,6 +5,7 @@ const orderCounter = await import(`./lib/order-counter-ui.js?v=${assetVersion}`)
 const reemItems = await import(`./lib/reem-items-ui.js?v=${assetVersion}`);
 const cafeteriaFinanceModule = await import(`./lib/cafeteria-finances.js?v=${assetVersion}`);
 const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
+const refreshPolicy = await import(`./lib/refresh-policy.js?v=${assetVersion}`);
 const arabicDailyPdf = await import(`./lib/arabic-daily-pdf.js?v=${assetVersion}`);
 const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus} = await import(`./lib/logic.js?v=${assetVersion}`);
 const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = await import(`./lib/date.js?v=${assetVersion}`);
@@ -1075,7 +1076,7 @@ async function loadData(resetTab=false){if(state.loading)return;state.loading=tr
  if(!api.getSession()?.access_token || idleLogoutStarted)return;
  Object.assign(state,{members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers});
  if(matchmakers.length&&!matchmakers.some(p=>p.id===state.matchmakerId))state.matchmakerId=matchmakers[0].id;
- if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport(); if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth(); if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients(); if(state.tab==='debts'&&!state.debtLoading)void loadDebtData(); if(state.tab==='cafeteria-finances')void cafeteriaFinances.load(true); if(state.tab==='dashboard'||state.tab==='reports')loadClubSources();if(state.tab==='dashboard')void clubInsights.loadOverview();
+ if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport(); if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth(); if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients(); if(state.tab==='debts'&&!state.debtLoading)void loadDebtData(); if(state.tab==='cafeteria-finances')void cafeteriaFinances.load(true); if(state.tab==='dashboard'||state.tab==='reports')loadClubSources();if(state.tab==='dashboard')void clubInsights.loadOverview(true);
  }catch(e){if((idleLogoutStarted || !api.getSession()?.access_token) && !e.message.includes('no PADEL ON staff access'))return;if(e.message.includes('sign in')||e.message.includes('JWT')||e.message.includes('refresh token')){clearStaffActivity();await api.signOut();renderAuth(e.message)}else if(state.staff){toast(e.message,true)}else renderAuth(e.message)}finally{state.loading=false;}}
 let working=false;
 async function runMutation(task,success='Saved successfully'){if(working)return;working=true;const b=document.getElementById('save-button');if(b){b.disabled=true;b.textContent='Saving…'}try{await task();state.modal=null;await loadData();toast(success)}catch(e){toast(e?.message||'Could not save. Try again.',true)}finally{working=false;if(b&&b.isConnected){b.disabled=false;b.textContent='Try again'}}}
@@ -1476,7 +1477,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
  if(e.target.id==='modal-backdrop'){closeModal();return;}
- const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview();}if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);
+ const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview(true);}if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);
  if(state.tab==='settings'&&state.staff?.role==='admin'){
   await Promise.all([loadPrivateClients(),loadDebtData()]);
   if(state.tab==='settings'&&api.getSession()?.access_token)render();
@@ -1617,7 +1618,42 @@ document.addEventListener('keydown',e=>{
 });
 async function start(){if(!api.configured){renderAuth();return}if(api.getSession()?.access_token){if(idleExpired()){await autoSignOut();return}await loadData()}else renderAuth();}
 start();
-// Lightweight cross-device refresh. All records are read from Supabase, never local state alone.
+// Keep a lightweight 30-second clock tick for Beirut date/week/month rollovers.
+// Network refresh is gated separately by page, not performed every clock tick.
+let lastPageAutoRefreshTab=state.tab;
+let lastPageAutoRefreshAt=Date.now();
+let pageAutoRefreshBusy=false;
+async function refreshCurrentPageWhenDue(){
+ if(!api.configured||!api.getSession()?.access_token||!state.staff||
+    idleLogoutStarted||idleExpired()||state.modal||working||state.loading||
+    document.hidden||pageAutoRefreshBusy)return false;
+ const tab=state.tab,now=Date.now();
+ // Navigation loads the selected page immediately, so reset the interval.
+ if(lastPageAutoRefreshTab!==tab){
+  lastPageAutoRefreshTab=tab;
+  lastPageAutoRefreshAt=now;
+  return false;
+ }
+ if(!refreshPolicy.isPageRefreshDue(tab,lastPageAutoRefreshAt,now))return false;
+ // Staff must not lose partially typed forms to an automatic rerender.
+ if(document.activeElement?.closest('form,.cafe-quick-sheet'))return false;
+ pageAutoRefreshBusy=true;
+ lastPageAutoRefreshAt=now;
+ try{
+  if(tab==='cafeteria-finances'){
+   await cafeteriaFinances.load(true);
+  }else if(tab==='private-clients'){
+   await loadPrivateClients();
+  }else if(tab==='debts'){
+   await loadDebtData();
+  }else{
+   await loadData();
+   if(tab==='settings'&&state.tab==='settings')
+    await Promise.all([loadPrivateClients(),loadDebtData()]);
+  }
+ }finally{pageAutoRefreshBusy=false}
+ return true;
+}
 setInterval(()=>{
  checkStaffInactivity();
  const currentWeek=weekStart(today()),currentMonth=monthKey(today());
@@ -1632,15 +1668,12 @@ setInterval(()=>{
    if(state.trainingMonth===lastKnownMonth){state.trainingMonth=currentMonth;state.trainingLoadedMonth=null;}
    lastKnownMonth=currentMonth;
  }
- if(api.configured&&api.getSession()&&state.staff&&!state.modal&&!working&&!document.hidden){
-  // Keep unsaved daily cashbook forms intact while staff is entering transactions.
-  if(state.tab==='cafeteria-finances'){
-   if(!document.activeElement?.closest('.cafe-entry-form, .cafe-closing-form'))void cafeteriaFinances.load(true);
-  }else loadData();
- }
+ void refreshCurrentPageWhenDue().catch(err=>toast(err.message||'Automatic refresh failed.',true));
 },30000);
-document.addEventListener('visibilitychange',()=>{if(document.hidden)return;checkStaffInactivity();if(!idleExpired()&&api.getSession()&&state.staff&&!state.modal){
-  if(state.tab==='cafeteria-finances'){
-   if(!document.activeElement?.closest('.cafe-entry-form, .cafe-closing-form'))void cafeteriaFinances.load(true);
-  }else loadData();
- }});
+document.addEventListener('visibilitychange',()=>{
+ if(document.hidden)return;
+ checkStaffInactivity();
+ // Returning after the refresh window updates immediately; brief tab
+ // switches do not make additional Supabase requests.
+ void refreshCurrentPageWhenDue().catch(err=>toast(err.message||'Refresh failed.',true));
+});
