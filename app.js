@@ -1570,7 +1570,7 @@ function updateQuickPreview(){
  else button.disabled=false;
 }
 document.addEventListener('change',e=>{
- if((e.target.id==='cafe-finance-date'||e.target.dataset?.cafeMarker)&&state.tab==='cafeteria-finances'){
+ if((e.target.id==='cafe-finance-date'||e.target.id==='cafe-quick-category'||e.target.dataset?.cafeMarker)&&state.tab==='cafeteria-finances'){
   void cafeteriaFinances.change(e.target).catch(err=>toast(err.message||'Could not update finances.',true));return;
  }
  if(e.target.dataset?.reemInput==='quantity' && state.tab==='reem-items' && canUseOrderLists()){render();return;}
