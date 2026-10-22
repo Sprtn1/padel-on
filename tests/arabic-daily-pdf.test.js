@@ -45,10 +45,10 @@ test('Arabic sheet matches the numbered account structure without inventing miss
  assert.equal(sheet.amountRows.find(x=>x[0].startsWith('طابات (2) / جربات (3)'))[1],3400);
  assert.equal(sheet.amountRows.find(x=>x[0].includes('Client 1')&&x[0].includes('PS-42'))[2],'401');
  assert.equal(sheet.amountRows.find(x=>x[0].includes('Client 2')&&x[0].includes('PS-72'))[1],1000);
- assert.equal(sheet.trainingRows[0].clientName,'Jana Bleibel');
+ assert.equal(sheet.trainingRows[0].clientName,'جانا بليبل');
  assert.equal(sheet.trainingRows[0].clientCode,'2');
  assert.equal(sheet.trainingRows[0].sessionFeeCents,3000);
- assert.equal(sheet.trainingRows[1].clientName,'Ali Akhdar');
+ assert.equal(sheet.trainingRows[1].clientName,'علي أخضر');
  assert.equal(sheet.trainingRows[1].clientCode,'49');
  assert.equal(sheet.trainingRows[1].sessionFeeCents,2500);
  assert.equal(sheet.expenseRows.find(x=>x[0]==='مدرب')[2],'631');
@@ -231,8 +231,8 @@ test('PDF paints opening cash headers and only the prescribed bottom closing-cas
   // Closing cash only goes in نقداً بعد صرف اليوم on the right.
   assert.ok(paints.some(p=>p.value==='150.00'&&p.y===709&&p.x>300));
   assert.ok(!paints.some(p=>p.value==='150.00'&&p.y===709&&p.x<300));
-  assert.ok(paints.some(p=>p.value==='Jana Bleibel'));
-  assert.ok(paints.some(p=>p.value==='Ali Akhdar'));
+  assert.ok(paints.some(p=>p.value==='جانا بليبل'));
+  assert.ok(paints.some(p=>p.value==='علي أخضر'));
  }finally{globalThis.document=save;}
 });
 
@@ -313,4 +313,17 @@ test('Whish PDF converts Goods Sold and cash-box transfer only and keeps data in
  assert.equal(sheet.receipts,noWhish.receipts);
  assert.equal(sheet.expenses,noWhish.expenses);
  assert.equal(sheet.totalGenerated,noWhish.totalGenerated);
+});
+
+test('Training hours prefers corrected Arabic spelling but never changes client IDs or paid cash',()=>{
+ const input=sample();
+ input.privateSessions[0].clientArabicName='جنى بليبل';
+ input.privateSessions[1].clientArabicName='';
+ const prepared=prepareArabicDailySheet(input);
+ assert.equal(prepared.trainingRows[0].clientName,'جنى بليبل');
+ assert.equal(prepared.trainingRows[1].clientName,'علي أخضر');
+ assert.deepEqual(prepared.trainingRows.map(s=>[s.clientCode,s.sessionFeeCents]),[['2',3000],['49',2500]]);
+ assert.equal(prepared.receipts,31500);
+ assert.equal(prepared.whishDepositsToday,2580);
+ assert.equal(prepared.details.filter(e=>e.section==='ساعات تدريب')[0].name,'جنى بليبل');
 });
