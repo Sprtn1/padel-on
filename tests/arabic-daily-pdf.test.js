@@ -355,7 +355,7 @@ test('Arabic PDF applies rounded optional decimal format to cash, Whish and trai
   x.whishRows[0].amount_cents=1185; // $11.85 -> 11.9
   x.closingCash=15005;            // $150.05 -> 150.1
   makeArabicDailySheetPdf(x);
-  for(const expected of ['134.6','239.1','30.6','11.9','150.1','1','100'])
+  for(const expected of ['134.6','239.1','30.6','11.9','150.1','100'])
    assert.ok(shown.includes(expected),'Expected rounded PDF amount '+expected);
   for(const raw of ['134.55','239.05','30.55','11.85','150.05','100.00'])
    assert.ok(!shown.includes(raw),'Unrounded amount leaked into PDF: '+raw);
