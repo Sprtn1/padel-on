@@ -653,3 +653,23 @@
  .cafe-day-status{align-items:flex-start}
 }
 @media print{.cafe-quick-entry,.cafe-day-status button{display:none!important}}
+
+
+/* Club cash insights: separate read-only analytical cards. */
+.club-cash-overview,.club-finance-report{padding:19px 20px;margin:20px 0}
+.club-cash-overview .panel-head,.club-finance-report .panel-head{margin-bottom:12px}
+.club-insight-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.club-insight-metrics article{background:#f5faf6;border:1px solid #e5eee6;border-radius:11px;padding:12px;min-width:0;display:grid;gap:8px}
+.club-insight-metrics article small{color:#6f8579;font-size:10px;font-weight:750}
+.club-insight-metrics article strong{color:#1a623e;font-size:16px;overflow-wrap:anywhere}
+.club-insight-note{margin:14px 0 0;color:#738e7d;font-size:10px;line-height:1.7}
+.club-insight-warn{border-radius:9px;border:1px solid #ead6aa;background:#fff8e7;color:#886b32;padding:10px;font-size:11px}
+.club-insight-tables{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,.9fr);gap:14px;margin-top:16px}
+.club-insight-tables h3{font-size:12px;color:#264e37;margin:0 0 10px}
+.club-insight-tables .data-table-wrap{overflow-x:auto}
+.club-insight-tables table{min-width:380px;font-size:10px}
+.club-insight-tables .data-table td,.club-insight-tables .data-table th{padding:8px 7px}
+.club-whish-summary{border-top:1px solid #e7eee8;margin-top:16px;padding:14px 0 0;display:flex;flex-wrap:wrap;gap:13px;align-items:center;font-size:11px;color:#607a67}
+.club-whish-summary strong{color:#24513a;margin-right:5px}
+@media(max-width:1050px){.club-insight-tables{grid-template-columns:1fr}}
+@media(max-width:610px){.club-insight-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.club-cash-overview,.club-finance-report{padding:14px}.club-insight-metrics article strong{font-size:14px}}
