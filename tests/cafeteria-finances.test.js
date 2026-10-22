@@ -9,7 +9,7 @@ import {
 } from '../lib/cafeteria-finances.js';
 
 test('all cashbook categories exist and fixed rental price is $2',()=>{
- assert.equal(CAFE_CATEGORIES.length,16);
+ assert.equal(CAFE_CATEGORIES.length,20);
  const rental=CAFE_CATEGORIES.findIndex(c=>c.id==='racket_rental');
  assert.deepEqual(CAFE_CATEGORIES.slice(rental+1,rental+3).map(c=>c.id),['clothes','racket_sold']);
  assert.equal(CAFE_RENTAL_PRICE_CENTS,200);
@@ -634,4 +634,47 @@ test('unpaid Private Sessions are included in PDF coaching grid but not as cash 
  ]);
  assert.equal(payments.length,1);
  assert.equal(payments[0].amount_cents,1000);
+});
+
+test('dedicated summer camp shoes academy and family debt accept repeated entries and calculate separately',()=>{
+ const entries=[
+  cafeEntryFromForm('summer_camp',{amount:'10.25'}),
+  cafeEntryFromForm('summer_camp',{amount:'7.75',name:'Morning'}),
+  cafeEntryFromForm('shoes',{amount:'24.50'}),
+  cafeEntryFromForm('basketball_academy',{amount:'35.00'}),
+  cafeEntryFromForm('family_debt',{amount:'6.99'}),
+  cafeEntryFromForm('family_debt',{amount:'1.01',name:'Family'})
+ ];
+ assert.deepEqual(entries.map(e=>e.amount_cents),[1025,775,2450,3500,699,101]);
+ assert.ok(entries.every(e=>e.unit_price_cents===0&&e.quantity===1));
+ const totals=cafeTotals(entries);
+ assert.equal(totals.income,7750);assert.equal(totals.expenses,800);
+ assert.equal(totals.net,6950);assert.equal(totals.count,6);
+ assert.throws(()=>cafeEntryFromForm('shoes',{amount:'0'}));
+ assert.throws(()=>cafeEntryFromForm('family_debt',{amount:'-2'}));
+});
+test('new income and expense cards render individual records without modifying cash formula',async()=>{
+ const day='2026-10-22';
+ const rows=[
+  {entry_date:day,category:'summer_camp',name:'First',amount_cents:1100},
+  {entry_date:day,category:'summer_camp',name:'Second',amount_cents:1900},
+  {entry_date:day,category:'shoes',name:'Pair',amount_cents:2300},
+  {entry_date:day,category:'basketball_academy',name:'Academy',amount_cents:8000},
+  {entry_date:day,category:'family_debt',name:'Family',amount_cents:1000}
+ ];
+ const widget=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),listAll:async table=>
+   table==='cafeteria_finance_entries'?rows:
+   table==='cafeteria_finance_days'?[{closing_cash_cents:20000}]:
+   table==='whish_wallet_settings'?[{opening_balance_cents:60}]:[]},
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=>day,addDays:()=> '2026-10-21',rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const html=widget.page();
+ for(const id of ['summer_camp','shoes','basketball_academy','family_debt'])
+  assert.match(html,new RegExp('data-category="'+id+'"'));
+ for(const name of ['Summer Camp','Shoes','Basketball Academy','Family Debt','First','Second'])
+  assert.match(html,new RegExp(name));
+ assert.match(html,/\$77\.00/); // ($200 + $10) - $133 = $77 Goods Sold.
 });
