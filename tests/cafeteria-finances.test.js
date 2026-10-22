@@ -694,3 +694,79 @@ test('Private Sessions exports preferred Arabic name independently of the Englis
  assert.equal(sessions[0].paidAtSessionCents,0);
  assert.equal(cafePrivatePayments(entries,clients,day).length,0);
 });
+
+test('Day closing locks forms, requires saved cash count, and admin can approve or reopen',async()=>{
+ const day='2026-10-22',rpcCalls=[];
+ let currentStatus=null,admin=false,closingCash=10000;
+ const api={
+  getSession:()=>({access_token:'token'}),
+  listAll:async table=>{
+   if(table==='cafeteria_finance_entries')return [{id:'one',entry_date:day,category:'padel_courts',name:'Players',amount_cents:5000,checkmarks:[true,false,true,true]}];
+   if(table==='cafeteria_finance_days')return [{day_date:day,closing_cash_cents:closingCash}];
+   if(table==='cafeteria_day_closings')return currentStatus?[{day_date:day,status:currentStatus}]:[];
+   if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
+   return [];
+  },
+  rpc:async(name,args)=>{
+   rpcCalls.push({name,args});
+   if(name==='cafeteria_change_day_status'){
+    if(args.p_action==='close')currentStatus='closed';
+    if(args.p_action==='approve')currentStatus='approved';
+    if(args.p_action==='reopen')currentStatus='reopened';
+   }
+  }
+ };
+ const widget=createCafeteriaFinances({
+  api,heading:()=>'',icon:()=>'',amount:cents=>'$'+(cents/100).toFixed(2),
+  today:()=>day,addDays:()=> '2026-10-21',rerender:()=>{},toast:()=>{},isAdmin:()=>admin
+ });
+ await widget.load();
+ assert.match(widget.page(),/Close day for review/);
+ assert.match(widget.page(),/data-cafe-save="entry"/);
+ await widget.action({dataset:{action:'cafe-day-close'}});
+ assert.equal(currentStatus,'closed');
+ assert.match(widget.page(),/Submitted — awaiting approval/);
+ assert.doesNotMatch(widget.page(),/data-cafe-save="entry"/);
+ assert.doesNotMatch(widget.page(),/data-cafe-save="whish"/);
+ const simpleForm={dataset:{cafeSave:'entry',category:'padel_courts'},querySelector:()=>null};
+ let denied=false;try{await widget.submit(simpleForm)}catch(e){denied=String(e).includes('closed')}
+ assert.ok(denied);
+ admin=true;
+ assert.match(widget.page(),/Approve day/);
+ await widget.action({dataset:{action:'cafe-day-approve'}});
+ assert.equal(currentStatus,'approved');
+ assert.match(widget.page(),/Approved/);
+ const oldPrompt=globalThis.prompt;
+ try{
+  globalThis.prompt=()=> 'Correcting yesterday cash amount';
+  await widget.action({dataset:{action:'cafe-day-reopen'}});
+ }finally{globalThis.prompt=oldPrompt}
+ assert.equal(currentStatus,'reopened');
+ assert.match(widget.page(),/Close day for review/);
+ assert.match(widget.page(),/data-cafe-save="entry"/);
+ assert.deepEqual(rpcCalls.filter(r=>r.name==='cafeteria_change_day_status').map(r=>r.args.p_action),['close','approve','reopen']);
+ assert.equal(rpcCalls.at(-1).args.p_reason,'Correcting yesterday cash amount');
+});
+test('Compact section stays open on rerender and mobile quick transaction uses category form',async()=>{
+ const api={getSession:()=>({access_token:'token'}),listAll:async table=>
+   table==='whish_wallet_settings'?[{opening_balance_cents:60}]:[]};
+ const widget=createCafeteriaFinances({
+  api,heading:()=>'',icon:()=>'',amount:cents=>'$'+(cents/100).toFixed(2),
+  today:()=> '2026-10-22',addDays:()=> '2026-10-21',rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ assert.match(widget.page(),/data-cafe-fold="Products & rentals"/);
+ widget.rememberFold('Products & rentals',true);
+ assert.match(widget.page(),/data-cafe-fold="Products & rentals" open/);
+ await widget.action({dataset:{action:'cafe-quick-toggle'}});
+ assert.match(widget.page(),/Quick transaction/);
+ await widget.change({id:'cafe-quick-category',value:'shoes',dataset:{}});
+ const page=widget.page();
+ assert.match(page,/id="cafe-quick-category"/);
+ const quick=page.split('cafe-quick-sheet')[1];
+ assert.match(quick,/data-category="shoes"/);
+ assert.match(quick,/name="amount"/);
+ assert.match(quick,/Add entry/);
+ await widget.action({dataset:{action:'cafe-quick-toggle'}});
+ assert.doesNotMatch(widget.page(),/cafe-quick-sheet/);
+});
