@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   CAFE_CATEGORIES, CAFE_RENTAL_PRICE_CENTS, cafeMoneyCents,
   cafeQuantity, cafeEntryFromForm, cafeTotals, cafeReconciliation,
-  cafePlayerCount, cafeNonnegativeCents, cafePrivatePayments,
+  cafePlayerCount, cafeNonnegativeCents, cafePrivatePayments, cafePrivateSessions,
   whishSummary, whishFormEntry, WHISH_DESCRIPTION_PRESETS, groupWhishTransactions,
   cafePrivatePaymentsTotal, createCafeteriaFinances
 } from '../lib/cafeteria-finances.js';
@@ -581,7 +581,7 @@ test('Arabic PDF export action downloads the selected daily data without writing
  const seen=[],writes=[];
  const day='2026-10-21';
  const cash=[{id:'c1',entry_date:day,category:'padel_courts',amount_cents:4000,name:'Game A'}];
- const receipts=[{id:'p1',entry_date:day,entry_type:'session',client_id:'id1',paid_cents:1500}];
+ const receipts=[{id:'p1',entry_date:day,entry_type:'session',client_id:'id1',paid_cents:1500,session_fee_cents:3000}];
  const wallet=[{id:'w1',entry_date:day,entry_type:'deposit',name:'Goods Sold',amount_cents:700}];
  const widget=createCafeteriaFinances({
   api:{
@@ -602,8 +602,8 @@ test('Arabic PDF export action downloads the selected daily data without writing
   isAdmin:()=>false,exportArabicPdf:payload=>{seen.push(payload);return 2}
  });
  await widget.load();
- // Export stays implemented but is intentionally not offered in the UI yet.
- assert.doesNotMatch(widget.page(),/data-action="cafe-export-arabic-pdf"/);
+ // Restore the PDF button after the precise accounting mappings are implemented.
+ assert.match(widget.page(),/data-action="cafe-export-arabic-pdf"/);
  await widget.action({dataset:{action:'cafe-export-arabic-pdf'}});
  assert.equal(seen.length,1);
  assert.equal(seen[0].date,day);
@@ -612,5 +612,26 @@ test('Arabic PDF export action downloads the selected daily data without writing
  assert.equal(seen[0].rows[0].name,'Game A');
  assert.equal(seen[0].privatePayments[0].clientCode,'CL-1');
  assert.equal(seen[0].whishRows[0].name,'Goods Sold');
+ assert.equal(seen[0].privateSessions[0].clientName,'Ali');
  assert.equal(writes.length,0);
+});
+
+test('unpaid Private Sessions are included in PDF coaching grid but not as cash received',()=>{
+ const entries=[
+  {id:'one',entry_date:'2026-10-21',entry_type:'session',client_id:'jana',session_fee_cents:3000,paid_cents:0},
+  {id:'two',entry_date:'2026-10-21',entry_type:'session',client_id:'ali',session_fee_cents:2500,paid_cents:0},
+  {id:'deposit',entry_date:'2026-10-21',entry_type:'deposit',client_id:'jana',deposit_cents:1000},
+  {id:'voided',entry_date:'2026-10-21',entry_type:'session',client_id:'jana',session_fee_cents:4000,voided_at:'x'}
+ ];
+ const clients=[
+  {id:'jana',name:'Jana Bleibel',client_code:'2'},
+  {id:'ali',name:'Ali Akhdar',client_code:'49'}
+ ];
+ const sessions=cafePrivateSessions(entries,clients,'2026-10-21');
+ const payments=cafePrivatePayments(entries,clients,'2026-10-21');
+ assert.deepEqual(sessions.map(s=>[s.clientName,s.clientCode,s.sessionFeeCents,s.paidAtSessionCents]),[
+  ['Jana Bleibel','2',3000,0],['Ali Akhdar','49',2500,0]
+ ]);
+ assert.equal(payments.length,1);
+ assert.equal(payments[0].amount_cents,1000);
 });
