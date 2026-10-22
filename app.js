@@ -1418,7 +1418,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'private-add-balance':if(!state.privateSelected)throw Error('Select a client.');openModal('private-deposit',null,{clientId:state.privateSelected});break;
  case 'private-void-entry':if(state.staff?.role!=='admin')throw Error('Only admins can correct financial entries.');if(!state.privateEntries.some(e=>e.id===id))throw Error('Entry not found.');openModal('private-void',id);break;
  case 'private-export':exportPrivateClientCSV();break;
- case 'refresh':await loadData();if(state.tab==='dashboard')void clubInsights.loadOverview(true);if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview(true);}if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
+ case 'refresh':await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
  case 'training-prev-month':
   state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
  case 'training-next-month':
