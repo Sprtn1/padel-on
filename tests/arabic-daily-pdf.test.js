@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {prepareArabicDailySheet,makeArabicDailySheetPdf,downloadArabicDailySheet,formatArabicPdfAmount} from '../lib/arabic-daily-pdf.js';
+import {prepareArabicDailySheet,makeArabicDailySheetPdf,downloadArabicDailySheet,downloadArabicPdfBlob,formatArabicPdfAmount} from '../lib/arabic-daily-pdf.js';
 
 const DAY='2026-10-21';
 const sample=()=>({
@@ -365,4 +365,24 @@ test('Arabic PDF applies rounded optional decimal format to cash, Whish and trai
   assert.equal(sheet.whishIn.find(r=>r.name==='مبيع متفرقات').amount_cents,1185);
   assert.equal(sheet.closingCash,15005);
  }finally{globalThis.document=prev}
+});
+
+test('One generated PDF Blob can be downloaded and reused for WhatsApp without rerendering or saving remotely',()=>{
+ const before=globalThis.document,oldURL=globalThis.URL;
+ const pixels={save(){},restore(){},scale(){},fillRect(){},strokeRect(){},beginPath(){},
+  moveTo(){},lineTo(){},stroke(){},fillText(){}};
+ const clicked=[],urls=[];
+ try{
+  globalThis.URL={createObjectURL:file=>{urls.push(file);return 'blob:local-file'},
+   revokeObjectURL:()=>{}};
+  globalThis.document={body:{append:()=>{}},createElement:tag=>
+   tag==='canvas'?{getContext:()=>pixels,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q==',width:1346,height:1742}:
+   {click(){clicked.push(this.download)},remove(){}}};
+  const result=makeArabicDailySheetPdf(sample());
+  const fileName=downloadArabicPdfBlob(result.pdf,DAY);
+  assert.equal(clicked.length,1);
+  assert.equal(fileName,'padel-on-daily-sheet-'+DAY+'.pdf');
+  assert.equal(urls[0],result.pdf);
+  assert.equal(result.pdf.type,'application/pdf');
+ }finally{globalThis.document=before;globalThis.URL=oldURL}
 });
