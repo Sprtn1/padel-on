@@ -412,7 +412,7 @@ function reportsPage(){
  const [start,end]=reportRange();
  const weekly=state.reportMode==='week',daily=state.reportMode==='day',m=reportMetrics();
  const title=daily?state.reportDay:weekly?weekLabel(state.reportWeek):monthLabel(state.reportMonth);
- return `${heading('Operations overview','Weekly & Monthly Reports','',btn(`${icon('download')} Export CSV`,'export-report','btn-primary',!m?'disabled':'')+btn('Print / Save PDF','print-report','btn-light',!m?'disabled':''))}
+ return `${heading('Operations overview','Operations & Financial Reports','',btn(`${icon('download')} Export CSV`,'export-report','btn-primary',!m?'disabled':'')+btn('Print / Save PDF','print-report','btn-light',!m?'disabled':''))}
 <div class="report-mode"><button class="btn ${daily?'btn-primary':'btn-light'}" data-action="report-mode-day">Daily report</button><button class="btn ${weekly?'btn-primary':'btn-light'}" data-action="report-mode-week">Weekly report</button><button class="btn ${!weekly?'btn-primary':'btn-light'}" data-action="report-mode-month">Monthly report</button></div>
 <div class="period-control"><div><strong>${icon('calendar')} ${title}</strong><small>${daily?'Daily activity and cash count':weekly?'Weekly benefits and records':'Monthly games and matchmaking revenue'} · Asia/Beirut dates</small></div><div class="period-buttons"><button class="btn btn-light" data-action="report-prev" aria-label="Previous ${daily?'day':weekly?'week':'month'}">${icon('chevronLeft')}</button><button class="btn btn-light" data-action="report-next" ${(daily?state.reportDay>=today():weekly?state.reportWeek>=weekStart(today()):state.reportMonth>=monthKey(today()))?'disabled':''} aria-label="Next ${daily?'day':weekly?'week':'month'}">${icon('chevronRight')}</button></div></div>
 ${!m?`<div class="panel-empty">${state.reportLoading?'Loading report from Supabase…':'No report loaded. Use the period arrows to retry.'}</div>`:`
@@ -438,13 +438,14 @@ rows.push([],['CURRENT BALANCES (LIVE SNAPSHOT, NOT MONTH-END)'],
  ['Current prepaid private client credit USD',currentBalances.privateCredit===null?'Not loaded':(currentBalances.privateCredit/100).toFixed(2)],
  ['Current prepaid cafeteria credit USD',currentBalances.cafeteriaCredit===null?'Not loaded':(currentBalances.cafeteriaCredit/100).toFixed(2)]);
 rows.push(['Total matchmaking revenue USD',(m.monthFinance.total/100).toFixed(2)],['Total commissions USD',(m.monthFinance.fee/100).toFixed(2)]);rows.push([],['Matchmaker','Games','Revenue USD','Commission Rate','Commission USD','Payment status']);for(const x of m.breakdown){const settlement=state.settlements.find(t=>(t.matchmaker_id||LEGACY_MATCHMAKER_ID)===(x.person.id||LEGACY_MATCHMAKER_ID)&&t.month_key===state.reportMonth+'-01');rows.push([x.person.name,x.games,(x.total/100).toFixed(2),(matchmakerRate(x.person)/100)+'%',(x.fee/100).toFixed(2),settlement?.status||'unpaid']);}}
- rows.push([],['Member','Team category','Logged games','Free','Half-price',weekly?'Week used':'Monthly total',...(weekly?['Remaining*']:[])]);
+ rows.push([],['Member','Team category','Logged games','Free','Half-price',weekly?'Week used':daily?'Daily total':'Monthly total',...(weekly?['Remaining*']:[])]);
  for(const r of m.rows)rows.push([r.member.name,groupLabel(r.member.team_category),r.played,r.free,r.half,r.used,...(weekly?[r.member.unlimited?'Unlimited':r.remaining]:[])]);
  rows.push([],['Date','Team members','Match benefit','Non-team players']);
  for(const match of m.validMatches.sort((a,b)=>a.played_on.localeCompare(b.played_on))){
   rows.push([match.played_on,m.games.filter(g=>g.match_id===match.id).map(g=>state.members.find(x=>x.id===g.member_id)?.name||'Unknown').join('; '),match.benefit_type,match.non_team_count??'Not recorded']);
  }
- downloadCSV(rows,`padel-on-${weekly?'week':'month'}-${period}.csv`);
+ const [financeStart,financeEnd]=reportRange();rows.push(...clubInsights.csvRows(financeStart,financeEnd));
+ downloadCSV(rows,`padel-on-${state.reportMode}-${period}.csv`);
 }
 function downloadCSV(rows,filename){
  // Avoid formula execution when exports are opened in spreadsheet programs.
