@@ -625,3 +625,31 @@
 .whish-group-item>strong{margin-left:auto;font-size:11px;color:#265b40;white-space:nowrap}
 .whish-group-item .cafe-remove{flex:0 0 25px}
 .whish-correction-hint{font-size:10px;color:#789385;white-space:nowrap}
+
+
+/* Cashbook: concise expandable groups, explicit day status, fast mobile entry. */
+.cafe-fold{border:1px solid #dfeae2;border-radius:15px;background:#fff;margin:16px 0;overflow:hidden}
+.cafe-fold>summary{cursor:pointer;padding:17px 19px;display:list-item;list-style:revert;list-style-position:inside;color:#234738;font:800 14px Manrope,sans-serif;background:#f6faf7}
+.cafe-fold[open]>summary{border-bottom:1px solid #e1eee6;background:#f0f8f3}
+.cafe-fold-body{padding:15px}
+.cafe-fold-body>.cafe-court-grid,.cafe-fold-body>.cafe-category-grid{margin:0}
+.cafe-fold .whish-section{margin:0}
+.cafe-fold .whish-section>.cafe-section-title{display:none}
+.cafe-day-status{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:17px 19px;margin-bottom:14px}
+.cafe-day-status strong{font-size:13px;color:#245339}
+.cafe-day-status p{font-size:11px;color:#758c7b;line-height:1.6;max-width:580px;margin:6px 0 0}
+.cafe-day-status>div:last-child{display:flex;gap:8px;flex-wrap:wrap}
+.cafe-quick-entry{display:none}
+.cafe-quick-sheet{padding:16px;max-height:min(75vh,550px);overflow:auto;box-shadow:0 16px 60px #1d4b2d30}
+.cafe-quick-sheet .cafe-input-label{margin-bottom:12px}
+.cafe-quick-sheet select{width:100%;height:40px;background:#fff;border:1px solid #dfe9e1;border-radius:9px;padding:8px}
+.cafe-quick-sheet .cafe-entry-form{margin-top:10px;margin-bottom:0}
+@media(max-width:830px){
+ .cafe-fold-body{padding:10px}
+ .cafe-quick-entry{display:flex;position:fixed;bottom:82px;right:14px;left:14px;z-index:60;align-items:flex-end;flex-direction:column;gap:8px;pointer-events:none}
+ .cafe-quick-entry>*{pointer-events:auto}
+ .cafe-quick-fab{border-radius:30px;box-shadow:0 8px 24px #185a3560;padding:13px 18px;min-height:45px}
+ .cafe-quick-sheet{width:100%;max-width:460px}
+ .cafe-day-status{align-items:flex-start}
+}
+@media print{.cafe-quick-entry,.cafe-day-status button{display:none!important}}
