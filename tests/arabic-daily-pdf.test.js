@@ -118,7 +118,7 @@ test('Local PDF has a letter-sized Arabic main sheet and appendices without uplo
   assert.ok(calls.some(label=>label.includes('مبيعات في الصندوق')));
   assert.ok(calls.some(label=>label.includes('مجموع خروج صندوق وش')));
   assert.ok(calls.some(label=>label.includes('الصندوق القديم')));
-  assert.ok(calls.some(label=>label.includes('تفاصيل القيود اليومية')));
+  assert.ok(calls.some(label=>label.includes('تفاصيل القيود النقدية')));
  }finally{globalThis.document=prev;}
 });
 
@@ -234,4 +234,31 @@ test('PDF paints opening cash headers and only the prescribed bottom closing-cas
   assert.ok(paints.some(p=>p.value==='Jana Bleibel'));
   assert.ok(paints.some(p=>p.value==='Ali Akhdar'));
  }finally{globalThis.document=save;}
+});
+
+test('Whish duplicate and overflowing groups get a separate Arabic appendix, not a cash detail page',async()=>{
+ const sheetInput=sample();
+ sheetInput.whishRows.push(
+  {entry_date:DAY,entry_type:'deposit',name:'Goods Sold',amount_cents:300},
+  {entry_date:DAY,entry_type:'deposit',name:'Other A',amount_cents:100},
+  {entry_date:DAY,entry_type:'deposit',name:'Other B',amount_cents:200},
+  {entry_date:DAY,entry_type:'deposit',name:'Other C',amount_cents:300}
+ );
+ const sheet=prepareArabicDailySheet(sheetInput);
+ assert.equal(sheet.whishDetailPageRequired,true);
+ assert.ok(sheet.whishDetails.length>sheet.whishIn.length+sheet.whishOut.length);
+ assert.doesNotMatch(JSON.stringify(sheet.details),/Whish withdrawal/);
+ assert.match(JSON.stringify(sheet.whishDetails),/Whish withdrawal/);
+ const prev=globalThis.document,labels=[];
+ const ctx={save(){},restore(){},scale(){},fillRect(){},strokeRect(){},beginPath(){},moveTo(){},
+  lineTo(){},stroke(){},fillText(v){labels.push(String(v));}};
+ try{
+  globalThis.document={createElement:()=>({
+   getContext:()=>ctx,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q==',width:1346,height:1742
+  })};
+  const {pages}=makeArabicDailySheetPdf(sheetInput);
+  assert.equal(pages,3);
+  assert.ok(labels.some(v=>v==='تفاصيل القيود النقدية'));
+  assert.ok(labels.some(v=>v==='تفاصيل صندوق وش'));
+ }finally{globalThis.document=prev}
 });
