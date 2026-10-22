@@ -825,3 +825,107 @@ test('Only the ordinary one-page Arabic PDF export button is visible, with no Wh
  assert.equal(toasts.length,2);
  assert.ok(toasts.every(x=>/downloaded locally/.test(x)));
 });
+
+test('All three court categories show staff Edit controls without enabling edits elsewhere',async()=>{
+ const day='2026-10-22',categories=['padel_courts','pickleball_courts','basketball_courts'];
+ const entries=[
+  ...categories.map((category,i)=>({id:'court'+i,entry_date:day,category,name:'Court booking '+i,
+   amount_cents:1200+i*2000,checkmarks:Array(category==='basketball_courts'?6:4).fill(true)})),
+  {id:'noncourt',entry_date:day,category:'shoes',name:'Shoes',amount_cents:5000}
+ ];
+ const w=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),listAll:async table=>table==='cafeteria_finance_entries'?entries:[]},
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),today:()=>day,
+  addDays:()=> '2026-10-21',rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await w.load();
+ let html=w.page();
+ assert.equal((html.match(/data-action="cafe-court-amount-edit"/g)||[]).length,3);
+ assert.doesNotMatch(html,/data-action="cafe-void"/);
+ assert.doesNotMatch(html,/data-cafe-save="court-amount"/);
+ for(let i=0;i<3;i++){
+  await w.action({dataset:{action:'cafe-court-amount-edit',id:'court'+i}});
+  html=w.page();
+  assert.match(html,/data-cafe-save="court-amount"/);
+  assert.match(html,new RegExp('data-entry-id="court'+i+'"'));
+  assert.match(html,/name="amount"/);
+  assert.match(html,/value="/);
+ }
+ let refused=false;
+ try{await w.action({dataset:{action:'cafe-court-amount-edit',id:'noncourt'}})}
+ catch(err){refused=err.message.includes('Court entry not found')}
+ assert.ok(refused);
+ await w.action({dataset:{action:'cafe-court-amount-cancel'}});
+ assert.doesNotMatch(w.page(),/data-cafe-save="court-amount"/);
+});
+
+test('Staff court amount update writes only the selected amount and refreshes displayed totals',async()=>{
+ const day='2026-10-22',calls=[],messages=[];
+ const entry={id:'court1',entry_date:day,category:'padel_courts',name:'Players',
+  amount_cents:3200,quantity:1,unit_price_cents:0,checkmarks:[true,false,true,false]};
+ const api={
+  getSession:()=>({access_token:'token'}),
+  listAll:async table=>table==='cafeteria_finance_entries'?[{...entry,checkmarks:[...entry.checkmarks]}]:[],
+  rpc:async(name,args)=>{calls.push({name,args});
+   if(name==='cafeteria_finance_set_court_amount')entry.amount_cents=args.p_amount_cents;}
+ };
+ const widget=createCafeteriaFinances({
+  api,heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=>day,addDays:()=> '2026-10-21',rerender:()=>{},
+  toast:m=>messages.push(m),isAdmin:()=>false
+ });
+ await widget.load();
+ await widget.action({dataset:{action:'cafe-court-amount-edit',id:entry.id}});
+ assert.match(widget.page(),/value="32.00"/);
+ const form={dataset:{cafeSave:'court-amount',entryId:entry.id},
+  __values:[['amount','35.75']],
+  querySelector:()=>({disabled:false,isConnected:true})};
+ const originalFormData=globalThis.FormData;
+ try{globalThis.FormData=class{constructor(value){this.values=value.__values}entries(){return this.values[Symbol.iterator]()}};await widget.submit(form)}
+ finally{globalThis.FormData=originalFormData}
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].name,'cafeteria_finance_set_court_amount');
+ assert.deepEqual(calls[0].args,{p_entry_id:'court1',p_amount_cents:3575,p_expected_amount_cents:3200});
+ assert.deepEqual(entry.checkmarks,[true,false,true,false]);
+ assert.equal(entry.name,'Players');
+ assert.equal(entry.quantity,1);
+ assert.match(widget.page(),/\$35\.75/);
+ assert.doesNotMatch(widget.page(),/data-cafe-save="court-amount"/);
+ assert.match(messages[0],/Totals recalculated/);
+});
+
+test('Invalid amounts, noncourt records and closed days never call amount edit RPC',async()=>{
+ const day='2026-10-22',calls=[];
+ let status='open';
+ const entry={id:'court1',entry_date:day,category:'basketball_courts',
+  name:'Basketball',amount_cents:1000,checkmarks:[true,false,true,false,true,false]};
+ const w=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),
+   listAll:async table=>table==='cafeteria_finance_entries'?[entry]:
+    table==='cafeteria_day_closings'?(status==='open'?[]:[{day_date:day,status}]):[],
+   rpc:async(...args)=>calls.push(args)},
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),today:()=>day,
+  addDays:()=> '2026-10-21',rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await w.load();
+ await w.action({dataset:{action:'cafe-court-amount-edit',id:entry.id}});
+ const originalFormData=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(value){this.values=value.__values}entries(){return this.values[Symbol.iterator]()}};
+  for(const raw of ['0','-2','10.999','abc']){
+   const form={dataset:{cafeSave:'court-amount',entryId:entry.id},
+    __values:[['amount',raw]],querySelector:()=>null};
+   let blocked=false;try{await w.submit(form)}catch(err){blocked=/amount/i.test(err.message)}
+   assert.ok(blocked,'Reject '+raw);
+  }
+ }finally{globalThis.FormData=originalFormData}
+ assert.equal(calls.length,0);
+ status='approved';await w.load(true);
+ assert.doesNotMatch(w.page(),/data-action="cafe-court-amount-edit"/);
+ assert.doesNotMatch(w.page(),/data-cafe-save="court-amount"/);
+ let denied=false;
+ try{await w.action({dataset:{action:'cafe-court-amount-edit',id:entry.id}})}
+ catch(e){denied=/closed/.test(e.message)}
+ assert.ok(denied);
+ assert.equal(calls.length,0);
+});
