@@ -678,3 +678,17 @@ test('new income and expense cards render individual records without modifying c
   assert.match(html,new RegExp(name));
  assert.match(html,/\$77\.00/); // ($200 + $10) - $133 = $77 Goods Sold.
 });
+
+test('Private Sessions exports preferred Arabic name independently of the English name and financial values',()=>{
+ const day='2026-10-21';
+ const entries=[{id:'s1',entry_date:day,entry_type:'session',client_id:'jana',session_fee_cents:3000,paid_cents:0}];
+ const clients=[{id:'jana',client_code:'2',name:'Jana Bleibel',arabic_name:'جنى بليبل'}];
+ const sessions=cafePrivateSessions(entries,clients,day);
+ assert.equal(sessions.length,1);
+ assert.equal(sessions[0].clientName,'Jana Bleibel');
+ assert.equal(sessions[0].clientArabicName,'جنى بليبل');
+ assert.equal(sessions[0].clientCode,'2');
+ assert.equal(sessions[0].sessionFeeCents,3000);
+ assert.equal(sessions[0].paidAtSessionCents,0);
+ assert.equal(cafePrivatePayments(entries,clients,day).length,0);
+});
