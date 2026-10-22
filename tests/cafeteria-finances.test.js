@@ -208,6 +208,7 @@ test('private payments render as a read-only daily table and update on refresh',
    if(table==='cafeteria_finance_days')return [{closing_cash_cents:12000}];
    if(table==='whish_ledger_entries')return [];
    if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
+   if(table==='cafeteria_day_closings')return [];
    if(table==='private_clients')return [{id:'client1',name:'Jamie & Co',client_code:'PS-0042'}];
    if(table==='private_ledger_entries')return [
     {id:'pay-1',entry_type:'session',entry_date:'2026-10-21',client_id:'client1',paid_cents:2500,session_fee_cents:8000},
@@ -593,6 +594,7 @@ test('Arabic PDF export action downloads the selected daily data without writing
     if(table==='private_clients')return [{id:'id1',name:'Ali',client_code:'CL-1'}];
     if(table==='whish_ledger_entries')return wallet;
     if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
+   if(table==='cafeteria_day_closings')return [];
     throw Error('Unexpected source '+table);
    },
    rpc:async(...args)=>writes.push(args)
