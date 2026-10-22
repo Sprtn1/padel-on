@@ -868,6 +868,8 @@ function privateClientModal(type,m){
   const initial=edit?'':field('opening_balance','Opening balance ($) · negative = amount owed','0.00','number','required step="0.01" min="-1000000000" max="1000000000"');
   const content=`<form id="modal-form" data-save="save-private-client">
    ${field('name','Client name',client?.name||'','text','required maxlength="120"')}
+   ${field('arabic_name','Arabic spelling for daily PDF (optional)',client?.arabic_name||'','text',`maxlength="120" dir="rtl" placeholder="${esc(client?.name?arabicDailyPdf.arabicClientName(client.name):'الاسم بالعربية')}"`)}
+   <small class="form-hint">PDF names are automatically converted into Arabic. Enter a preferred spelling here if needed; the English client name remains unchanged.</small>
    ${field('client_code','Existing client ID (optional)',client?.client_code||'','text','maxlength="40" placeholder="Example: C1024" aria-describedby="private-id-feedback"')}<div class="private-id-feedback" id="private-id-feedback" aria-live="polite">IDs must be unique across all clients.</div>
    ${field('contact','Contact information (optional)',client?.contact||'','text','maxlength="120"')}
    ${initial}
@@ -1145,15 +1147,26 @@ async function saveForm(form){const f=new FormData(form),data=Object.fromEntries
  case 'save-private-client':{
    const name=(data.name||'').trim();
    if(name.length<2)throw Error('Enter a client name.');
+   const arabicName=(data.arabic_name||'').trim();
+   if(!arabicDailyPdf.isValidArabicClientName(arabicName))
+     throw Error('Use an Arabic spelling without English letters (maximum 120 characters).');
    const clientCode=normalizePrivateClientId(data.client_code);
    const conflict=privateClientIdOwner(clientCode,m.clientId||null);
    if(conflict)throw Error('Client ID '+clientCode+' is already assigned to '+conflict.name+'. Please enter another ID.');
    try{
      if(m.clientId){
        await api.rpc('private_update_client',{p_client_id:m.clientId,p_name:name,p_client_code:clientCode||null,p_contact:data.contact?.trim()||'',p_notes:data.notes?.trim()||'',p_active:data.active==='true'});
+       if(arabicName!==(state.privateClients.find(c=>c.id===m.clientId)?.arabic_name||'').trim())
+         await api.rpc('private_set_arabic_name',{p_client_id:m.clientId,p_arabic_name:arabicName});
      }else{
        const created=await api.rpc('private_add_client',{p_name:name,p_client_code:clientCode||null,p_contact:data.contact?.trim()||'',p_opening_balance_cents:privateSignedUSD(data.opening_balance),p_notes:data.notes?.trim()||''});
-       if(typeof created==='string')state.privateSelected=created;
+       if(typeof created==='string'){
+         state.privateSelected=created;
+         if(arabicName){
+           try{await api.rpc('private_set_arabic_name',{p_client_id:created,p_arabic_name:arabicName});}
+           catch(err){toast('Client created, but Arabic spelling was not saved. Edit the client to retry: '+(err.message||'Unknown error'),true);}
+         }
+       }
      }
    }catch(error){
      // The database unique index is authoritative across concurrent staff sessions.
