@@ -262,3 +262,55 @@ test('Whish duplicate and overflowing groups get a separate Arabic appendix, not
   assert.ok(labels.some(v=>v==='تفاصيل صندوق وش'));
  }finally{globalThis.document=prev}
 });
+
+test('dedicated categories and older miscellaneous entries share their matching Arabic PDF rows',()=>{
+ const x=sample();
+ x.rows.push(
+  {entry_date:DAY,category:'summer_camp',amount_cents:1200},
+  {entry_date:DAY,category:'summer_camp',amount_cents:600},
+  {entry_date:DAY,category:'shoes',amount_cents:2700},
+  {entry_date:DAY,category:'basketball_academy',amount_cents:900},
+  {entry_date:DAY,category:'family_debt',amount_cents:400},
+  {entry_date:DAY,category:'family_debt',amount_cents:500},
+  {entry_date:DAY,category:'other_income',name:'Summer Camp',amount_cents:200},
+  {entry_date:DAY,category:'other_income',name:'Shoes',amount_cents:300},
+  {entry_date:DAY,category:'other_income',name:'Basketball Academy',amount_cents:100},
+  {entry_date:DAY,category:'other_expense',name:'Family Debt',amount_cents:250}
+ );
+ const sheet=prepareArabicDailySheet(x);
+ assert.equal(sheet.amountRows.find(r=>r[0]==='دورة الصيف')[1],2000);
+ assert.equal(sheet.amountRows.find(r=>r[0]==='أحذية')[1],3000);
+ assert.equal(sheet.amountRows.find(r=>r[0]==='أكاديمية باسكت')[1],1000);
+ assert.equal(sheet.expenseRows.find(r=>r[0]==='دين عائلة')[1],1150);
+ assert.equal(sheet.receipts,31500+1800+2700+900+600);
+ assert.equal(sheet.expenses,27500+900+250);
+ assert.ok(sheet.details.some(e=>e.section==='دورة الصيف'));
+ assert.ok(sheet.details.some(e=>e.section==='أحذية'));
+ assert.ok(sheet.details.some(e=>e.section==='أكاديمية باسكت'));
+ assert.ok(sheet.details.some(e=>e.section==='دين عائلة'));
+ assert.ok(!sheet.amountRows.some(e=>e[0]==='Summer Camp'||e[0]==='Shoes'));
+});
+test('Whish PDF converts Goods Sold and cash-box transfer only and keeps data independent',()=>{
+ const input=sample();
+ input.whishRows.push(
+  {entry_date:DAY,entry_type:'deposit',name:'goods sold',amount_cents:175},
+  {entry_date:DAY,entry_type:'deposit',name:'مبيع متفرقات',amount_cents:225},
+  {entry_date:DAY,entry_type:'withdrawal',name:'Transfer from Whish to Miscellaneous Cash Box',amount_cents:560},
+  {entry_date:DAY,entry_type:'withdrawal',name:'خروج إلى صندوق متفرقات',amount_cents:140},
+  {entry_date:DAY,entry_type:'withdrawal',name:'Other withdrawal',amount_cents:300}
+ );
+ const before=JSON.parse(JSON.stringify(input));
+ const sheet=prepareArabicDailySheet(input);
+ assert.equal(sheet.whishIn.find(e=>e.name==='مبيع متفرقات').amount_cents,1580);
+ assert.equal(sheet.whishOut.find(e=>e.name==='خروج إلى صندوق متفرقات').amount_cents,700);
+ assert.ok(sheet.whishOut.some(e=>e.name==='Other withdrawal'));
+ assert.ok(sheet.whishDetails.some(e=>e.name==='خروج إلى صندوق متفرقات'));
+ assert.ok(!sheet.whishDetails.some(e=>e.name==='Transfer from Whish to Miscellaneous Cash Box'));
+ assert.ok(!sheet.whishDetails.some(e=>e.name==='Goods Sold'));
+ assert.ok(!sheet.details.some(e=>e.name==='خروج إلى صندوق متفرقات'));
+ assert.deepEqual(input,before);
+ const noWhish=prepareArabicDailySheet(sample());
+ assert.equal(sheet.receipts,noWhish.receipts);
+ assert.equal(sheet.expenses,noWhish.expenses);
+ assert.equal(sheet.totalGenerated,noWhish.totalGenerated);
+});
