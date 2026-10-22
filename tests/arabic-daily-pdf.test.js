@@ -199,7 +199,7 @@ test('extra client payments and miscellaneous entries survive overflow into deta
  assert.ok(sheet.overflowIncome.length>0);
  assert.ok(sheet.overflowExpenses.length>0);
  assert.equal(sheet.overflowTraining.length,6);
- assert.ok(sheet.details.some(d=>d.name==='Training 11'&&d.identifier==='111'));
+ assert.ok(sheet.details.some(d=>d.section==='ساعات تدريب'&&d.identifier==='111'&&/[ء-ي]/.test(d.name)));
  assert.ok(sheet.details.some(d=>d.name==='Expense 11'));
  assert.ok(sheet.details.some(d=>d.name.includes('Person 11')));
 });
