@@ -770,3 +770,30 @@ test('Compact section stays open on rerender and mobile quick transaction uses c
  await widget.action({dataset:{action:'cafe-quick-toggle'}});
  assert.doesNotMatch(widget.page(),/cafe-quick-sheet/);
 });
+
+test('Negative cash reconciliation prevents submitting a day for approval',async()=>{
+ const day='2026-10-22',writes=[];
+ const widget=createCafeteriaFinances({
+  api:{
+   getSession:()=>({access_token:'token'}),
+   listAll:async table=>{
+    if(table==='cafeteria_finance_entries')return [{entry_date:day,category:'padel_courts',amount_cents:9000,checkmarks:[true,true,true,true]}];
+    if(table==='cafeteria_finance_days')return [{day_date:day,closing_cash_cents:1000}];
+    if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
+    return [];
+   },
+   rpc:async(...args)=>writes.push(args)
+  },
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=>day,addDays:()=> '2026-10-21',
+  rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const html=widget.page();
+ assert.match(html,/data-action="cafe-day-close" disabled/);
+ let blocked=false;
+ try{await widget.action({dataset:{action:'cafe-day-close'}})}
+ catch(e){blocked=String(e).includes('Negative Goods Sold')}
+ assert.ok(blocked);
+ assert.equal(writes.length,0);
+});
