@@ -797,3 +797,63 @@ test('Negative cash reconciliation prevents submitting a day for approval',async
  assert.ok(blocked);
  assert.equal(writes.length,0);
 });
+
+test('WhatsApp export stays disabled without server setup and never changes the ordinary PDF button',async()=>{
+ const day='2026-10-22',status=[];
+ const w=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'demo'}),listAll:async()=>[],
+   functionCall:async(name,params)=>{status.push([name,params]);return {configured:false};}},
+  heading:()=>'',icon:()=>'',amount:n=>String(n),today:()=>day,addDays:()=>day,
+  rerender:()=>{},toast:()=>{},isAdmin:()=>true,
+  exportArabicPdf:()=>1,sendArabicPdf:async()=>{throw Error('Must not send when unconfigured')}
+ });
+ await w.load();
+ const html=w.page();
+ assert.match(html,/Export Arabic Daily Sheet \(PDF\)/);
+ assert.match(html,/data-action="cafe-send-arabic-whatsapp" disabled/);
+ assert.match(html,/WhatsApp setup required/);
+ assert.equal(status.length,1);
+ let refused=false;
+ try{await w.action({dataset:{action:'cafe-send-arabic-whatsapp'}})}
+ catch(e){refused=/not configured/.test(e.message)}
+ assert.ok(refused);
+});
+
+test('Admin WhatsApp export shares selected daily accounting input and only sends once',async()=>{
+ const day='2026-10-22',calls=[],toasts=[];
+ const w=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'demo'}),listAll:async table=>
+   table==='cafeteria_finance_entries'?[{entry_date:day,category:'shoes',amount_cents:3500}]:[],
+   functionCall:async()=>({configured:true})},
+  heading:()=>'',icon:()=>'',amount:n=>String(n),today:()=>day,addDays:()=>day,
+  rerender:()=>{},toast:x=>toasts.push(x),isAdmin:()=>true,
+  exportArabicPdf:()=>1,
+  sendArabicPdf:async input=>{calls.push(input);return {pages:2,messageId:'wamid.123'};}
+ });
+ await w.load();
+ assert.match(w.page(),/data-action="cafe-send-arabic-whatsapp"/);
+ assert.match(w.page(),/Export & Send WhatsApp/);
+ await w.action({dataset:{action:'cafe-send-arabic-whatsapp'}});
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].date,day);
+ assert.equal(calls[0].rows[0].amount_cents,3500);
+ assert.match(toasts[0],/accepted by WhatsApp/);
+});
+
+test('Non-admin users never see WhatsApp send control and cannot invoke it directly',async()=>{
+ let count=0;
+ const w=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'demo'}),listAll:async()=>[],
+   functionCall:async()=>{count++;return {configured:true}}},
+  heading:()=>'',icon:()=>'',amount:n=>String(n),today:()=> '2026-10-22',
+  addDays:()=> '2026-10-21',rerender:()=>{},toast:()=>{},isAdmin:()=>false,
+  exportArabicPdf:()=>1,sendArabicPdf:async()=>{count++}
+ });
+ await w.load();
+ assert.doesNotMatch(w.page(),/data-action="cafe-send-arabic-whatsapp"/);
+ assert.equal(count,0);
+ let denied=false;
+ try{await w.action({dataset:{action:'cafe-send-arabic-whatsapp'}})}
+ catch(e){denied=/administrators/.test(e.message)}
+ assert.ok(denied);
+});
