@@ -93,8 +93,34 @@ test('Report shows accurate grouped category and daily financial breakdown',asyn
  assert.match(html,/\$34\.00/);
  assert.match(html,/\$60\.00/);
  assert.match(html,/\$35\.00/);
- assert.match(html,/padel courts/);
+ assert.match(html,/Padel Courts/);
+ assert.match(html,/Expense/);
  assert.match(html,/2026-10-22/);
  assert.match(html,/Whish wallet · separate ledger/);
  assert.match(html,/1 active day\(s\)/);
+});
+
+test('Export rows include period finances and Whish separately, without rounding cents away',async()=>{
+ const data=sample();
+ const insights=createCashInsights({
+  api:{getSession:()=>({access_token:'token'}),listAll:async table=>{
+   if(table==='cafeteria_finance_entries')return data.entries;
+   if(table==='cafeteria_finance_days')return data.days;
+   if(table==='private_ledger_entries')return data.privateLedger;
+   if(table==='whish_ledger_entries')return data.whish;
+   if(table==='cafeteria_day_closings')return data.closings;
+   throw Error(table);
+  }},
+  today:()=>start,amount:c=>(c/100).toFixed(2),renderIfVisible:()=>{}
+ });
+ await insights.loadReport(start,end);
+ const csv=insights.csvRows(start,end);
+ assert.ok(csv.some(row=>row[0]==='Recorded income USD'&&row[1]==='34.00'));
+ assert.ok(csv.some(row=>row[0]==='Expenses USD'&&row[1]==='10.00'));
+ assert.ok(csv.some(row=>row[0]==='Goods Sold on counted days USD'&&row[1]==='35.00'));
+ assert.ok(csv.some(row=>row[0]==='padel_courts'&&row[1]==='Income'));
+ assert.ok(csv.some(row=>row[0]==='coaches'&&row[1]==='Expense'));
+ assert.ok(csv.some(row=>row[0]==='Net Whish movement USD'&&row[1]==='4.00'));
+ assert.ok(!csv.some(row=>row[0]==='Recorded income USD'&&row[1]==='38.00'));
+ assert.deepEqual(insights.csvRows('2026-09-01','2026-09-30'),[]);
 });
