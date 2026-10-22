@@ -930,3 +930,32 @@ test('Invalid amounts, noncourt records and closed days never call amount edit R
  assert.ok(denied);
  assert.equal(calls.length,0);
 });
+
+test('Cashbook date header contains no NaN after removing WhatsApp button',async()=>{
+ const selected='2026-10-22',notifications=[];
+ const widget=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),
+   listAll:async table=>table==='whish_wallet_settings'?[{opening_balance_cents:60}]:[]},
+  heading:()=>'',icon:()=>'',amount:value=>'$'+(value/100).toFixed(2),
+  today:()=>selected,addDays:()=> '2026-10-21',
+  rerender:()=>{},toast:v=>notifications.push(v),isAdmin:()=>false,
+  exportArabicPdf:()=>1
+ });
+ // Before and after loading, header should be valid markup with every
+ // existing date/export control and no JavaScript-coercion artifact.
+ const initial=widget.page();
+ assert.doesNotMatch(initial,/>NaN</);
+ assert.match(initial,/data-action="cafe-export-arabic-pdf"/);
+ await widget.load();
+ const html=widget.page();
+ assert.doesNotMatch(html,/>NaN</);
+ assert.doesNotMatch(html,/NaN<\/div>/);
+ assert.match(html,/data-action="cafe-prev-date"/);
+ assert.match(html,/data-action="cafe-next-date"/);
+ assert.match(html,/data-action="cafe-today"/);
+ assert.match(html,/data-action="cafe-reload"/);
+ assert.match(html,/data-action="cafe-export-arabic-pdf"/);
+ assert.doesNotMatch(html,/WhatsApp/);
+ await widget.action({dataset:{action:'cafe-export-arabic-pdf'}});
+ assert.match(notifications[0],/downloaded locally/);
+});
