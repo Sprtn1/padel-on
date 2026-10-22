@@ -4,6 +4,7 @@ const api = await import(`./lib/api.js?v=${assetVersion}`);
 const orderCounter = await import(`./lib/order-counter-ui.js?v=${assetVersion}`);
 const reemItems = await import(`./lib/reem-items-ui.js?v=${assetVersion}`);
 const cafeteriaFinanceModule = await import(`./lib/cafeteria-finances.js?v=${assetVersion}`);
+const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
 const arabicDailyPdf = await import(`./lib/arabic-daily-pdf.js?v=${assetVersion}`);
 const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus} = await import(`./lib/logic.js?v=${assetVersion}`);
 const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = await import(`./lib/date.js?v=${assetVersion}`);
@@ -44,6 +45,9 @@ const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
  toast,isAdmin:()=>state.staff?.role==='admin',
  exportArabicPdf:data=>arabicDailyPdf.downloadArabicDailySheet(data)
 });
+const clubInsights=clubInsightsModule.createCashInsights({
+ api,today,amount,renderIfVisible:tab=>{if(state.tab===tab&&api.getSession()?.access_token)render()}
+});
 // Staff inactivity policy: six hours without user interaction logs out every open tab.
 // Background database polling and token refreshes never extend this timer.
 let lastKnownWeek=weekStart(todayBeirut());
@@ -71,7 +75,7 @@ async function autoSignOut(){
  idleLogoutStarted=true;
  clearStaffActivity();
  state.staff=null;
- cafeteriaFinances.reset();
+ cafeteriaFinances.reset();clubInsights.reset();
  state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';
  // api.signOut clears the local authentication token before contacting Supabase.
  const remoteLogout=api.signOut();
@@ -252,7 +256,7 @@ function overviewExtra(){
  const pending=dueRows.reduce((n,x)=>n+x.fee,0);
  const overviewMetrics=`<section class="summary management-summary">
   ${summaryCard('Private sessions today',snapshot.sessions??'—','Completed sessions · today','calendar',true)}
-  ${summaryCard('Cash collected today',snapshot.collected===null?'—':amount(snapshot.collected),'Sessions, top-ups, cafeteria and matchmaking','wallet')}
+  ${summaryCard('Other ledger receipts',snapshot.collected===null?'—':amount(snapshot.collected),'Private receipts, debt payments & matchmaking · not cash drawer','wallet')}
   ${summaryCard('Cafeteria owed',balance.cafeteriaOwed===null?'—':amount(balance.cafeteriaOwed),'Current outstanding balances','activity')}
   ${summaryCard('Private coaching owed',balance.privateOwed===null?'—':amount(balance.privateOwed),'Current outstanding client balances','users')}
  </section>`;
@@ -270,6 +274,7 @@ function overviewExtra(){
  </div></article>`;
  return `<div class="management-section-label"><h2>Today's club operations</h2><span>${niceDay(todayDate,{weekday:'long',month:'long',day:'numeric'})} · Asia/Beirut</span></div>
  ${overviewMetrics}
+ ${clubInsights.overviewHTML()}
  <div class="two-col management-panels">${managementAlertPanel()}${commissions}</div>
  <div class="management-section-label"><h2>Daily coaching activity</h2></div>${todayPanel}`;
 }
@@ -339,6 +344,7 @@ function reportRange(){
 async function loadReport(){
  const [start,end]=reportRange(),mode=state.reportMode;
  const request=++reportSeq;
+ void clubInsights.loadReport(start,end);
  state.reportLoading=true;state.reportData=null;state.reportKey=`${mode}:${start}`;
  render();
  try{
@@ -411,6 +417,7 @@ function reportsPage(){
 ${!m?`<div class="panel-empty">${state.reportLoading?'Loading report from Supabase…':'No report loaded. Use the period arrows to retry.'}</div>`:`
 <section class="finance-grid">${summaryCard('Team matches',m.validMatches.length,'Matches recorded in selected period','calendar',true)}${summaryCard('Benefit uses',weekly?m.weekUsed:m.games.length,weekly?'Includes imported opening balances':'Dated transactions only','gift')}${summaryCard('Free / Half-price',`${m.free} / ${m.half}`,'Per-member benefit entries','activity')}</section>
 ${weekly?`<div class="notice">Historical balances use the member's current configured allowance. Imported opening balances are counted as weekly usage; reset events are respected.</div>`:`<section class="finance-grid">${summaryCard('Matchmaking revenue',amount(m.monthFinance.total),'All matchmaking personnel','wallet',true)}${summaryCard('Total commissions',amount(m.monthFinance.fee),'Sum of independent monthly commissions','coins')}${summaryCard('Other benefit games',m.special,'Special-player entries this month','users')}</section>${matchmakingBreakdownHTML(m.breakdown)}${consolidatedFinancePanel(state.reportMonth)}`}
+${clubInsights.reportHTML(start,end)}
 <article class="panel"><div class="panel-head"><div><h2>Team member breakdown</h2><p>${title} · ${m.rows.length} members with activity</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Member</th><th>Category</th><th>Games logged</th><th>Free</th><th>Half-price</th><th>${weekly?'Week used':'Monthly total'}</th>${weekly?'<th>Remaining*</th>':''}</tr></thead><tbody>${m.rows.length?m.rows.map(r=>`<tr><td><strong>${esc(r.member.name)}</strong></td><td>${esc(groupLabel(r.member.team_category))}</td><td>${r.played}</td><td>${r.free}</td><td>${r.half}</td><td><strong>${r.used}</strong></td>${weekly?`<td>${r.member.unlimited?'Unlimited':r.remaining}</td>`:''}</tr>`).join(''):`<tr><td colspan="${weekly?7:6}" class="panel-empty">No benefits recorded for this period.</td></tr>`}</tbody></table></div></article>
 <div class="archive-note">${weekly?'* Remaining benefits use current allowances and historical reset events.':'Financial totals use permanent saved matchmaking records. The monthly game counts exclude imported balances.'} No report action edits any records.</div>
 `}`;
@@ -1066,7 +1073,7 @@ async function loadData(resetTab=false){if(state.loading)return;state.loading=tr
  if(!api.getSession()?.access_token || idleLogoutStarted)return;
  Object.assign(state,{members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers});
  if(matchmakers.length&&!matchmakers.some(p=>p.id===state.matchmakerId))state.matchmakerId=matchmakers[0].id;
- if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport(); if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth(); if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients(); if(state.tab==='debts'&&!state.debtLoading)void loadDebtData(); if(state.tab==='cafeteria-finances')void cafeteriaFinances.load(true); if(state.tab==='dashboard'||state.tab==='reports')loadClubSources();
+ if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport(); if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth(); if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients(); if(state.tab==='debts'&&!state.debtLoading)void loadDebtData(); if(state.tab==='cafeteria-finances')void cafeteriaFinances.load(true); if(state.tab==='dashboard'||state.tab==='reports')loadClubSources();if(state.tab==='dashboard')void clubInsights.loadOverview();
  }catch(e){if((idleLogoutStarted || !api.getSession()?.access_token) && !e.message.includes('no PADEL ON staff access'))return;if(e.message.includes('sign in')||e.message.includes('JWT')||e.message.includes('refresh token')){clearStaffActivity();await api.signOut();renderAuth(e.message)}else if(state.staff){toast(e.message,true)}else renderAuth(e.message)}finally{state.loading=false;}}
 let working=false;
 async function runMutation(task,success='Saved successfully'){if(working)return;working=true;const b=document.getElementById('save-button');if(b){b.disabled=true;b.textContent='Saving…'}try{await task();state.modal=null;await loadData();toast(success)}catch(e){toast(e?.message||'Could not save. Try again.',true)}finally{working=false;if(b&&b.isConnected){b.disabled=false;b.textContent='Try again'}}}
@@ -1408,7 +1415,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'private-add-balance':if(!state.privateSelected)throw Error('Select a client.');openModal('private-deposit',null,{clientId:state.privateSelected});break;
  case 'private-void-entry':if(state.staff?.role!=='admin')throw Error('Only admins can correct financial entries.');if(!state.privateEntries.some(e=>e.id===id))throw Error('Entry not found.');openModal('private-void',id);break;
  case 'private-export':exportPrivateClientCSV();break;
- case 'refresh':await loadData();if(state.tab==='dashboard')loadClubSources();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
+ case 'refresh':await loadData();if(state.tab==='dashboard')void clubInsights.loadOverview(true);if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview();}if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
  case 'training-prev-month':
   state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
  case 'training-next-month':
@@ -1459,12 +1466,12 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'prev-month':state.month=shiftMonth(state.month,-1);render();break;
  case 'next-month':if(state.month<monthKey(today())){state.month=shiftMonth(state.month,1);render()}break;
  case 'export-finance':exportFinance();break;
- case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;cafeteriaFinances.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
+ case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;cafeteriaFinances.reset();clubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
  }}
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
  if(e.target.id==='modal-backdrop'){closeModal();return;}
- const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard')loadClubSources();if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);
+ const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview();}if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);
  if(state.tab==='settings'&&state.staff?.role==='admin'){
   await Promise.all([loadPrivateClients(),loadDebtData()]);
   if(state.tab==='settings'&&api.getSession()?.access_token)render();
