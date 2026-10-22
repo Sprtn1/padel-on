@@ -44,7 +44,22 @@ const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
  api,heading,icon,amount,today,addDays,
  rerender:()=>{if(state.tab==='cafeteria-finances'&&api.getSession()?.access_token)render()},
  toast,isAdmin:()=>state.staff?.role==='admin',
- exportArabicPdf:data=>arabicDailyPdf.downloadArabicDailySheet(data)
+ exportArabicPdf:data=>arabicDailyPdf.downloadArabicDailySheet(data),
+ sendArabicPdf:async data=>{
+  // The same PDF bytes are downloaded and uploaded once; no Supabase Storage.
+  const {pdf,pages}=arabicDailyPdf.makeArabicDailySheetPdf(data);
+  arabicDailyPdf.downloadArabicPdfBlob(pdf,data.date);
+  const form=new FormData();
+  form.append('date',data.date);
+  form.append('pdf',pdf,'padel-on-daily-sheet-'+data.date+'.pdf');
+  try{
+   const result=await api.functionUpload('send-arabic-pdf-whatsapp',form);
+   if(result?.accepted!==true)throw Error('WhatsApp did not accept the message.');
+   return {pages,messageId:result.messageId};
+  }catch(err){
+   throw Error('PDF downloaded locally, but WhatsApp did not send: '+(err?.message||'Please check the WhatsApp integration.'));
+  }
+ }
 });
 const clubInsights=clubInsightsModule.createCashInsights({
  api,today,amount,renderIfVisible:tab=>{if(state.tab===tab&&api.getSession()?.access_token)render()}
