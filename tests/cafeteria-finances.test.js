@@ -921,7 +921,8 @@ test('Invalid amounts, noncourt records and closed days never call amount edit R
  }finally{globalThis.FormData=originalFormData}
  assert.equal(calls.length,0);
  status='approved';await w.load(true);
- assert.doesNotMatch(w.page(),/data-action="cafe-court-amount-edit"/);
+ assert.match(w.page(),/data-action="cafe-court-amount-edit" data-id="court1" disabled/);
+ assert.match(w.page(),/Ask an administrator to reopen it/);
  assert.doesNotMatch(w.page(),/data-cafe-save="court-amount"/);
  let denied=false;
  try{await w.action({dataset:{action:'cafe-court-amount-edit',id:entry.id}})}
