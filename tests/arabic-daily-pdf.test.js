@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {prepareArabicDailySheet,makeArabicDailySheetPdf,downloadArabicDailySheet,downloadArabicPdfBlob,formatArabicPdfAmount} from '../lib/arabic-daily-pdf.js';
+import {prepareArabicDailySheet,makeArabicDailySheetPdf,downloadArabicDailySheet,downloadArabicPdfBlob,formatArabicPdfAmount,arabicDailyEntryNumber} from '../lib/arabic-daily-pdf.js';
 
 const DAY='2026-10-21';
 const sample=()=>({
@@ -387,4 +387,54 @@ test('One generated PDF Blob can be downloaded and reused for WhatsApp without r
   assert.equal(urls[0],result.pdf);
   assert.equal(result.pdf.type,'application/pdf');
  }finally{globalThis.document=before;globalThis.URL=oldURL}
+});
+
+test('Arabic ledger number is anchored at 1148 on October 23, 2026',()=>{
+ const expected=[
+  ['2026-10-21',1146],
+  ['2026-10-22',1147],
+  ['2026-10-23',1148],
+  ['2026-10-24',1149],
+  ['2026-10-25',1150],
+  ['2026-11-01',1157],
+  ['2027-01-01',1218]
+ ];
+ for(const [day,number] of expected){
+  assert.equal(arabicDailyEntryNumber(day),number,day);
+  const sheet=prepareArabicDailySheet({...sample(),date:day});
+  assert.equal(sheet.entryNumber,number);
+  assert.ok(!sheet.missingFields.includes('رقم القيد'));
+ }
+ // Each export of the same date must have the same number, without storing a counter.
+ assert.equal(arabicDailyEntryNumber('2026-10-23'),arabicDailyEntryNumber('2026-10-23'));
+});
+
+test('Arabic ledger numbers follow calendar days across leap days and reject invalid dates',()=>{
+ const a=arabicDailyEntryNumber('2028-02-28');
+ assert.equal(arabicDailyEntryNumber('2028-02-29'),a+1);
+ assert.equal(arabicDailyEntryNumber('2028-03-01'),a+2);
+ for(const invalid of ['','2026-02-30','2025-02-29','2026-13-01','2026-00-10','2026-10-32','2026-1-23']){
+  assert.throws(()=>arabicDailyEntryNumber(invalid),/تاريخ المحاسبة غير صالح/);
+ }
+});
+
+test('Arabic daily PDF prints the calculated entry number in its top-right header',()=>{
+ const previousDocument=globalThis.document,painted=[];
+ const context={save(){},restore(){},scale(){},fillRect(){},strokeRect(){},beginPath(){},moveTo(){},
+  lineTo(){},stroke(){},fillText(value,x,y){painted.push({value:String(value),x,y});}};
+ try{
+  globalThis.document={createElement:()=>({
+   width:1346,height:1742,getContext:()=>context,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q=='
+  })};
+  for(const [day,number] of [['2026-10-22',1147],['2026-10-23',1148],['2026-10-24',1149]]){
+   painted.length=0;
+   const {sheet,pages}=makeArabicDailySheetPdf({...sample(),date:day});
+   assert.equal(sheet.entryNumber,number);
+   assert.equal(pages,1);
+   assert.ok(painted.some(item=>
+    item.value==='رقم القيد: '+number && item.y===47 && item.x>500
+   ),'PDF header should display entry number '+number+' for '+day);
+   assert.ok(!painted.some(item=>item.value.includes('................')));
+  }
+ }finally{globalThis.document=previousDocument;}
 });
