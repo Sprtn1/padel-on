@@ -1,0 +1,54 @@
+-- Allow an automatic first-round bye to advance without recording a fake score.
+begin;
+create or replace function public.tournament_create(
+ p_name text,p_date date,p_time time,p_fee_cents bigint,
+ p_format text,p_state jsonb
+) returns uuid language plpgsql security definer set search_path=public,pg_temp as $$
+declare v_id uuid; v_teams jsonb; v_matches jsonb; v_team jsonb; v_member jsonb;
+        v_seen text[]:=array[]::text[]; v_count integer;
+begin
+ if not public.is_staff() then raise exception 'Staff authorization required'; end if;
+ if char_length(btrim(coalesce(p_name,''))) not between 2 and 100
+ or p_date is null or p_time is null or p_format not in ('groups','knockout')
+ or p_fee_cents is null or p_fee_cents not between 0 and 100000000
+ then raise exception 'Invalid tournament settings'; end if;
+ v_teams:=p_state->'teams';v_matches:=p_state->'matches';
+ if jsonb_typeof(v_teams)<>'array' or jsonb_array_length(v_teams) not between 2 and 32
+ or jsonb_typeof(v_matches)<>'array' or jsonb_array_length(v_matches)>300
+ or pg_column_size(p_state)>200000 then
+   raise exception 'Tournament must contain 2–32 teams and valid fixtures';
+ end if;
+ for v_team in select value from jsonb_array_elements(v_teams) loop
+  if coalesce(v_team->>'id','') !~ '^t[1-9][0-9]*$'
+   or v_team->>'id'=any(v_seen) or jsonb_typeof(v_team->'members')<>'array'
+   or jsonb_array_length(v_team->'members')<>2
+  then raise exception 'Each team requires two distinct members'; end if;
+  v_seen:=array_append(v_seen,v_team->>'id');
+  for v_member in select value from jsonb_array_elements(v_team->'members') loop
+   if char_length(btrim(coalesce(v_member->>'name',''))) not between 2 and 100
+   or coalesce(v_member->>'due','')<>p_fee_cents::text
+   or coalesce(v_member->>'paid','')<>'0'
+   then raise exception 'Each participant must have a name and initial participation fee'; end if;
+  end loop;
+ end loop;
+ for v_team in select value from jsonb_array_elements(v_matches) loop
+   if char_length(coalesce(v_team->>'id',''))>40
+   or v_team->>'phase' not in ('group','knockout')
+   or (v_team->>'a' is not null and not (v_team->>'a'=any(v_seen)))
+   or (v_team->>'b' is not null and not (v_team->>'b'=any(v_seen)))
+   or coalesce(v_team->'sets','[]'::jsonb)<>'[]'::jsonb
+   or (v_team->>'winner') is not null and not (
+       p_format='knockout' and v_team->>'phase'='knockout' and
+       v_team->>'winner'=v_team->>'a' and v_team->>'b' is null and
+       v_team->>'round'='1'
+     )
+   then raise exception 'The tournament draw contains invalid matches'; end if;
+ end loop;
+ insert into public.tournaments(name,event_date,start_time,fee_cents,format,state)
+ values(btrim(p_name),p_date,p_time,p_fee_cents,p_format,p_state)
+ returning id into v_id;
+ return v_id;
+end;$$;
+
+
+commit;
