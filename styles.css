@@ -681,6 +681,27 @@
 .cafe-court-amount-form label{display:grid;gap:5px;flex:1 1 130px;color:#577666;font-size:11px;font-weight:700}
 .cafe-court-amount-form input{min-width:0;width:100%;height:34px;padding:6px 9px;background:#fff;border:1px solid #cbded1;border-radius:7px;font:inherit;color:#1e4232}
 .cafe-court-amount-form .btn{min-height:34px}
+
+/* Booking-specific notes remain distinct from court income and paid-player markers. */
+.cafe-court-note-field{flex:1 1 100%;min-width:0}
+.cafe-court-note-field textarea,.cafe-court-notes-form textarea{
+ width:100%;min-width:0;box-sizing:border-box;resize:vertical;
+ border:1px solid #dfe9e1;border-radius:9px;background:#fff;
+ color:#254438;font:inherit;font-size:12px;line-height:1.5;padding:9px 10px
+}
+.cafe-court-note-field textarea:focus,.cafe-court-notes-form textarea:focus{
+ border-color:#19a269;outline:2px solid #dcf5e4
+}
+.cafe-booking-notes{display:grid;gap:5px;border-top:1px dashed #e0ebe3;padding-top:8px}
+.cafe-booking-notes-title{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cafe-booking-notes-title>span{font-size:11px;font-weight:700;color:#526c5e}
+.cafe-note-edit-button{border:1px solid #cfe3d5;border-radius:7px;color:#2c7e56;background:#f1f8f3;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer}
+.cafe-booking-note-text{white-space:pre-wrap;overflow-wrap:anywhere;color:#355444;font-size:12px;line-height:1.5;margin:0}
+.cafe-booking-note-empty{font-size:11px;color:#819488}
+.cafe-court-notes-form{padding:10px;background:#f7fbf8;border:1px solid #d5e9dc;border-radius:10px;display:grid;gap:9px}
+.cafe-court-notes-form label{display:grid;gap:6px;min-width:0;color:#577666;font-size:11px;font-weight:700}
+.cafe-court-notes-actions{display:flex;flex-wrap:wrap;gap:7px}
+
 @media(max-width:560px){.cafe-ledger-row{align-items:flex-start}.cafe-entry-actions{gap:6px}.cafe-edit-amount{padding:6px 8px}}
 
 
