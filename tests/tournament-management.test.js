@@ -490,3 +490,54 @@ test('Staff can repeatedly shuffle unplayed groups without losing payments, and 
  await assert.rejects(()=>widget.action({dataset:{action:'tm-shuffle-groups'}}),/before match scores/);
  assert.equal(calls.length,2);
 });
+
+test('Participant payment search filters names instantly, preserves payment controls, and resets when switching tournaments',async()=>{
+ const first=sampleRow('groups'),second=sampleRow('knockout');second.id='second-tournament';
+ const {widget,calls}=makeUI(false,[first,second]);
+ await widget.load();
+ assert.match(widget.page(),/Search player name/);
+ assert.match(widget.page(),/Showing 8 of 8 players/);
+ const rows=first.state.teams.flatMap(team=>team.members.map(member=>({
+  dataset:{paymentPlayer:member.name.toLowerCase()},hidden:false
+ })));
+ const count={textContent:''},empty={hidden:true};
+ const panel={
+  querySelectorAll:()=>rows,
+  querySelector:selector=>selector==='.tm-payment-count'?count:selector==='.tm-payment-empty'?empty:null
+ };
+ const input={id:'tm-payment-search',value:'FIRST 2',closest:()=>panel};
+ assert.equal(widget.searchPayments(input),true);
+ assert.equal(rows.filter(r=>!r.hidden).length,1);
+ assert.equal(count.textContent,'Showing 1 of 8 players');
+ assert.equal(empty.hidden,true);
+ let html=widget.page();
+ assert.match(html,/value="FIRST 2"/);
+ assert.match(html,/data-payment-player="first 0" hidden/);
+ assert.match(html,/data-payment-player="first 2"/);
+ assert.match(html,/data-action="tm-pay"/);
+ await widget.action({dataset:{action:'tm-pay',team:first.state.teams[2].id,
+  member:first.state.teams[2].members[0].id}});
+ assert.match(widget.page(),/value="FIRST 2"/);
+ const oldForm=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'finance',
+   team:first.state.teams[2].id,member:first.state.teams[2].members[0].id},
+   _values:[['amount','5.00']]});
+ }finally{globalThis.FormData=oldForm;}
+ assert.match(widget.page(),/value="FIRST 2"/);
+ assert.equal(first.state.teams[2].members[0].paid,500);
+ assert.equal(calls.at(-1).args.p_action,'pay');
+ input.value='nonexistent name';
+ widget.searchPayments(input);
+ assert.ok(rows.every(row=>row.hidden));
+ assert.equal(empty.hidden,false);
+ assert.equal(count.textContent,'Showing 0 of 8 players');
+ input.value='';
+ widget.searchPayments(input);
+ assert.ok(rows.every(row=>!row.hidden));
+ assert.equal(empty.hidden,true);
+ await widget.action({dataset:{action:'tm-select',id:second.id}});
+ assert.match(widget.page(),/id="tm-payment-search"[^>]*value=""/);
+ assert.match(widget.page(),/Showing 8 of 8 players/);
+});
