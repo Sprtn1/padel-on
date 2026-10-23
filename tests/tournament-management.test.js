@@ -119,6 +119,15 @@ function makeUI(isAdmin=false,backing=[]){
     row.version++;
     return row.version;
    }
+   if(name==='tournament_set_match_time'){
+    const row=backing.find(x=>x.id===args.p_id);
+    assert.equal(args.p_expected_version,row.version);
+    const m=row.state.matches.find(x=>x.id===args.p_match_id);
+    assert.ok(m,'Scheduled match must exist');
+    if(args.p_time===null)delete m.scheduledTime;
+    else m.scheduledTime=args.p_time;
+    row.version++;return row.version;
+   }
    if(name==='tournament_change'){
     const row=backing.find(x=>x.id===args.p_id);
     row.version+=1;
@@ -540,4 +549,84 @@ test('Participant payment search filters names instantly, preserves payment cont
  await widget.action({dataset:{action:'tm-select',id:second.id}});
  assert.match(widget.page(),/id="tm-payment-search"[^>]*value=""/);
  assert.match(widget.page(),/Showing 8 of 8 players/);
+});
+
+test('Group fixture time appears below Upcoming, can be edited and cleared without touching scores',async()=>{
+ const row=sampleRow('groups'),{widget,calls}=makeUI(false,[row]);
+ await widget.load();
+ const match=row.state.matches[0];
+ assert.match(widget.page(),/tm-match-status/);
+ assert.match(widget.page(),/data-action="tm-edit-time"/);
+ await widget.action({dataset:{action:'tm-edit-time',id:match.id}});
+ let html=widget.page();
+ assert.match(html,/data-tm-submit="time"/);
+ assert.match(html,/Match start time \(Beirut\)/);
+ const originalFormData=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'time',match:match.id},_values:[['time','18:45']]});
+  assert.equal(match.scheduledTime,'18:45');
+  assert.match(widget.page(),/18:45/);
+  assert.deepEqual(match.sets,[]);
+  await widget.action({dataset:{action:'tm-edit-time',id:match.id}});
+  assert.match(widget.page(),/Clear Time/);
+  await assert.rejects(()=>widget.submit({
+   dataset:{tmSubmit:'time',match:match.id},_values:[['time','25:15']]
+  }),/valid 24-hour/);
+  assert.equal(calls.length,1,'Invalid clock does not write to the database');
+  await widget.submit({dataset:{tmSubmit:'time',match:match.id},_values:[['time','20:10']]});
+  assert.equal(match.scheduledTime,'20:10');
+  await widget.action({dataset:{action:'tm-edit-time',id:match.id}});
+  await widget.action({dataset:{action:'tm-clear-time',id:match.id}});
+  assert.equal(match.scheduledTime,undefined);
+  assert.equal(row.version,3);
+  assert.deepEqual(calls.map(c=>c.name),
+   ['tournament_set_match_time','tournament_set_match_time','tournament_set_match_time']);
+  assert.deepEqual(calls.map(c=>c.args.p_expected_version),[0,1,2]);
+  assert.equal(calls[2].args.p_time,null);
+ }finally{globalThis.FormData=originalFormData}
+});
+test('Knockout final can be scheduled before contestants are decided; bracket rescheduling keeps slot time',async()=>{
+ const row=sampleRow('knockout'),{widget,calls}=makeUI(false,[row]);
+ await widget.load();
+ const final=row.state.matches.at(-1);
+ assert.equal(final.a,null);
+ assert.match(widget.page(),/tm-pyramid-match-top/);
+ await widget.action({dataset:{action:'tm-edit-time',id:final.id}});
+ assert.match(widget.page(),/Schedule Match/);
+ const originalFormData=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'time',match:final.id},_values:[['time','21:30']]});
+ }finally{globalThis.FormData=originalFormData}
+ assert.equal(final.scheduledTime,'21:30');
+ assert.match(widget.page(),/21:30/);
+ assert.equal(calls.at(-1).args.p_match_id,final.id);
+ const seeded=reseedTournamentKnockout(row.state,[{
+  team:row.state.teams[0].id,stage:'semifinal',slot:1,side:'a'
+ }]);
+ assert.equal(seeded.matches.find(m=>m.id===final.id).scheduledTime,'21:30');
+ assert.ok(!seeded.matches.some(m=>m.phase==='group'&&m.scheduledTime));
+});
+test('Tournament PDF archive includes scheduled times in the bordered fixtures table',()=>{
+ const row=sampleRow('groups');
+ row.state.matches[0].scheduledTime='19:15';
+ const before=globalThis.document,oldAtob=globalThis.atob;
+ const drawn=[];
+ try{
+  globalThis.atob=()=>String.fromCharCode(255,216,255,217);
+  globalThis.document={createElement:()=>({
+   width:1200,height:1553,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q==',
+   getContext:()=>({
+    fillStyle:'',strokeStyle:'',lineWidth:1,font:'',
+    fillRect(){},strokeRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},
+    measureText:v=>({width:String(v).length*10}),fillText:v=>drawn.push(String(v))
+   })
+  })};
+  const out=tournamentArchivePdf(row);
+  assert.ok(out.pages>=1);
+  assert.ok(drawn.includes('Time (24h)'));
+  assert.ok(drawn.includes('19:15'));
+  assert.ok(drawn.includes('ALL MATCHES AND SCORES - GROUP STAGE'));
+ }finally{globalThis.document=before;globalThis.atob=oldAtob}
 });
