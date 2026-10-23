@@ -1619,7 +1619,7 @@ document.addEventListener('toggle',e=>{
   cafeteriaFinances.rememberFold(e.target.dataset.cafeFold,e.target.open);
 },true);
 document.addEventListener('change',e=>{
- if(state.tab==='tournament'&&['tm-team-count','tm-archive-saved'].includes(e.target.id)){
+ if(state.tab==='tournament'&&['tm-team-count','tm-archive-saved','tm-seed-stage','tm-seed-slot','tm-seed-side','tm-seed-team'].includes(e.target.id)){
   try{tournamentManagement.change(e.target)}catch(err){toast(err.message||'Unable to update tournament.',true)}
   return;
  }
