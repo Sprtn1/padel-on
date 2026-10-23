@@ -798,7 +798,9 @@
 .tm-pyramid-side+.tm-pyramid-side{border-top:1px solid #e6eee9}
 .tm-pyramid-side.winner{font-weight:850;color:#1f6840}
 .tm-pyramid-side strong{font-size:10px;white-space:nowrap;flex:none}
-.tm-pyramid-player{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tm-pyramid-player{min-width:0;display:block;overflow:hidden;text-overflow:ellipsis}
+.tm-bracket-team-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800}
+.tm-bracket-players{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#829386;font-weight:500;font-size:9px;margin-top:2px}
 .tm-pyramid-placeholder{font-style:italic;color:#a4b3a8}
 .tm-pyramid-seed{font-style:normal;margin-left:6px;display:inline-block;background:#daf4e2;border-radius:4px;padding:2px 4px;color:#157748;font-size:8px;font-weight:850;vertical-align:middle}
 .tm-pyramid-set-line{padding-top:5px;font-size:10px;color:#4a8160;border-top:1px solid #e2eee4}
