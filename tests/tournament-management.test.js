@@ -115,9 +115,26 @@ function makeUI(isAdmin=false,backing=[]){
     row.version++;
     return row.version;
    }
+   if(name==='tournament_set_shuffle_lock'){
+    const row=backing.find(x=>x.id===args.p_id);
+    assert.equal(args.p_expected_version,row.version);
+    if(args.p_action==='lock'){
+     assert.equal(row.shuffle_locked,false);
+     assert.match(args.p_pin,/^[0-9]{4,8}$/);
+     row.shuffle_locked=true;row._pin=args.p_pin;row.version++;return 'locked';
+    }
+    if(args.p_action==='unlock'){
+     if(args.p_pin!==row._pin)return 'invalid_pin';
+     row.shuffle_locked=false;delete row._pin;row.version++;return 'unlocked';
+    }
+    if(args.p_action==='admin_reset'){
+     assert.ok(isAdmin);row.shuffle_locked=false;delete row._pin;row.version++;return 'unlocked';
+    }
+   }
    if(name==='tournament_shuffle_groups'){
     const row=backing.find(x=>x.id===args.p_id);
     assert.equal(args.p_expected_version,row.version);
+    if(row.shuffle_locked&&args.p_pin!==row._pin)return -1;
     const oldTeams=row.state.teams;
     const next=makeInitialTournament(players(oldTeams.length),row.fee_cents,'groups',()=>0.91);
     row.state={...row.state,
@@ -172,7 +189,7 @@ function makeUI(isAdmin=false,backing=[]){
 function sampleRow(mode='groups'){
  const state=makeInitialTournament(players(4),1500,mode,fixedRandom);
  return {id:'test-id',version:0,name:'Friday Doubles',event_date:'2026-10-24',start_time:'18:00:00',
-  fee_cents:1500,format:mode,state};
+  fee_cents:1500,format:mode,state,shuffle_locked:false};
 }
 test('Staff see tournament creation and the participant payment table, but not Close Tournament',async()=>{
  const {widget}=makeUI(false,[sampleRow()]);
@@ -787,4 +804,77 @@ test('Add Team cannot exceed the 32-team limit',async()=>{
  try{await widget.action({dataset:{action:'tm-team-add-quick'}})}
  catch(e){blocked=/Maximum 32/.test(e.message)}
  assert.ok(blocked);
+});
+
+function pinForm(mode,values){
+ return {dataset:{tmSubmit:'shuffle-protection',mode},_values:Object.entries(values)};
+}
+async function withPINForm(widget,form){
+ const original=globalThis.FormData;
+ globalThis.FormData=class{constructor(f){this.entries=()=>f._values[Symbol.iterator]()};};
+ try{return await widget.submit(form);}finally{globalThis.FormData=original;}
+}
+test('Each group tournament can be PIN locked, requiring the PIN for subsequent shuffles',async()=>{
+ const row=sampleRow('groups');
+ row.state.teams[0].members[0].paid=325;
+ const memberBefore=JSON.stringify(row.state.teams[0].members[0]);
+ const {widget,calls}=makeUI(false,[row]);
+ await widget.load();
+ assert.match(widget.page(),/data-action="tm-lock-shuffle"/);
+ await widget.action({dataset:{action:'tm-lock-shuffle'}});
+ assert.match(widget.page(),/Create tournament PIN/);
+ await assert.rejects(()=>withPINForm(widget,pinForm('lock',{pin:'1234',confirm_pin:'4321'})),/do not match/);
+ assert.equal(row.shuffle_locked,false);
+ await withPINForm(widget,pinForm('lock',{pin:'1234',confirm_pin:'1234'}));
+ assert.equal(row.shuffle_locked,true);
+ assert.match(widget.page(),/Shuffle is PIN-protected for this tournament/);
+ assert.match(widget.page(),/data-action="tm-unlock-shuffle"/);
+ await widget.action({dataset:{action:'tm-shuffle-groups'}});
+ assert.match(widget.page(),/Enter PIN to shuffle/);
+ await assert.rejects(()=>withPINForm(widget,pinForm('shuffle',{pin:'0000'})),/Incorrect tournament PIN/);
+ assert.equal(row.version,1);
+ await withPINForm(widget,pinForm('shuffle',{pin:'1234'}));
+ assert.equal(row.version,2);
+ assert.equal(row.shuffle_locked,true,'Lock persists after shuffling');
+ assert.equal(JSON.stringify(row.state.teams[0].members[0]),memberBefore,'Members and payments unchanged');
+ assert.deepEqual(calls.map(c=>c.name),[
+  'tournament_set_shuffle_lock','tournament_shuffle_groups','tournament_shuffle_groups'
+ ]);
+ await widget.action({dataset:{action:'tm-unlock-shuffle'}});
+ await assert.rejects(()=>withPINForm(widget,pinForm('unlock',{pin:'4321'})),/Incorrect tournament PIN/);
+ await withPINForm(widget,pinForm('unlock',{pin:'1234'}));
+ assert.equal(row.shuffle_locked,false);
+ await widget.action({dataset:{action:'tm-shuffle-groups'}});
+ assert.equal(row.version,4,'Unlocked events can be shuffled immediately');
+});
+test('Tournament PIN applies to one event only and stays enforced when switching tabs',async()=>{
+ const a=sampleRow('groups'),b=sampleRow('groups');
+ a.id='tournament-a';b.id='tournament-b';b.name='Sunday Doubles';
+ const {widget,calls}=makeUI(false,[a,b]);
+ await widget.load();
+ await widget.action({dataset:{action:'tm-lock-shuffle'}});
+ await withPINForm(widget,pinForm('lock',{pin:'8765',confirm_pin:'8765'}));
+ await widget.action({dataset:{action:'tm-select',id:b.id}});
+ assert.match(widget.page(),/data-action="tm-lock-shuffle"/);
+ await widget.action({dataset:{action:'tm-shuffle-groups'}});
+ assert.equal(b.version,1);
+ await widget.action({dataset:{action:'tm-select',id:a.id}});
+ assert.match(widget.page(),/data-action="tm-unlock-shuffle"/);
+ await widget.action({dataset:{action:'tm-shuffle-groups'}});
+ assert.match(widget.page(),/Enter PIN to shuffle/);
+ assert.equal(a.version,1);
+ assert.equal(calls.filter(x=>x.name==='tournament_shuffle_groups').length,1);
+});
+test('Only administrators see a recovery action for a lost tournament PIN',async()=>{
+ const a=sampleRow('groups');a.shuffle_locked=true;a._pin='9876';
+ const staff=makeUI(false,[a]),admin=makeUI(true,[a]);
+ await staff.widget.load();await admin.widget.load();
+ assert.doesNotMatch(staff.widget.page(),/data-action="tm-shuffle-reset-pin"/);
+ assert.match(admin.widget.page(),/data-action="tm-shuffle-reset-pin"/);
+ await assert.rejects(()=>staff.widget.action({dataset:{action:'tm-shuffle-reset-pin'}}),/administrators/);
+ const oldWindow=globalThis.window;
+ globalThis.window={confirm:()=>true};
+ try{await admin.widget.action({dataset:{action:'tm-shuffle-reset-pin'}});}
+ finally{globalThis.window=oldWindow;}
+ assert.equal(a.shuffle_locked,false);
 });
