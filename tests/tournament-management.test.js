@@ -179,6 +179,7 @@ test('Admins can export and begin archive closure, but deletion requires confirm
   try{await widget.action({dataset:{action:'tm-close-final'}})}catch(e){blocked=true;}
   assert.ok(blocked);
   await widget.change({id:'tm-archive-saved',checked:true});
+  assert.match(widget.page(),/id="tm-archive-saved" checked/);
   await widget.action({dataset:{action:'tm-close-final'}});
   assert.equal(backing.length,0);
   assert.ok(calls.some(c=>c.name==='tournament_close'&&c.args.p_expected_version===0));
