@@ -856,3 +856,24 @@
 .tm-seeding-panel th{color:#698271}
 @media(max-width:1150px){.tm-knockout-layout{grid-template-columns:1fr}.tm-seeding-sidebar{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.tm-seeding-sidebar{grid-template-columns:1fr}.tm-bracket-scroll{padding:8px}.tm-pyramid-card{max-width:230px}}
+
+
+/* In-tournament participant count editor */
+.tm-roster-editor{padding:18px;margin:0 0 18px;border-color:#c9e6d2}
+.tm-roster-editor .tm-head>div{display:grid;gap:4px}
+.tm-roster-tools{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:10px 0 14px}
+.tm-roster-tools label{font-size:11px;font-weight:750;color:#51725d;display:grid;gap:6px}
+.tm-roster-tools input{width:135px;max-width:100%;height:37px;padding:7px 10px;border:1px solid #d5e3d9;border-radius:8px;color:#234e34;background:#fff;font:inherit}
+.tm-roster-tools button{min-height:37px}
+.tm-roster-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0}
+.tm-roster-team{padding:13px;display:flex;align-items:center;justify-content:space-between;gap:11px;background:#fbfdfb;border:1px solid #dce9e0;border-radius:10px;min-width:0}
+.tm-roster-team>div{display:grid;gap:7px;min-width:0;flex:1}
+.tm-roster-team strong{color:#26593c;font-size:12px;overflow-wrap:anywhere}
+.tm-roster-names{color:#688174;font-size:11px;overflow-wrap:anywhere}
+.tm-roster-names small{color:#3b8a58}
+.tm-roster-inputs{display:grid;grid-template-columns:1fr 1fr;gap:7px;min-width:0}
+.tm-roster-inputs input{min-width:0;width:100%;font:inherit;font-size:12px;background:#fff;border:1px solid #d0e2d5;border-radius:7px;padding:8px}
+.tm-roster-team button{flex:none}
+.tm-five-rule{background:#edf8f0;color:#255e3b;border:1px solid #cce9d4;border-radius:10px;padding:10px 13px;font-size:12px;line-height:1.55;margin:12px 0}
+@media(max-width:850px){.tm-roster-list{grid-template-columns:1fr}}
+@media(max-width:470px){.tm-roster-team{align-items:start;flex-wrap:wrap}.tm-roster-inputs{grid-template-columns:1fr}.tm-roster-team button{margin-left:auto}}
