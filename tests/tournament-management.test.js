@@ -384,3 +384,14 @@ test('Tournament archive draws bordered tables and repeats headers across PDF pa
   assert.equal(result.pdf.type,'application/pdf');
  }finally{globalThis.document=before;globalThis.atob=prior}
 });
+
+test('Score editor allows extended tie-break points, not only seven',async()=>{
+ const row=sampleRow('groups');
+ const {widget}=makeUI(false,[row]);
+ await widget.load();
+ await widget.action({dataset:{action:'tm-edit-score',id:row.state.matches[0].id}});
+ const markup=widget.page();
+ assert.match(markup,/max="999" step="1" name="s1ta"/);
+ assert.match(markup,/max="999" step="1" name="s1tb"/);
+ assert.match(markup,/max="7" step="1" name="s1a"/);
+});
