@@ -774,3 +774,5 @@
  .tm-set-fields input[name$=tb]{grid-column:4}
 }
 @media print{.tm-mini-btn,.tm-inline-editor,.tm-score-editor,.tm-close-confirm{display:none!important}}
+
+.tm-credit-note{display:block;color:#9b6228;background:#fff7e8;border-radius:8px;padding:6px 9px;font-size:10px;line-height:1.5}
