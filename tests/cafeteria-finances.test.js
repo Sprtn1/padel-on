@@ -439,11 +439,11 @@ test('Whish payments can be added repeatedly and update balance with ledger date
  });
  await widget.load();
  const oldFormData=globalThis.FormData;
- const oldCrypto=globalThis.crypto;
+ const oldCryptoDescriptor=Object.getOwnPropertyDescriptor(globalThis,'crypto');
  try{
   let data={name:'Alice',amount:'10.00'};
   globalThis.FormData=class{entries(){return Object.entries(data)[Symbol.iterator]();}};
-  if(!globalThis.crypto?.randomUUID)globalThis.crypto={randomUUID:()=> 'test-uuid'};
+  if(!globalThis.crypto?.randomUUID)Object.defineProperty(globalThis,'crypto',{configurable:true,value:{randomUUID:()=> 'test-uuid'}});
   const form=type=>({dataset:{cafeSave:'whish',whishType:type},
    querySelector:()=>({disabled:false,isConnected:false})});
   await widget.submit(form('deposit'));
@@ -453,7 +453,7 @@ test('Whish payments can be added repeatedly and update balance with ledger date
   await widget.submit(form('withdrawal'));
  }finally{
   globalThis.FormData=oldFormData;
-  if(oldCrypto===undefined)delete globalThis.crypto;else globalThis.crypto=oldCrypto;
+  if(oldCryptoDescriptor)Object.defineProperty(globalThis,'crypto',oldCryptoDescriptor);else delete globalThis.crypto;
  }
  assert.equal(recorded.length,3);
  assert.deepEqual(recorded.map(r=>[r.name,r.args.p_entry_type,r.args.p_amount_cents]),[
