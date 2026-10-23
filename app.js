@@ -439,7 +439,7 @@ function reportsPage(){
 <div class="period-control"><div><strong>${icon('calendar')} ${title}</strong><small>${daily?'Daily activity and cash count':weekly?'Weekly benefits and records':'Monthly games and matchmaking revenue'} · Asia/Beirut dates</small></div><div class="period-buttons"><button class="btn btn-light" data-action="report-prev" aria-label="Previous ${daily?'day':weekly?'week':'month'}">${icon('chevronLeft')}</button><button class="btn btn-light" data-action="report-next" ${(daily?state.reportDay>=today():weekly?state.reportWeek>=weekStart(today()):state.reportMonth>=monthKey(today()))?'disabled':''} aria-label="Next ${daily?'day':weekly?'week':'month'}">${icon('chevronRight')}</button></div></div>
 ${!m?`<div class="panel-empty">${state.reportLoading?'Loading report…':'No report loaded. Use the period arrows to retry.'}</div>`:`
 <section class="finance-grid">${summaryCard('Team matches',m.validMatches.length,'Matches recorded in selected period','calendar',true)}${summaryCard('Benefit uses',weekly?m.weekUsed:m.games.length,weekly?'Includes imported opening balances':'Dated transactions only','gift')}${summaryCard('Free / Half-price',`${m.free} / ${m.half}`,'Per-member benefit entries','activity')}</section>
-${daily?'':weekly?`<div class="notice">Historical balances use the member's current configured allowance. Imported opening balances are counted as weekly usage; reset events are respected.</div>`:`<section class="finance-grid">${summaryCard('Matchmaking revenue',amount(m.monthFinance.total),'All matchmaking personnel','wallet',true)}${summaryCard('Total commissions',amount(m.monthFinance.fee),'Sum of independent monthly commissions','coins')}${summaryCard('Other benefit games',m.special,'Special-player entries this month','users')}</section>${matchmakingBreakdownHTML(m.breakdown)}${consolidatedFinancePanel(state.reportMonth)}`}
+${daily?'':weekly?`<div class="notice">Past weeks use current member allowances and include recorded resets.</div>`:`<section class="finance-grid">${summaryCard('Matchmaking revenue',amount(m.monthFinance.total),'All matchmaking personnel','wallet',true)}${summaryCard('Total commissions',amount(m.monthFinance.fee),'Sum of independent monthly commissions','coins')}${summaryCard('Other benefit games',m.special,'Special-player entries this month','users')}</section>${matchmakingBreakdownHTML(m.breakdown)}${consolidatedFinancePanel(state.reportMonth)}`}
 ${clubInsights.reportHTML(start,end)}
 <article class="panel"><div class="panel-head"><div><h2>Team member breakdown</h2><p>${title} · ${m.rows.length} members with activity</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Member</th><th>Category</th><th>Games logged</th><th>Free</th><th>Half-price</th><th>${weekly?'Week used':'Monthly total'}</th>${weekly?'<th>Remaining*</th>':''}</tr></thead><tbody>${m.rows.length?m.rows.map(r=>`<tr><td><strong>${esc(r.member.name)}</strong></td><td>${esc(groupLabel(r.member.team_category))}</td><td>${r.played}</td><td>${r.free}</td><td>${r.half}</td><td><strong>${r.used}</strong></td>${weekly?`<td>${r.member.unlimited?'Unlimited':r.remaining}</td>`:''}</tr>`).join(''):`<tr><td colspan="${weekly?7:6}" class="panel-empty">No benefits recorded for this period.</td></tr>`}</tbody></table></div></article>
 <div class="archive-note">${weekly?'* Remaining benefits use current allowances and historical reset events.':'Financial totals use permanent saved matchmaking records. The monthly game counts exclude imported balances.'} No report action edits any records.</div>
@@ -541,7 +541,7 @@ ${!ready?`<div class="panel-empty">${state.trainingLoading?'Loading monthly trai
 <div class="training-actions"><div class="notice">${icon('info')} One free session per player per month. Normally two players train together; a solo exception needs a reason. Weekly game benefits are unaffected.</div>${btn(`${icon('download')} Export Monthly CSV`,'export-training','btn-light')}${btn('Print / Save PDF','print-training','btn-light')}</div>
 <article class="panel training-panel"><div class="panel-head"><div><h2>Monthly player status</h2><p>${monthLabel(ym)} · ${d.used} of ${d.members.length} completed</p></div></div><div class="training-members">${memberRows||'<div class="panel-empty">No active Rising Stars members. Check team classifications.</div>'}</div></article>
 <article class="panel"><div class="panel-head"><div><h2>Sessions with Coach Khalil</h2><p>${d.sessions.length} sessions · ${d.attendance.length} player attendances</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Players</th><th>Time</th><th>Duration</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${sessionRows||'<tr><td colspan="6" class="panel-empty">No sessions recorded this month.</td></tr>'}</tbody></table></div></article>
-<div class="archive-note">Training attendance is saved across months. Corrections require administrator authorization and are audited. This does not reset or change weekly padel games.</div>`}`;
+<div class="archive-note">Attendance remains available across months. Only administrators can correct it. Weekly game benefits are unchanged.</div>`}`;
 }
 function exportTrainingCSV(){
  if(state.trainingLoadedMonth!==state.trainingMonth||state.trainingLoading||state.trainingError)throw Error('Load a training month first.');
@@ -577,7 +577,7 @@ function debtPage(){
  const paidTotal=state.debtEntries.filter(e=>e.entry_type==='payment'&&!e.voided_at).reduce((sum,e)=>sum+Number(e.amount_cents),0);
  const selected=all.find(p=>p.id===state.debtSelected)||all[0]||null;
  const header=heading('Cafeteria / running balances','Cafeteria Debts','Track unpaid purchases, partial payments, and prepaid cafeteria credit in one account.',btn(`${icon('plus')} New Person`,'debt-new-person','btn-primary',ready?'':'disabled')+(ready?btn(`${icon('download')} Export Statement`,'debt-export','btn-light',selected?'':'disabled'):''));
- if(!ready)return `${header}<article class="panel"><div class="empty-prompt"><strong>${state.debtLoading?'Loading cafeteria debt records…':state.debtError?'Database setup required':'Loading cafeteria debts…'}</strong><span>${state.debtError?esc(state.debtError):'Track cafeteria purchases, payments, and outstanding balances.'}</span>${state.debtError?btn('Retry','debt-retry','btn-light'):''}</div></article>`;
+ if(!ready)return `${header}<article class="panel"><div class="empty-prompt"><strong>${state.debtLoading?'Loading cafeteria debt records…':state.debtError?'Unable to load cafeteria debts':'Loading cafeteria debts…'}</strong><span>${state.debtError?esc(state.debtError):'Track cafeteria purchases, payments, and outstanding balances.'}</span>${state.debtError?btn('Retry','debt-retry','btn-light'):''}</div></article>`;
  const metrics=`<section class="finance-grid four-up">${summaryCard('Outstanding debt',amount(owed),'Amount customers still owe','wallet',true)}${summaryCard('Prepaid credit',amount(credit),'Available for future purchases','gift')}${summaryCard('People owing',open.length,'Accounts with balance due','users')}${summaryCard('Payments received',amount(paidTotal),'All recorded payments','activity')}</section>`;
  const displayed=all.filter(p=>(state.debtFilter!=='open'||debtOutstanding(p.id)>0)&&(state.debtFilter!=='settled'||debtOutstanding(p.id)===0)&&(state.debtFilter!=='credit'||debtOutstanding(p.id)<0)).filter(p=>!state.debtSearch||p.name.toLowerCase().includes(state.debtSearch.toLowerCase())).sort((a,b)=>debtOutstanding(b.id)-debtOutstanding(a.id)||a.name.localeCompare(b.name));
  const filters=`<div class="debt-filter-controls"><label class="search">${icon('search')}<input id="debt-search" autocomplete="off" placeholder="Find a person…" value="${esc(state.debtSearch)}"/></label><select id="debt-filter" class="select" aria-label="Debt status"><option value="all" ${state.debtFilter==='all'?'selected':''}>All people</option><option value="open" ${state.debtFilter==='open'?'selected':''}>Unpaid</option><option value="credit" ${state.debtFilter==='credit'?'selected':''}>Prepaid credit</option><option value="settled" ${state.debtFilter==='settled'?'selected':''}>Paid in full</option></select></div>`;
@@ -699,7 +699,7 @@ function privateClientsPage(){
  const activeSessions=state.privateEntries.filter(r=>r.entry_type==='session'&&!r.voided_at);
  const controls=btn(`${icon('plus')} Add Client`,'private-add-client','btn-primary')+(ready?btn(`${icon('download')} Export Client CSV`,'private-export','btn-light',!selected?'disabled':''):'');
  const headline=heading('Client coaching','Private Sessions','Track client IDs, coaching sessions, payments, prepaid credit, and outstanding balances.',controls);
- if(!ready)return `${headline}<div class="panel"><div class="panel-body"><div class="empty-prompt"><strong>${state.privateLoading?'Loading private sessions…':state.privateError?'Private Sessions setup required':'Loading client records…'}</strong><span>${state.privateError?esc(state.privateError):'Client and coach records are visible only to authorized staff.'}</span>${state.privateError?btn('Try again','private-retry','btn-light'):''}</div></div></div>`;
+ if(!ready)return `${headline}<div class="panel"><div class="panel-body"><div class="empty-prompt"><strong>${state.privateLoading?'Loading private sessions…':state.privateError?'Private Sessions unavailable':'Loading client records…'}</strong><span>${state.privateError?esc(state.privateError):'Client and coach records are visible only to authorized staff.'}</span>${state.privateError?btn('Try again','private-retry','btn-light'):''}</div></div></div>`;
  const intro=`<section class="finance-grid four-up">${summaryCard('Active clients',active.length,'Client profiles','users',true)}${summaryCard('Sessions recorded',activeSessions.length,'Across all recorded dates','calendar')}${summaryCard('Client credit',amount(credit),'Prepaid balances','wallet')}${summaryCard('Outstanding',amount(owed),'Total amount owed','activity')}</section>`;
  const search=`<div class="private-directory-head">
  <label class="search">${icon('search')}<input id="private-client-search" placeholder="Search by name or client ID…" autocomplete="off" value="${esc(state.privateSearch)}"/></label>
@@ -753,7 +753,7 @@ function financePage(){
  const paid=sel?.status==='paid',diff=Number(sel?.amount_paid_cents||0)-f.fee;
  const rate=(matchmakerRate(person)/100).toLocaleString('en-US',{maximumFractionDigits:2});
  const tabs=state.matchmakers.filter(p=>p.active||p.id===person.id).map(p=>`<button type="button" class="matchmaker-tab ${p.id===person.id?'selected':''}" data-action="select-matchmaker" data-id="${esc(p.id)}" aria-pressed="${p.id===person.id}">${esc(p.name)}</button>`).join('');
- const incomplete=person.name.startsWith('Legacy matchmaker')?`<div class="notice warn">${icon('alert')} Update this matchmaker’s name before recording new games.</div>`:'';
+ const incomplete=person.name.startsWith('Legacy matchmaker')?`<div class="notice warn">${icon('alert')} Ask an administrator to update this matchmaker’s name.</div>`:'';
  return `${heading('Matchmaking / commissions','Revenue & Commission',`Independent monthly ledger for ${esc(person.name)}.`,btn(`${icon('plus')} Add Matchmaking Game`,'add-nazih','btn-primary')+btn(`${icon('download')} Export CSV`,'export-finance','btn-light'))}
  <div class="matchmaker-switch"><div class="matchmaker-switch-label">Select matchmaker</div><div class="matchmaker-tabs" role="group" aria-label="Choose matchmaking person">${tabs}</div></div>
  ${incomplete}
@@ -858,7 +858,7 @@ function debtModal(type,m){
   return {title:isCharge?'Add Cafeteria Debt':'Record Payment / Add Credit',subtitle:person?.name||'',content};
  }
  const entry=state.debtEntries.find(e=>e.id===m.id);
- const content=`<div class="notice warn">This correction is audited and changes the outstanding debt or prepaid credit. The original entry is kept in history as voided.</div>
+ const content=`<div class="notice warn">Voiding this entry updates the balance. The original entry will still appear in history as voided.</div>
  <form id="modal-form" data-save="void-debt-entry">${textareaField('reason','Reason for correction')}${formActions('Void Entry',true)}</form>`;
  return {title:'Correct Cafeteria Entry',subtitle:entry?.entry_type==='charge'?'Void a debt charge':'Void a recorded payment',content,danger:true};
 }
@@ -931,7 +931,7 @@ function privateClientModal(type,m){
   return {title:'Add Client Balance',subtitle:client?.name||'',content};
  }
  const entry=state.privateEntries.find(e=>e.id===m.id);
- const content=`<div class="notice warn">This correction is permanent in the audit log but excludes the selected entry from the account balance.</div>
+ const content=`<div class="notice warn">Voiding this entry removes its effect on the client balance. The original entry will stay in history.</div>
  <form id="modal-form" data-save="void-private-entry">${textareaField('reason','Correction reason')}${formActions('Void Entry',true)}</form>`;
  return {title:'Void Financial Entry',subtitle:entry?.entry_type==='session'?'Cancel incorrect session record':'Cancel incorrect balance top-up',content,danger:true};
 }
@@ -1086,7 +1086,7 @@ async function loadPrivateClients(){
 async function loadData(resetTab=false){if(state.loading)return;state.loading=true;try{
  const auth=api.getSession();if(!auth?.access_token)throw Error('Sign in required');
  const profiles=await api.list('staff_profiles',`id=eq.${auth.user.id}`);
- if(!profiles.length){await api.signOut();throw Error('This login has no PADEL ON staff access. Ask the administrator to add your account in Supabase.');}
+ if(!profiles.length){await api.signOut();throw Error('This account does not have staff access. Contact an administrator.');}
  state.staff=profiles[0];
  const since=addDays(today(),-30);
  const [members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers]=await Promise.all([
@@ -1391,7 +1391,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
   openModal('admin-account-manage',person.id,{accountKind:isPrivate?'private':'cafeteria',remove:isRemoval});break;
  }
  case 'debt-retry':await loadDebtData();break;
- case 'debt-new-person':if(!state.debtLoaded||state.debtError)throw Error('Cafeteria database not configured yet.');openModal('debt-person');break;
+ case 'debt-new-person':if(!state.debtLoaded||state.debtError)throw Error('Cafeteria debt records are unavailable. Try refreshing.');openModal('debt-person');break;
  case 'debt-select-person':if(!state.debtPeople.some(p=>p.id===id&&!p.deleted_at))throw Error('Person not found.');state.debtSelected=id;render();break;
  case 'debt-edit-person':if(!state.debtSelected)throw Error('Select a person.');openModal('debt-person',null,{personId:state.debtSelected});break;
  case 'debt-add-charge':case 'debt-add-payment':{
@@ -1435,7 +1435,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
   break;
  }
  case 'private-retry':await loadPrivateClients();break;
- case 'private-add-client':if(!state.privateLoaded||state.privateError)throw Error('Client database is not ready. Apply the Supabase migration.');openModal('private-client');break;
+ case 'private-add-client':if(!state.privateLoaded||state.privateError)throw Error('Private Sessions are unavailable. Try refreshing or contact an administrator.');openModal('private-client');break;
  case 'private-select-client':if(!state.privateClients.some(c=>c.id===id&&!c.deleted_at))throw Error('Client not found.');state.privateSelected=id;render();break;
  case 'private-edit-client':if(!state.privateSelected)throw Error('Select a client.');openModal('private-client',null,{clientId:state.privateSelected});break;
  case 'private-record-session':if(!state.privateSelected)throw Error('Select a client.');if(!state.privateCoaches.some(c=>c.active))throw Error('Coaches are not set up. Run the private coach setup script.');openModal('private-session',null,{clientId:state.privateSelected});break;
