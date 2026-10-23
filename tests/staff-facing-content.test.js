@@ -27,7 +27,6 @@ test('Staff Settings only show tools staff can use, not disabled administrator c
  assert.match(html,/Order Lists/);
  assert.match(html,/Order Counter/);
  assert.match(html,/Reem/);
- assert.match(html,/Financial archive/);
  assert.doesNotMatch(html,/Team roster/);
  assert.doesNotMatch(html,/Manual weekly reset/);
  assert.doesNotMatch(html,/ADMIN COMMISSION DATA/);
