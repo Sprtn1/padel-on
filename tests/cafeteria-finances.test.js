@@ -959,3 +959,26 @@ test('Cashbook date header contains no NaN after removing WhatsApp button',async
  await widget.action({dataset:{action:'cafe-export-arabic-pdf'}});
  assert.match(notifications[0],/downloaded locally/);
 });
+
+test('Whish card shows only the useful balance and transaction controls',async()=>{
+ const day='2026-10-23';
+ const widget=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'staff'}),listAll:async table=>
+   table==='whish_wallet_settings'?[{opening_balance_cents:60}]:[]},
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=>day,addDays:()=> '2026-10-22',
+  rerender:()=>{},toast:()=>{},isAdmin:()=>false,exportArabicPdf:()=>1
+ });
+ await widget.load();
+ const html=widget.page();
+ assert.match(html,/Whish wallet/);
+ assert.match(html,/Current Whish balance/);
+ assert.match(html,/Selected-day activity/);
+ assert.match(html,/Balance through/);
+ assert.doesNotMatch(html,/Whish wallet · separate from cash/);
+ assert.doesNotMatch(html,/Starting balance/);
+ assert.doesNotMatch(html,/separate wallet ledger/);
+ assert.doesNotMatch(html,/not duplicated in the Cafeteria Finances database/);
+ assert.match(html,/Cash calculations start at \$0/);
+ assert.match(html,/players who paid/);
+});
