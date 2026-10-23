@@ -778,16 +778,20 @@
 .tm-credit-note{display:block;color:#9b6228;background:#fff7e8;border-radius:8px;padding:6px 9px;font-size:10px;line-height:1.5}
 
 
-/* Tournament knockout: ascending pyramid with bracket connections and seed controls. */
+/* Tournament bracket: left-to-right rounds with aligned feeder connections.
+   The same fixed-pixel geometry is used by tournament-bracket-layout.js. */
 .tm-knockout-layout{display:grid;grid-template-columns:minmax(0,1fr) 272px;align-items:start;gap:15px;margin-top:10px}
 .tm-pyramid-content{min-width:0}
-.tm-pyramid-scroll{width:100%;overflow-x:auto;overflow-y:hidden;padding:4px 0 18px;scrollbar-width:thin}
-.tm-pyramid{min-width:max-content;width:100%;display:flex;flex-direction:column;gap:19px;padding:5px 8px 15px;box-sizing:border-box}
-.tm-pyramid-level h3{font-size:10px;text-align:center;letter-spacing:.14em;text-transform:uppercase;margin:0 0 12px;color:#748f7c}
-.tm-pyramid-grid{display:grid;grid-template-columns:repeat(var(--tm-pyramid-cols),minmax(179px,1fr));align-items:center}
-.tm-pyramid-node{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:136px;padding:0 6px 22px;box-sizing:border-box}
+.tm-knockout .tm-head>div{display:grid;gap:6px}
+.tm-bracket-scroll{width:100%;max-width:100%;overflow:auto;max-height:min(78vh,1200px);padding:12px;border:1px solid #e1eae3;border-radius:12px;background:#fcfefd;box-sizing:border-box;scrollbar-width:thin}
+.tm-bracket-scroll:focus-visible{outline:2px solid #32a76c;outline-offset:3px}
+.tm-bracket-board{position:relative;box-sizing:content-box}
+.tm-bracket-round-heading{position:absolute;top:12px;z-index:1;text-align:center;margin:0;color:#47765a;font-size:11px;line-height:1.4;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.tm-bracket-edges{position:absolute;inset:0;pointer-events:none;overflow:visible;z-index:0}
+.tm-bracket-edges path{fill:none;stroke:#a9cfb7;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.tm-bracket-node{position:absolute;z-index:1;transform:translateY(-50%);display:flex;justify-content:center;align-items:center;box-sizing:border-box}
 .tm-pyramid-cell{width:100%;display:flex;justify-content:center}
-.tm-pyramid-card{position:relative;box-sizing:border-box;min-width:0;width:100%;max-width:245px;background:#fafcfb;border:1px solid #d9e4dd;border-radius:8px;padding:8px 10px;box-shadow:0 2px 6px rgba(23,55,37,.04);text-align:left}
+.tm-pyramid-card{position:relative;box-sizing:border-box;min-width:0;width:100%;max-width:230px;background:#fff;border:1px solid #d9e4dd;border-radius:9px;padding:10px 11px;box-shadow:0 2px 7px rgba(23,55,37,.06);text-align:left}
 .tm-pyramid-complete{border-left:4px solid #28a465;background:#f0faf3}
 .tm-pyramid-card>small{display:block;font-size:9px;color:#829a88;margin-bottom:5px}
 .tm-pyramid-side{display:flex;align-items:center;justify-content:space-between;gap:4px;padding:4px 0;font-size:11px;color:#486350;min-width:0}
@@ -800,9 +804,7 @@
 .tm-pyramid-set-line{padding-top:5px;font-size:10px;color:#4a8160;border-top:1px solid #e2eee4}
 .tm-pyramid-score-link{padding:5px 0 0;cursor:pointer;background:transparent;border:0;text-decoration:underline;color:#287648;font-size:10px;font-weight:750}
 .tm-pyramid-score-link:hover{color:#124b2f}
-.tm-pyramid-empty{border:1px dashed #eef1ef;background:#f9fbf9;width:75%;max-width:190px;height:58px;opacity:.26;border-radius:9px}
-.tm-pyramid-connector{position:absolute;top:calc(100% - 21px);height:24px;left:25%;right:25%;border:1.5px solid #ceddd2;border-top:0;border-bottom:0;pointer-events:none}
-.tm-pyramid-connector::after{content:'';position:absolute;left:0;right:0;bottom:0;border-bottom:1.5px solid #ceddd2}
+.tm-pyramid-empty{border:1px dashed #dce6df;background:#f7faf8;width:100%;height:65px;border-radius:9px;opacity:.5}
 .tm-pyramid-edit{margin-top:15px;padding:15px;border-color:#badcc4}
 .tm-pyramid-edit h3{font-size:14px;color:#286343;margin:0}
 .tm-pyramid-edit .tm-score-editor{max-width:650px}
@@ -817,6 +819,5 @@
 .tm-seeding-panel table{font-size:10px;min-width:260px;border-collapse:collapse;width:100%}
 .tm-seeding-panel th,.tm-seeding-panel td{padding:8px 5px;border-bottom:1px solid #e7eee8;text-align:left}
 .tm-seeding-panel th{color:#698271}
-.tm-knockout .tm-head>div{display:grid;gap:6px}
 @media(max-width:1150px){.tm-knockout-layout{grid-template-columns:1fr}.tm-seeding-sidebar{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:650px){.tm-seeding-sidebar{grid-template-columns:1fr}.tm-pyramid-grid{grid-template-columns:repeat(var(--tm-pyramid-cols),minmax(175px,1fr))}.tm-pyramid-card{max-width:220px}}
+@media(max-width:650px){.tm-seeding-sidebar{grid-template-columns:1fr}.tm-bracket-scroll{padding:8px}.tm-pyramid-card{max-width:230px}}
