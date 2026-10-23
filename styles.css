@@ -752,6 +752,26 @@
 .tm-fixtures{display:grid;gap:10px;margin-top:14px}
 .tm-match{padding:13px;border:1px solid #dfebe2;border-radius:11px;background:#fff;min-width:0;display:grid;gap:9px}
 .tm-match-complete{background:#f5fbf6}
+
+/* Editable match start times in group fixtures and bracket slots. */
+.tm-match-status{display:flex;flex-direction:column;align-items:flex-end;gap:6px;max-width:54%;text-align:right}
+.tm-match-time{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.tm-match-time strong{font-size:12px;font-variant-numeric:tabular-nums;color:#205e41}
+.tm-time-link{display:inline-flex;align-items:center;gap:4px;padding:3px 0;border:0;background:none;color:#288658;text-decoration:underline;text-underline-offset:2px;font-size:10px;font-weight:750;cursor:pointer}
+.tm-time-link svg{width:12px;height:12px}
+.tm-time-link:disabled{cursor:not-allowed;opacity:.5}
+.tm-time-editor{display:flex;align-items:flex-end;flex-wrap:wrap;gap:9px;background:#f6fbf8;border:1px solid #d9e9de;border-radius:9px;padding:11px}
+.tm-time-editor label{display:grid;gap:5px;font-size:11px;font-weight:700;color:#51755f}
+.tm-time-editor input{border:1px solid #cddfd3;border-radius:7px;padding:8px 9px;color:#284e39;background:#fff;font-size:12px;min-width:125px}
+.tm-time-editor-actions{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.tm-pyramid-match-top{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px}
+.tm-pyramid-match-top small{font-size:9px;color:#819888}
+.tm-pyramid-match-top span{font-size:9px}
+.tm-match-time-compact{justify-content:space-between;gap:4px;margin-top:6px;border-top:1px solid #e1ebe4;padding-top:5px}
+.tm-match-time-compact strong{font-size:10px}
+.tm-match-time-compact .tm-time-link{font-size:9px}
+@media(max-width:560px){.tm-match-status{max-width:70%}.tm-time-editor{align-items:stretch}.tm-time-editor-actions{width:100%}}
+
 .tm-match-top{display:flex;justify-content:space-between;gap:7px;align-items:center}
 .tm-match-top small{font-size:10px;color:#819888}
 .tm-winner{background:#e4f5e8;border-radius:6px;padding:4px 7px;color:#226741;font-size:10px;font-weight:750}
