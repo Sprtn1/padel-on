@@ -436,9 +436,10 @@ test('Seeded semifinal routes do not draw phantom connections through reserved f
   {team:state.teams[0].id,stage:'semifinal',slot:1,side:'a'}
  ]);
  const layout=knockoutBracketLayout(seeded.matches);
- const semis=layout.nodes.find(x=>x.round===2&&x.slot===1);
+ const semifinalRound=layout.rounds.at(-1)-1;
+ const semis=layout.nodes.find(x=>x.round===semifinalRound&&x.slot===1);
  assert.equal(semis.match.seedA,state.teams[0].id);
- const leftFeeders=layout.nodes.filter(x=>x.round===1&&x.slot<=2);
+ const leftFeeders=layout.nodes.filter(x=>x.round===semifinalRound-1&&x.slot<=2);
  assert.ok(leftFeeders.length===2);
  assert.equal(layout.links.filter(x=>leftFeeders.some(y=>y.match.id===x.from)).length,0,
   'Reserved semifinalist cannot also receive earlier-round winners in their half');
