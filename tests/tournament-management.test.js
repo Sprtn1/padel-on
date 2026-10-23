@@ -108,6 +108,17 @@ function makeUI(isAdmin=false,backing=[]){
   rpc:async(name,args)=>{
    calls.push({name,args});
    if(name==='tournament_create')return 'new-tournament';
+   if(name==='tournament_shuffle_groups'){
+    const row=backing.find(x=>x.id===args.p_id);
+    assert.equal(args.p_expected_version,row.version);
+    const oldTeams=row.state.teams;
+    const next=makeInitialTournament(players(oldTeams.length),row.fee_cents,'groups',()=>0.91);
+    row.state={...row.state,
+     teams:next.teams.map(team=>({...oldTeams.find(x=>x.id===team.id),group:team.group})),
+     matches:next.matches};
+    row.version++;
+    return row.version;
+   }
    if(name==='tournament_change'){
     const row=backing.find(x=>x.id===args.p_id);
     row.version+=1;
@@ -458,4 +469,24 @@ test('Sidebar-free scroll area remains navigable and exposes recorded scores',as
  assert.match(html,/role="region" tabindex="0"/);
  assert.match(html,/6-4 \/ 6-2/);
  assert.match(html,/Edit score/);
+});
+
+test('Staff can repeatedly shuffle unplayed groups without losing payments, and results lock the control',async()=>{
+ const row=sampleRow('groups');
+ row.state.teams[0].members[0].paid=700;
+ const {widget,calls}=makeUI(false,[row]);
+ await widget.load();
+ assert.match(widget.page(),/data-action="tm-shuffle-groups"/);
+ const originalPayments=row.state.teams.flatMap(t=>t.members.map(m=>[m.id,m.due,m.paid]));
+ await widget.action({dataset:{action:'tm-shuffle-groups'}});
+ await widget.action({dataset:{action:'tm-shuffle-groups'}});
+ assert.deepEqual(calls.map(x=>x.name),['tournament_shuffle_groups','tournament_shuffle_groups']);
+ assert.deepEqual(calls.map(x=>x.args.p_expected_version),[0,1]);
+ assert.equal(row.version,2);
+ assert.deepEqual(row.state.teams.flatMap(t=>t.members.map(m=>[m.id,m.due,m.paid])),originalPayments);
+ row.state.matches[0].sets=scoreA;
+ row.state.matches[0].winner=row.state.matches[0].a;
+ assert.match(widget.page(),/data-action="tm-shuffle-groups" disabled/);
+ await assert.rejects(()=>widget.action({dataset:{action:'tm-shuffle-groups'}}),/before match scores/);
+ assert.equal(calls.length,2);
 });
