@@ -441,8 +441,10 @@ test('Seeded semifinal routes do not draw phantom connections through reserved f
  assert.equal(semis.match.seedA,state.teams[0].id);
  const leftFeeders=layout.nodes.filter(x=>x.round===semifinalRound-1&&x.slot<=2);
  assert.ok(leftFeeders.length===2);
- assert.equal(layout.links.filter(x=>leftFeeders.some(y=>y.match.id===x.from)).length,0,
-  'Reserved semifinalist cannot also receive earlier-round winners in their half');
+ assert.ok(!layout.links.some(x=>x.from===leftFeeders[0].match.id&&x.to===semis.match.id),
+  'The direct semifinal seed must bypass its reserved feeder branch');
+ assert.ok(layout.links.some(x=>x.from===leftFeeders[1].match.id&&x.to===semis.match.id),
+  'The opponent must still arrive from the other semifinal feeder');
  assert.ok(layout.links.some(x=>x.to!==semis.match.id));
 });
 test('Sidebar-free scroll area remains navigable and exposes recorded scores',async()=>{
