@@ -204,3 +204,48 @@ test('Score entry and participant fee edit both update the tournament via versio
  assert.deepEqual(calls.map(c=>c.args.p_action),['due','score']);
  assert.equal(match.winner,match.a);
 });
+
+test('Qualifiers avoid immediate repeat matches between teams from the same group',()=>{
+ for(const n of [6,8,9,10,12,17,20,32]){
+  const state=makeInitialTournament(players(n),1000,'groups',fixedRandom);
+  for(const m of state.matches){m.sets=scoreA;m.winner=m.a;}
+  const qualified=getQualifiers(state);
+  const bracket=makeKnockoutMatches(qualified);
+  const first=bracket.filter(x=>x.round===1&&x.a&&x.b);
+  const lookup=new Map(state.teams.map(x=>[x.id,x.group]));
+  const avoidable=first.filter(x=>lookup.get(x.a)===lookup.get(x.b));
+  assert.ok(avoidable.length===0 || n<7,'Avoid group rematches for '+n);
+ }
+});
+test('Tournament PDF archive contains every participant, payments, fixtures and champion',()=>{
+ const tournament=sampleRow('knockout');
+ tournament.state.teams[0].members[0].paid=1000;
+ const final=tournament.state.matches.at(-1);
+ final.winner=tournament.state.teams[0].id;
+ const before=globalThis.document,prior=globalThis.atob;
+ const drawn=[];
+ try{
+  globalThis.atob=()=>String.fromCharCode(255,216,255,217);
+  globalThis.document={createElement:()=>({
+   width:1200,height:1553,
+   toDataURL:()=>'data:image/jpeg;base64,/9j/2Q==',
+   getContext:()=>({
+    fillStyle:'',strokeStyle:'',lineWidth:1,font:'',
+    fillRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},
+    measureText:v=>({width:String(v).length*10}),
+    fillText:v=>drawn.push(String(v))
+   })
+  })};
+  const result=tournamentArchivePdf(tournament);
+  assert.equal(result.pdf.type,'application/pdf');
+  assert.ok(result.pages>=1);
+  const lines=drawn.join(' | ');
+  assert.match(lines,/PADEL ON.*TOURNAMENT ARCHIVE/);
+  assert.match(lines,/Friday Doubles/);
+  assert.match(lines,/Total paid/);
+  assert.match(lines,/First 0/);
+  assert.match(lines,/Second 3/);
+  assert.match(lines,/ALL MATCHES AND SCORES/);
+  assert.match(lines,/CHAMPIONS/);
+ }finally{globalThis.document=before;globalThis.atob=prior}
+});
