@@ -130,7 +130,7 @@ function makeUI(isAdmin=false,backing=[]){
   }
  };
  const widget=createTournamentManagement({
-  api,heading:()=>'',icon:()=>'',today:()=> '2026-10-23',
+  api,heading:(...args)=>args[3]||'',icon:()=>'',today:()=> '2026-10-23',
   rerender:()=>{},toast:m=>messages.push(m),isAdmin:()=>isAdmin
  });
  return {widget,calls,messages,backing};
