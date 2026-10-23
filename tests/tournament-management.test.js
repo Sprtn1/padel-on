@@ -493,13 +493,13 @@ test('Staff can repeatedly shuffle unplayed groups without losing payments, and 
  const {widget,calls}=makeUI(false,[row]);
  await widget.load();
  assert.match(widget.page(),/data-action="tm-shuffle-groups"/);
- const originalPayments=row.state.teams.flatMap(t=>t.members.map(m=>[m.id,m.due,m.paid]));
+ const originalPayments=row.state.teams.flatMap(t=>t.members.map(m=>[m.id,m.due,m.paid])).sort((a,b)=>a[0].localeCompare(b[0]));
  await widget.action({dataset:{action:'tm-shuffle-groups'}});
  await widget.action({dataset:{action:'tm-shuffle-groups'}});
  assert.deepEqual(calls.map(x=>x.name),['tournament_shuffle_groups','tournament_shuffle_groups']);
  assert.deepEqual(calls.map(x=>x.args.p_expected_version),[0,1]);
  assert.equal(row.version,2);
- assert.deepEqual(row.state.teams.flatMap(t=>t.members.map(m=>[m.id,m.due,m.paid])),originalPayments);
+ assert.deepEqual(row.state.teams.flatMap(t=>t.members.map(m=>[m.id,m.due,m.paid])).sort((a,b)=>a[0].localeCompare(b[0])),originalPayments);
  row.state.matches[0].sets=scoreA;
  row.state.matches[0].winner=row.state.matches[0].a;
  assert.match(widget.page(),/data-action="tm-shuffle-groups" disabled/);
@@ -713,7 +713,7 @@ test('Staff may edit an active tournament team count and save five-team draw wit
  }finally{globalThis.FormData=before}
  assert.equal(row.state.teams.length,5);
  assert.equal(row.state.matches.length,10);
- assert.equal(JSON.stringify(row.state.teams.find(t=>t.id===JSON.parse(originalMember).id)?.members[0]||row.state.teams[0].members[0]),originalMember);
+ assert.equal(JSON.stringify(row.state.teams.flatMap(t=>t.members).find(m=>m.id===JSON.parse(originalMember).id)),originalMember);
  assert.equal(calls.filter(x=>x.name==='tournament_resize_teams').length,1);
  assert.match(widget.page(),/5-team group/);
 });
