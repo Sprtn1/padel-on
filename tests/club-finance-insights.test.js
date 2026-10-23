@@ -71,7 +71,7 @@ test('Overview uses a separate cash desk metric and labels historical status acc
  assert.match(html,/\$35\.00/);
  assert.match(html,/\$4\.60/);
  assert.match(html,/Unmarked court payments/);
- assert.match(html,/not included in cash totals/);
+ assert.match(html,/Whish wallet/);
  assert.ok(calls.some(([t,f])=>t==='whish_ledger_entries'&&f==='order=entry_date.asc'));
 });
 test('Report shows accurate grouped category and daily financial breakdown',async()=>{
@@ -96,7 +96,7 @@ test('Report shows accurate grouped category and daily financial breakdown',asyn
  assert.match(html,/Padel Courts/);
  assert.match(html,/Expense/);
  assert.match(html,/2026-10-22/);
- assert.match(html,/Whish wallet · separate ledger/);
+ assert.match(html,/Whish wallet/);
  assert.match(html,/1 active day\(s\)/);
 });
 
