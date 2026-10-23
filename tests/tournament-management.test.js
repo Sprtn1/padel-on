@@ -778,7 +778,7 @@ test('Staff can open Add Team directly and save new players while retaining exis
  }finally{globalThis.FormData=oldFormData}
  assert.equal(row.state.teams.length,5);
  assert.equal(row.state.matches.length,10);
- assert.deepEqual(row.state.teams.find(t=>t.members.some(p=>p.id==='p1')).members[0],JSON.parse(previous));
+ assert.deepEqual(row.state.teams.flatMap(t=>t.members).find(p=>p.id===JSON.parse(previous).id),JSON.parse(previous));
  assert.equal(row.state.teams.flatMap(t=>t.members).filter(p=>p.name==='Lama Hassan'||p.name==='Zein Abbas').length,2);
  assert.equal(calls.filter(c=>c.name==='tournament_resize_teams').length,1);
 });
@@ -836,7 +836,7 @@ test('Each group tournament can be PIN locked, requiring the PIN for subsequent 
  await withPINForm(widget,pinForm('shuffle',{pin:'1234'}));
  assert.equal(row.version,2);
  assert.equal(row.shuffle_locked,true,'Lock persists after shuffling');
- assert.equal(JSON.stringify(row.state.teams[0].members[0]),memberBefore,'Members and payments unchanged');
+ assert.equal(JSON.stringify(row.state.teams.flatMap(t=>t.members).find(p=>p.id===JSON.parse(memberBefore).id)),memberBefore,'Members and payments unchanged');
  assert.deepEqual(calls.map(c=>c.name),[
   'tournament_set_shuffle_lock','tournament_shuffle_groups','tournament_shuffle_groups'
  ]);
