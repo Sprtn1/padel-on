@@ -106,6 +106,5 @@ begin
  where id=p_id returning version into v_version;
  return v_version;
 end;
-$function$
-
+$function$;
 commit;
