@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseTournamentMoney,makeInitialTournament,makeKnockoutMatches,padelSetWinner,
- padelMatchWinner,groupStandings,getQualifiers,tournamentTotals,tournamentChampion} from '../lib/tournament-engine.js';
+ padelMatchWinner,groupStandings,getQualifiers,tournamentTotals,tournamentChampion,
+ knockoutSeedEntrants,reseedTournamentKnockout,makeSeededKnockoutMatches} from '../lib/tournament-engine.js';
 import {createTournamentManagement} from '../lib/tournament-management.js';
 import {tournamentArchivePdf,downloadTournamentPdf} from '../lib/tournament-pdf.js';
 
@@ -123,6 +124,11 @@ function makeUI(isAdmin=false,backing=[]){
     }
     return row.version;
    }
+   if(name==='tournament_reseed'){
+    const row=backing.find(x=>x.id===args.p_id);
+    row.state=reseedTournamentKnockout(row.state,args.p_placements);
+    row.version++;return row.version;
+   }
    if(name==='tournament_close'){
     const index=backing.findIndex(x=>x.id===args.p_id);
     backing.splice(index,1);return null;
@@ -161,7 +167,7 @@ test('Admins can export and begin archive closure, but deletion requires confirm
  const fakeCanvas={
   width:1200,height:1553,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q==',
   getContext:()=>({fillStyle:'',strokeStyle:'',lineWidth:1,font:'',fillRect(){},fillText(){},beginPath(){},
-   moveTo(){},lineTo(){},stroke(){},measureText:v=>({width:String(v).length*10})})
+   moveTo(){},lineTo(){},stroke(){},strokeRect(){},measureText:v=>({width:String(v).length*10})})
  };
  const clicked=[];
  try{
@@ -232,7 +238,7 @@ test('Tournament PDF archive contains every participant, payments, fixtures and 
    toDataURL:()=>'data:image/jpeg;base64,/9j/2Q==',
    getContext:()=>({
     fillStyle:'',strokeStyle:'',lineWidth:1,font:'',
-    fillRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},
+    fillRect(){},strokeRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},
     measureText:v=>({width:String(v).length*10}),
     fillText:v=>drawn.push(String(v))
    })
@@ -285,4 +291,96 @@ test('Create Tournament collects names, fee, mode, date, time, and shuffles the 
  assert.equal(x.p_state.matches.length,3);
  assert.equal(x.p_state.teams.flatMap(t=>t.members).length,6);
  assert.ok(x.p_state.matches.some(m=>m.winner&&m.b===null));
+});
+
+test('Pyramid draw reserves later-round seeds and keeps each entrant in exactly one bracket position',()=>{
+ for(const n of [4,6,8,12,16,24,32]){
+  const state=makeInitialTournament(players(n),1500,'knockout',fixedRandom);
+  for(const stage of ['semifinal','quarterfinal','final']){
+   const entries=[{team:state.teams[0].id,stage,slot:1,side:'a'}];
+   const seeded=reseedTournamentKnockout(state,entries);
+   const list=seeded.matches.filter(m=>m.phase==='knockout');
+   const maxRound=Math.max(...list.map(m=>m.round));
+   const match=list.find(m=>m.round===maxRound-({final:0,semifinal:1,quarterfinal:2}[stage])&&m.slot===1);
+   assert.equal(match.seedA,entries[0].team);
+   const origins=list.flatMap(m=>m.round===1?[m.a,m.b]:[m.seedA,m.seedB]).filter(Boolean);
+   assert.equal(origins.length,n);
+   assert.equal(new Set(origins).size,n);
+   assert.equal(list.length,2**maxRound-1);
+   assert.ok(list.every(m=>m.possibleA>=0&&m.possibleB>=0));
+   assert.equal(seeded.seedPlacements[0].stage,stage);
+  }
+ }
+});
+test('Double-booking a seeded team or reserving overlapping branches is rejected',()=>{
+ const s=makeInitialTournament(players(8),2000,'knockout',fixedRandom);
+ const first={team:s.teams[0].id,stage:'semifinal',slot:1,side:'a'};
+ assert.throws(()=>reseedTournamentKnockout(s,[first,first]));
+ assert.throws(()=>reseedTournamentKnockout(s,[first,{team:s.teams[1].id,stage:'quarterfinal',slot:1,side:'a'}]));
+ const played=makeInitialTournament(players(8),2000,'knockout',fixedRandom);
+ played.matches[0].sets=scoreA;played.matches[0].winner=played.matches[0].a;
+ assert.throws(()=>reseedTournamentKnockout(played,[first]));
+});
+test('Pyramid layout displays final above semifinals and includes staff seeding controls',async()=>{
+ const row=sampleRow('knockout');
+ const {widget,calls}=makeUI(false,[row]);
+ await widget.load();
+ const html=widget.page();
+ assert.match(html,/tm-pyramid-scroll/);
+ assert.match(html,/tm-pyramid-grid/);
+ assert.ok(html.indexOf('>Final</h3>')<html.indexOf('>Semifinals</h3>'));
+ assert.match(html,/data-tm-submit="seed-placement"/);
+ assert.match(html,/Choose a team/);
+ assert.match(html,/Add Seed/);
+ assert.match(html,/id="tm-seed-slot"/);
+ assert.match(html,/id="tm-seed-stage"/);
+});
+test('Staff can assign a strong doubles team directly to the semifinals and later remove the seed',async()=>{
+ const row=sampleRow('knockout'),{widget,calls}=makeUI(false,[row]);
+ await widget.load();
+ const target=row.state.teams[0].id;
+ const originalFormData=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'seed-placement'},_values:[
+   ['team',target],['stage','semifinal'],['slot','1'],['side','a']
+  ]});
+ }finally{globalThis.FormData=originalFormData}
+ const saved=calls.find(c=>c.name==='tournament_reseed');
+ assert.ok(saved);
+ assert.equal(saved.args.p_placements[0].team,target);
+ assert.equal(saved.args.p_placements[0].stage,'semifinal');
+ assert.match(widget.page(),/Seeded Teams \(1\)/);
+ assert.match(widget.page(),/tm-pyramid-seed/);
+ const before=row.version;
+ await widget.action({dataset:{action:'tm-remove-seed',id:target}});
+ assert.equal(row.version,before+1);
+ assert.deepEqual(row.state.seedPlacements,[]);
+ assert.match(widget.page(),/Seeded Teams \(0\)/);
+});
+test('Tournament archive draws bordered tables and repeats headers across PDF pages',()=>{
+ const state=makeInitialTournament(players(32),1500,'knockout',fixedRandom);
+ const tournament={id:'archive',name:'Tournament Archive Test',event_date:'2026-11-12',
+   start_time:'19:00',format:'knockout',fee_cents:1500,state};
+ const before=globalThis.document,prior=globalThis.atob;
+ const strokes=[],texts=[],pages=[];
+ try{
+  globalThis.atob=()=>String.fromCharCode(255,216,255,217);
+  globalThis.document={createElement:()=>({
+   width:1200,height:1553,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q==',
+   getContext:()=>({font:'',fillStyle:'',strokeStyle:'',lineWidth:1,
+    fillRect(){},strokeRect(...args){strokes.push(args)},beginPath(){},
+    moveTo(){},lineTo(){},stroke(){},measureText:x=>({width:String(x).length*10}),
+    fillText:x=>texts.push(String(x))})
+  })};
+  const result=tournamentArchivePdf(tournament);
+  assert.ok(result.pages>1);
+  assert.ok(strokes.length>90,'Each payment and match should be a bordered table row');
+  assert.ok(texts.filter(x=>x==='Participant').length>=1);
+  assert.ok(texts.filter(x=>x==='Round / match').length>=2);
+  assert.ok(texts.includes('ALL MATCHES AND SCORES - KNOCKOUT BRACKET'));
+  assert.ok(texts.includes('PARTICIPANTS AND PAYMENTS'));
+  assert.ok(texts.includes('Team A')&&texts.includes('Team B'));
+  assert.equal(result.pdf.type,'application/pdf');
+ }finally{globalThis.document=before;globalThis.atob=prior}
 });
