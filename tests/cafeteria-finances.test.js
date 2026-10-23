@@ -1106,3 +1106,50 @@ test('Editing court notes is unavailable on closed days or noncourt entries',asy
  await assert.rejects(()=>widget.action({dataset:{action:'cafe-court-notes-edit',id:'c1'}}),/closed/);
  assert.equal(calls.length,0);
 });
+
+test('Older court bookings created before notes existed can save their first note',async()=>{
+ const day='2026-10-23',rpcCalls=[];
+ // Emulate an old browser record with no court_notes property.
+ const saved={id:'old-court',entry_date:day,category:'padel_courts',
+  name:'Existing booking',amount_cents:1600,
+  checkmarks:[true,true,true,true],quantity:1};
+ const api={
+  getSession:()=>({access_token:'token'}),
+  listAll:async table=>table==='cafeteria_finance_entries'?[{...saved}]:[],
+  rpc:async(name,args)=>{
+   rpcCalls.push({name,args});
+   assert.equal(name,'cafeteria_finance_set_court_notes');
+   assert.equal(args.p_expected_notes,'');
+   saved.court_notes=args.p_court_notes;
+  }
+ };
+ const widget=createCafeteriaFinances({
+  api,heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=>day,addDays:()=>day,rerender:()=>{},
+  toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ assert.match(widget.page(),/Existing booking/);
+ assert.match(widget.page(),/No notes yet/);
+ await widget.action({dataset:{action:'cafe-court-notes-edit',id:'old-court'}});
+ assert.match(widget.page(),/data-cafe-save="court-notes"/);
+ const previous=globalThis.FormData;
+ try{
+  globalThis.FormData=class{
+   constructor(form){this.data=form.__values;}
+   entries(){return this.data[Symbol.iterator]();}
+  };
+  await widget.submit({
+   dataset:{cafeSave:'court-notes',entryId:'old-court'},
+   __values:[['court_notes','Water x2, Nescafe x1']],
+   querySelector:()=>null
+  });
+ }finally{globalThis.FormData=previous;}
+ assert.deepEqual(rpcCalls,[{name:'cafeteria_finance_set_court_notes',args:{
+  p_entry_id:'old-court',p_court_notes:'Water x2, Nescafe x1',
+  p_expected_notes:''
+ }}]);
+ assert.equal(saved.amount_cents,1600);
+ assert.deepEqual(saved.checkmarks,[true,true,true,true]);
+ assert.match(widget.page(),/Water x2, Nescafe x1/);
+});
