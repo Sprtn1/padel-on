@@ -701,7 +701,7 @@ test('Staff may edit an active tournament team count and save five-team draw wit
  const originalMember=JSON.stringify(row.state.teams[0].members[0]);
  const {widget,calls}=makeUI(false,[row]);
  await widget.load();
- assert.match(widget.page(),/Edit Team Count/);
+ assert.match(widget.page(),/Manage Teams/);
  await widget.action({dataset:{action:'tm-team-start'}});
  assert.match(widget.page(),/id="tm-existing-team-count"/);
  await widget.change({id:'tm-existing-team-count',value:'5',closest:()=>null});
@@ -736,4 +736,55 @@ test('Team count editor can add new participants and block deletion of paid team
  assert.equal(row.state.teams.length,5);
  assert.equal(row.state.teams.flatMap(t=>t.members).filter(x=>x.name.startsWith('Added')).length,2);
  assert.equal(row.state.teams.find(t=>t.members[0].paid===100)?.members[0].paid,100);
+});
+
+test('Staff can open Add Team directly and save new players while retaining existing payments',async()=>{
+ const row=sampleRow('groups');
+ row.state.teams[0].members[0].paid=325;
+ const previous=JSON.stringify(row.state.teams[0].members[0]);
+ const {widget,calls}=makeUI(false,[row]);
+ await widget.load();
+ assert.match(widget.page(),/data-action="tm-team-add-quick"/);
+ await widget.action({dataset:{action:'tm-team-add-quick'}});
+ const editor=widget.page();
+ assert.match(editor,/Manage Tournament Teams/);
+ assert.match(editor,/New Team 5/);
+ assert.match(editor,/new_p1_4/);
+ assert.match(editor,/new_p2_4/);
+ assert.match(editor,/data-tm-submit="resize-teams"/);
+ const oldFormData=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'resize-teams'},_values:[
+   ['new_p1_4','Lama Hassan'],['new_p2_4','Zein Abbas']
+  ]});
+ }finally{globalThis.FormData=oldFormData}
+ assert.equal(row.state.teams.length,5);
+ assert.equal(row.state.matches.length,10);
+ assert.deepEqual(row.state.teams.find(t=>t.members.some(p=>p.id==='p1')).members[0],JSON.parse(previous));
+ assert.equal(row.state.teams.flatMap(t=>t.members).filter(p=>p.name==='Lama Hassan'||p.name==='Zein Abbas').length,2);
+ assert.equal(calls.filter(c=>c.name==='tournament_resize_teams').length,1);
+});
+test('Add Team and team manager both lock after the first recorded result',async()=>{
+ const row=sampleRow('groups');
+ row.state.matches[0].sets=[{a:6,b:3},{a:6,b:4}];
+ row.state.matches[0].winner=row.state.matches[0].a;
+ const {widget,calls}=makeUI(false,[row]);
+ await widget.load();
+ assert.match(widget.page(),/data-action="tm-team-add-quick" disabled/);
+ assert.match(widget.page(),/data-action="tm-team-start" disabled/);
+ let blocked=false;
+ try{await widget.action({dataset:{action:'tm-team-add-quick'}})}catch(e){blocked=/locked/.test(e.message)}
+ assert.ok(blocked);
+ assert.equal(calls.length,0);
+});
+test('Add Team cannot exceed the 32-team limit',async()=>{
+ const row=sampleRow('knockout');
+ row.state=makeInitialTournament(players(32),1500,'knockout',fixedRandom);
+ const {widget}=makeUI(false,[row]);await widget.load();
+ assert.match(widget.page(),/data-action="tm-team-add-quick" disabled/);
+ let blocked=false;
+ try{await widget.action({dataset:{action:'tm-team-add-quick'}})}
+ catch(e){blocked=/Maximum 32/.test(e.message)}
+ assert.ok(blocked);
 });
