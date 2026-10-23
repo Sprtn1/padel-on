@@ -148,6 +148,5 @@ begin
  returning version into version_out;
  return version_out;
 end;
-$function$
-
+$function$;
 commit;
