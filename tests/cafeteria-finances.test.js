@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CAFE_CATEGORIES, CAFE_RENTAL_PRICE_CENTS, cafeMoneyCents,
-  cafeQuantity, cafeEntryFromForm, cafeTotals, cafeReconciliation,
+  cafeQuantity, cafeEntryFromForm, cafeCourtNotes, cafeTotals, cafeReconciliation,
   cafePlayerCount, cafeNonnegativeCents, cafePrivatePayments, cafePrivateSessions,
   whishSummary, whishFormEntry, WHISH_DESCRIPTION_PRESETS, groupWhishTransactions,
   cafePrivatePaymentsTotal, createCafeteriaFinances
@@ -981,4 +981,128 @@ test('Whish card shows only the useful balance and transaction controls',async()
  assert.doesNotMatch(html,/not duplicated in the Cafeteria Finances database/);
  assert.match(html,/Cash calculations start at \$0/);
  assert.match(html,/players who paid/);
+});
+
+test('Court booking form has a notes box and validates notes separately from amounts',async()=>{
+ assert.equal(cafeCourtNotes('   Water x2\\nIced tea x1   '),'Water x2\\nIced tea x1');
+ assert.throws(()=>cafeCourtNotes('x'.repeat(1001)),/1000/);
+ const booking=cafeEntryFromForm('padel_courts',{
+  name:'Fajr',amount:'16.00',check0:'on',court_notes:' Water x2 / Peach iced tea '
+ });
+ assert.equal(booking.court_notes,'Water x2 / Peach iced tea');
+ assert.equal(booking.amount_cents,1600);
+ assert.deepEqual(booking.checkmarks,[true,false,false,false]);
+ const noncourt=cafeEntryFromForm('shoes',{name:'Shoes',amount:'25.00',court_notes:'ignore'});
+ assert.equal(Object.hasOwn(noncourt,'court_notes'),false);
+ const day='2026-10-23';
+ const widget=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),listAll:async()=>[]},
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=>day,addDays:()=>day,rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const page=widget.page();
+ assert.equal((page.match(/name="court_notes" maxlength="1000"/g)||[]).length,3);
+ assert.match(page,/Cafeteria items, drinks, or booking details/);
+});
+
+test('Saving a court booking includes notes in the same entry RPC; noncourt RPC remains unchanged',async()=>{
+ const day='2026-10-23',calls=[],rows=[];
+ const api={
+  getSession:()=>({access_token:'token'}),
+  listAll:async table=>table==='cafeteria_finance_entries'?rows.map(x=>({...x})):[],
+  rpc:async(name,args)=>{
+   calls.push({name,args});
+   if(name==='cafeteria_finance_record_entry')rows.push({
+    id:args.p_entry_id,entry_date:args.p_entry_date,category:args.p_category,
+    name:args.p_name,amount_cents:args.p_amount_cents,
+    checkmarks:args.p_checkmarks,court_notes:args.p_court_notes||''
+   });
+  }
+ };
+ const widget=createCafeteriaFinances({
+  api,heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=>day,addDays:()=>day,rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const oldFormData=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this._values=form.__values;}entries(){return this._values[Symbol.iterator]();}};
+  await widget.submit({dataset:{cafeSave:'entry',category:'padel_courts'},querySelector:()=>null,
+   __values:[['name','Fajr'],['amount','16.00'],['check0','on'],['court_notes','Nescafe x2 / Water x1']]});
+  await widget.submit({dataset:{cafeSave:'entry',category:'shoes'},querySelector:()=>null,
+   __values:[['name','Court shoes'],['amount','30.00']]});
+ }finally{globalThis.FormData=oldFormData;}
+ assert.equal(calls.length,2);
+ assert.equal(calls[0].args.p_court_notes,'Nescafe x2 / Water x1');
+ assert.equal(calls[1].args.p_court_notes,undefined);
+ assert.equal(rows[0].amount_cents,1600);
+ assert.match(widget.page(),/Nescafe x2 \/ Water x1/);
+});
+
+test('Court notes are shown safely and can be edited independently of prices and paid-player flags',async()=>{
+ const day='2026-10-23',calls=[],messages=[];
+ const row={id:'court-1',entry_date:day,category:'padel_courts',name:'Fajr',
+  amount_cents:1600,quantity:1,checkmarks:[true,true,true,true],
+  court_notes:'<script>alert("x")</script>\\nWater x2'};
+ const api={
+  getSession:()=>({access_token:'token'}),
+  listAll:async table=>table==='cafeteria_finance_entries'?[{...row,checkmarks:[...row.checkmarks]}]:[],
+  rpc:async(name,args)=>{
+   calls.push({name,args});
+   if(name==='cafeteria_finance_set_court_notes'){
+    assert.equal(args.p_expected_notes,row.court_notes);
+    row.court_notes=args.p_court_notes;
+   }
+  }
+ };
+ const widget=createCafeteriaFinances({
+  api,heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=>day,addDays:()=>day,rerender:()=>{},toast:m=>messages.push(m),isAdmin:()=>false
+ });
+ await widget.load();
+ assert.match(widget.page(),/&lt;script&gt;alert\(&quot;x&quot;\)&lt;\/script&gt;/);
+ assert.doesNotMatch(widget.page(),/<script>/);
+ await widget.action({dataset:{action:'cafe-court-notes-edit',id:'court-1'}});
+ assert.match(widget.page(),/data-cafe-save="court-notes"/);
+ const oldFormData=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this._values=form.__values;}entries(){return this._values[Symbol.iterator]();}};
+  await widget.submit({dataset:{cafeSave:'court-notes',entryId:'court-1'},querySelector:()=>null,
+   __values:[['court_notes','Water x2\\nIced tea peach x1']]});
+ }finally{globalThis.FormData=oldFormData;}
+ assert.deepEqual(calls,[{name:'cafeteria_finance_set_court_notes',args:{
+  p_entry_id:'court-1',p_court_notes:'Water x2\\nIced tea peach x1',
+  p_expected_notes:'<script>alert("x")</script>\\nWater x2'
+ }}]);
+ assert.equal(row.amount_cents,1600);
+ assert.deepEqual(row.checkmarks,[true,true,true,true]);
+ assert.match(widget.page(),/Iced tea peach x1/);
+ assert.doesNotMatch(widget.page(),/data-cafe-save="court-notes"/);
+ assert.match(messages.at(-1),/notes saved/);
+});
+
+test('Editing court notes is unavailable on closed days or noncourt entries',async()=>{
+ const day='2026-10-23',calls=[];
+ let closed=false;
+ const court={id:'c1',entry_date:day,category:'basketball_courts',name:'Game',
+  amount_cents:3200,checkmarks:[true,true,false,false,true,false],court_notes:'Water'};
+ const widget=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),
+   listAll:async table=>table==='cafeteria_finance_entries'?[court,{id:'other',entry_date:day,category:'shoes',name:'Shoes',amount_cents:2500}]:
+    table==='cafeteria_day_closings'&&closed?[{day_date:day,status:'approved'}]:[],
+   rpc:async(...args)=>calls.push(args)},
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=>day,addDays:()=>day,rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ await assert.rejects(()=>widget.action({dataset:{action:'cafe-court-notes-edit',id:'other'}}),/Court entry not found/);
+ await widget.action({dataset:{action:'cafe-court-notes-edit',id:'c1'}});
+ assert.match(widget.page(),/data-cafe-save="court-notes"/);
+ closed=true;await widget.load(true);
+ assert.match(widget.page(),/Water/);
+ assert.doesNotMatch(widget.page(),/data-cafe-save="court-notes"/);
+ assert.doesNotMatch(widget.page(),/data-action="cafe-court-notes-edit"/);
+ await assert.rejects(()=>widget.action({dataset:{action:'cafe-court-notes-edit',id:'c1'}}),/closed/);
+ assert.equal(calls.length,0);
 });
