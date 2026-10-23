@@ -1547,6 +1547,9 @@ document.addEventListener('submit',async e=>{
  }
 });
 document.addEventListener('input',e=>{
+ if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-payment-search'){
+  tournamentManagement.searchPayments(e.target);return;
+ }
  if(e.target.dataset?.reemInput && state.tab==='reem-items' && canUseOrderLists()){
   const type=reemItems.reemInput(e.target);
   if(type==='search'){
