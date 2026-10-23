@@ -1622,8 +1622,11 @@ function updateQuickPreview(){
 }
 // A native details element preserves its open state across full-page rerenders.
 document.addEventListener('toggle',e=>{
- if(state.tab==='cafeteria-finances'&&e.target?.dataset?.cafeFold)
+ if(state.tab!=='cafeteria-finances'||!e.target?.isConnected)return;
+ if(e.target.dataset.cafeFold)
   cafeteriaFinances.rememberFold(e.target.dataset.cafeFold,e.target.open);
+ if(e.target.dataset.cafeNote)
+  cafeteriaFinances.rememberNote(e.target.dataset.cafeNote,e.target.open);
 },true);
 document.addEventListener('change',e=>{
  if(state.tab==='tournament'&&['tm-team-count','tm-existing-team-count','tm-archive-saved','tm-seed-stage','tm-seed-slot','tm-seed-side','tm-seed-team'].includes(e.target.id)){
