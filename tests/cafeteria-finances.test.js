@@ -1153,3 +1153,62 @@ test('Older court bookings created before notes existed can save their first not
  assert.deepEqual(saved.checkmarks,[true,true,true,true]);
  assert.match(widget.page(),/Water x2, Nescafe x1/);
 });
+
+test('Court notes stay minimized for new entries and saved bookings until opened',async()=>{
+ const day='2026-10-23';
+ const saved=[
+  {id:'padel-one',category:'padel_courts',entry_date:day,name:'Padel booking',
+   amount_cents:1600,checkmarks:[true,false,true,false],court_notes:'Water x2'},
+  {id:'basket-two',category:'basketball_courts',entry_date:day,name:'Basketball booking',
+   amount_cents:3000,checkmarks:[true,true,false,false,true,false]}
+ ];
+ const widget=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),
+   listAll:async table=>table==='cafeteria_finance_entries'?saved:[]},
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=>day,addDays:()=>day,rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ let html=widget.page();
+ assert.equal((html.match(/<details class="cafe-court-note-collapsible">/g)||[]).length,3,
+  'Each court booking form begins with minimized notes');
+ assert.equal((html.match(/<summary>Notes \(optional\)<\/summary>/g)||[]).length,3);
+ const openingAttributes=id=>{
+  return widget.page().match(new RegExp('<details class="cafe-booking-notes" data-cafe-note="'+id+'"([^>]*)>'))?.[1];
+ };
+ assert.ok(openingAttributes('padel-one')!==undefined);
+ assert.ok(!openingAttributes('padel-one').includes('open'));
+ assert.ok(!openingAttributes('basket-two').includes('open'));
+ assert.match(html,/Water x2/,'Existing notes stay stored in the collapsed panel');
+ widget.rememberNote('padel-one',true);
+ assert.match(openingAttributes('padel-one'),/open/);
+ assert.ok(!openingAttributes('basket-two').includes('open'),'Other bookings remain minimized');
+ await widget.load(true);
+ assert.match(openingAttributes('padel-one'),/open/,'Expanded notes persist through refresh');
+ widget.rememberNote('padel-one',false);
+ assert.ok(!openingAttributes('padel-one').includes('open'));
+ widget.rememberNote('basket-two',true);
+ assert.match(openingAttributes('basket-two'),/open/);
+ widget.reset();
+ await widget.load();
+ assert.ok(!openingAttributes('basket-two').includes('open'),'Notes start minimized on a new visit');
+});
+
+test('Starting a note edit reveals only that booking notes, without changing the record',async()=>{
+ const day='2026-10-23';
+ const entry={id:'court-old',category:'padel_courts',entry_date:day,name:'Existing game',
+  amount_cents:1600,checkmarks:[true,true,true,true],court_notes:''};
+ const widget=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),
+   listAll:async table=>table==='cafeteria_finance_entries'?[entry]:[]},
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=>day,addDays:()=>day,rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ assert.match(widget.page(),/No notes yet/);
+ await widget.action({dataset:{action:'cafe-court-notes-edit',id:'court-old'}});
+ assert.match(widget.page(),/data-cafe-note="court-old" open/);
+ assert.match(widget.page(),/data-cafe-save="court-notes"/);
+ assert.equal(entry.amount_cents,1600);
+ assert.deepEqual(entry.checkmarks,[true,true,true,true]);
+});
