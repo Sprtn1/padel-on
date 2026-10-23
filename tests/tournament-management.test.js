@@ -249,3 +249,39 @@ test('Tournament PDF archive contains every participant, payments, fixtures and 
   assert.match(lines,/CHAMPIONS/);
  }finally{globalThis.document=before;globalThis.atob=prior}
 });
+
+test('Create Tournament collects names, fee, mode, date, time, and shuffles the exact requested number of teams',async()=>{
+ const backing=[],{widget,calls}=makeUI(false,backing);
+ await widget.load();
+ await widget.action({dataset:{action:'tm-create-show'}});
+ assert.match(widget.page(),/New tournament/);
+ assert.match(widget.page(),/Number of teams/);
+ assert.match(widget.page(),/Player 1 full name/);
+ const previous=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  widget.change({id:'tm-team-count',value:'3',closest:()=>({
+   _values:[['name','Club Championship'],['date','2026-11-01'],['time','19:30'],['fee','22.50'],['format','knockout'],['team_count','3']]
+  })});
+  const values=[
+   ['name','Club Championship'],['date','2026-11-01'],['time','19:30'],
+   ['fee','22.50'],['format','knockout'],['team_count','3'],
+   ['player_1_1','Player A'],['player_1_2','Player B'],
+   ['player_2_1','Player C'],['player_2_2','Player D'],
+   ['player_3_1','Player E'],['player_3_2','Player F']
+  ];
+  await widget.submit({dataset:{tmSubmit:'create'},_values:values});
+ }finally{globalThis.FormData=previous}
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].name,'tournament_create');
+ const x=calls[0].args;
+ assert.equal(x.p_name,'Club Championship');
+ assert.equal(x.p_date,'2026-11-01');
+ assert.equal(x.p_time,'19:30');
+ assert.equal(x.p_fee_cents,2250);
+ assert.equal(x.p_format,'knockout');
+ assert.equal(x.p_state.teams.length,3);
+ assert.equal(x.p_state.matches.length,3);
+ assert.equal(x.p_state.teams.flatMap(t=>t.members).length,6);
+ assert.ok(x.p_state.matches.some(m=>m.winner&&m.b===null));
+});
