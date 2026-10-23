@@ -204,8 +204,6 @@ begin
 end;
 $function$
 ;
-revoke all on function public.tournament_shuffle_groups(uuid,bigint) from public,anon,authenticated;
-grant execute on function public.tournament_shuffle_groups(uuid,bigint) to authenticated;
      or extensions.crypt(p_pin,v_lock.pin_hash) is distinct from v_lock.pin_hash then
    update public.tournament_shuffle_locks
      set failed_attempts=case when v_lock.failed_attempts>=4 then 0 else v_lock.failed_attempts+1 end,
