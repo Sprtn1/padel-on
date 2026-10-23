@@ -6,6 +6,7 @@ const reemItems = await import(`./lib/reem-items-ui.js?v=${assetVersion}`);
 const cafeteriaFinanceModule = await import(`./lib/cafeteria-finances.js?v=${assetVersion}`);
 const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
 const refreshPolicy = await import(`./lib/refresh-policy.js?v=${assetVersion}`);
+const tournamentModule = await import(`./lib/tournament-management.js?v=${assetVersion}`);
 const arabicDailyPdf = await import(`./lib/arabic-daily-pdf.js?v=${assetVersion}`);
 const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus} = await import(`./lib/logic.js?v=${assetVersion}`);
 const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = await import(`./lib/date.js?v=${assetVersion}`);
@@ -34,7 +35,7 @@ function initials(name){return String(name).split(/\s+/).slice(0,2).map(s=>s[0])
 function tag(label,color='green'){return `<span class="tag tag-${color}">${esc(label)}</span>`}
 function btn(label,action,cls='btn-light',more=''){return `<button class="btn ${cls}" data-action="${action}" ${more}>${label}</button>`}
 function toast(message,bad=false){const host=document.getElementById('toast-host');const node=document.createElement('div');node.className=`toast ${bad?'bad':''}`;node.textContent=message;host.append(node);setTimeout(()=>node.remove(),4100)}
-const tabs=[['dashboard','Overview','grid'],['cafeteria-finances','Cafeteria Finances','coins'],['debts','Cafeteria Debts','wallet'],['private-clients','Private Sessions','users'],['team','Team Members','users'],['training','Monthly Training','calendar'],['other','Other Benefits','gift'],['finance','Matchmaking','wallet'],['activity','Game Activity','list'],['reports','Reports','download'],['settings','Settings','settings']];
+const tabs=[['dashboard','Overview','grid'],['cafeteria-finances','Cafeteria Finances','coins'],['debts','Cafeteria Debts','wallet'],['private-clients','Private Sessions','users'],['team','Team Members','users'],['training','Monthly Training','calendar'],['other','Other Benefits','gift'],['finance','Matchmaking','wallet'],['tournament','Tournament Management','activity'],['activity','Game Activity','list'],['reports','Reports','download'],['settings','Settings','settings']];
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
@@ -60,6 +61,11 @@ const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
    throw Error('PDF downloaded locally, but WhatsApp did not send: '+(err?.message||'Please check the WhatsApp integration.'));
   }
  }
+});
+const tournamentManagement=tournamentModule.createTournamentManagement({
+ api,heading,icon,today,toast,
+ rerender:()=>{if(state.tab==='tournament'&&api.getSession()?.access_token)render()},
+ isAdmin:()=>state.staff?.role==='admin'
 });
 const clubInsights=clubInsightsModule.createCashInsights({
  api,today,amount,renderIfVisible:tab=>{if(state.tab===tab&&api.getSession()?.access_token)render()}
@@ -171,7 +177,7 @@ function globalSearchOverlay(){
 }
 function shell(){
  const name=state.staff?.email?.split('@')[0]||'Staff';
- return `<div class="app-layout"><aside class="sidebar"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><div class="brand-sub">Club management</div><nav class="menu">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></aside><main class="main"><header class="topbar"><div><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Private management · Asia/Beirut local time</div></div></main><nav class="mobile-bar" aria-label="Mobile navigation"><div class="mobile-nav-scroll">${navMarkup(true)}</div><button type="button" class="mobile-nav mobile-settings-nav ${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'active':''}" data-tab="settings" aria-current="${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'page':'false'}" aria-label="Settings">${icon('settings')}<span>Settings</span></button></nav></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
+ return `<div class="app-layout"><aside class="sidebar"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><div class="brand-sub">Club management</div><nav class="menu">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></aside><main class="main"><header class="topbar"><div><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='tournament'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Private management · Asia/Beirut local time</div></div></main><nav class="mobile-bar" aria-label="Mobile navigation"><div class="mobile-nav-scroll">${navMarkup(true)}</div><button type="button" class="mobile-nav mobile-settings-nav ${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'active':''}" data-tab="settings" aria-current="${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'page':'false'}" aria-label="Settings">${icon('settings')}<span>Settings</span></button></nav></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
 }
 function heading(eyebrow,title,desc,actions=''){return `<div class="heading-row"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${desc}</p></div>${actions?`<div class="heading-actions">${actions}</div>`:''}</div>`}
 function summaryCard(label,num,sub,ico,feature=false){return `<article class="summary-card ${feature?'feature':''}"><div class="card-top"><span class="label">${label}</span><span class="metric-icon">${icon(ico)}</span></div><div class="metric num">${num}</div><div class="submetric">${sub}</div></article>`}
@@ -816,7 +822,7 @@ function settingsPage(){
  const orderListsCard=listsEnabled?'<article class="panel settings-box order-lists-box"><h3>Order Lists</h3><div class="order-list-options"><section class="order-list-option"><h4>Order Counter</h4><p>Count stock items, prepare a complete restocking message, and copy it for WhatsApp.</p>'+btn(icon('list')+' Open Order Counter','open-order-counter','btn-primary')+'</section><section class="order-list-option"><h4>Reem’s Items List</h4><p>Prepare Reem’s delivery order separately from the original supplier list. Copy the complete message for WhatsApp.</p>'+btn(icon('list')+' Open Reem’s Items List','open-reem-items','btn-light')+'</section></div></article>':'';
  return `${heading('Administration','Settings','Manage allowances, update players, and protect sensitive changes.',btn(`${icon('logout')} Sign out`,'signout','btn-light'))}<div class="notice warn">${icon('shield')} Manual resets are verified by a server-side Supabase Edge Function. The reset code is never exposed in the public website files.</div><div class="settings-grid"><article class="panel settings-box"><h3>Team roster</h3><p>Create team members, edit weekly allowances, and deactivate members while keeping their history.</p>${btn(`${icon('plus')} Add Member`,'new-member','btn-primary',admin?'':'disabled')}${btn(`${icon('edit')} Edit Member`,'choose-member-edit','btn-light',admin?'':'disabled')}</article><article class="panel settings-box"><h3>Manual weekly reset</h3><p>Reset a member or everyone for the active week. A reset changes the counting baseline but does not remove game records.</p>${btn('Reset One Member','reset-one','btn-light',admin?'':'disabled')}${btn('Reset All Members','reset-all','btn-danger',admin?'':'disabled')}</article><article class="panel settings-box"><h3>Database & security</h3><p>Live records use Supabase with Row-Level Security. Administrators can manage the roster and settlements.</p><div class="flex">${tag('Connected','green')}${tag((state.staff?.role||'Staff').toUpperCase(),'gray')}</div></article><article class="panel settings-box"><h3>Financial archive</h3><p>Matchmaking records are retained indefinitely unless deleted by an authorized staff member. Download a monthly CSV for your records.</p>${btn(`${icon('download')} Export Selected Month`,'export-finance','btn-light')}</article></div>${admin||listsEnabled?`<div class="settings-followup-grid ${admin?'':'single-column'}">${admin?'<div class="settings-followup-column">'+matchmakerCommissionSettings()+adminAccountManagementCards('private')+'</div>':''}<div class="settings-followup-column">${orderListsCard}${admin?adminAccountManagementCards('cafeteria'):''}</div></div>`:''}${admin?'<div class="archive-note">To add new staff accounts, create them in Supabase Auth and authorize them in the staff_profiles table. Do not share login passwords.</div>':''}`;
 }
-function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'cafeteria-finances':return cafeteriaFinances.page();case'debts':return debtPage();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
+function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'cafeteria-finances':return cafeteriaFinances.page();case'debts':return debtPage();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
 function render(){
  if(['order-counter','reem-items'].includes(state.tab)&&!canUseOrderLists())state.tab='settings';
  const searchFocus=state.globalSearchOpen&&document.activeElement?.id==='global-search-input';
@@ -1091,7 +1097,7 @@ async function loadData(resetTab=false){if(state.loading)return;state.loading=tr
  if(!api.getSession()?.access_token || idleLogoutStarted)return;
  Object.assign(state,{members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers});
  if(matchmakers.length&&!matchmakers.some(p=>p.id===state.matchmakerId))state.matchmakerId=matchmakers[0].id;
- if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport(); if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth(); if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients(); if(state.tab==='debts'&&!state.debtLoading)void loadDebtData(); if(state.tab==='cafeteria-finances')void cafeteriaFinances.load(true); if(state.tab==='dashboard'||state.tab==='reports')loadClubSources();if(state.tab==='dashboard')void clubInsights.loadOverview(true);
+ if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport(); if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth(); if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients(); if(state.tab==='debts'&&!state.debtLoading)void loadDebtData(); if(state.tab==='cafeteria-finances')void cafeteriaFinances.load(true);if(state.tab==='tournament')void tournamentManagement.load(true); if(state.tab==='dashboard'||state.tab==='reports')loadClubSources();if(state.tab==='dashboard')void clubInsights.loadOverview(true);
  }catch(e){if((idleLogoutStarted || !api.getSession()?.access_token) && !e.message.includes('no PADEL ON staff access'))return;if(e.message.includes('sign in')||e.message.includes('JWT')||e.message.includes('refresh token')){clearStaffActivity();await api.signOut();renderAuth(e.message)}else if(state.staff){toast(e.message,true)}else renderAuth(e.message)}finally{state.loading=false;}}
 let working=false;
 async function runMutation(task,success='Saved successfully'){if(working)return;working=true;const b=document.getElementById('save-button');if(b){b.disabled=true;b.textContent='Saving…'}try{await task();state.modal=null;await loadData();toast(success)}catch(e){toast(e?.message||'Could not save. Try again.',true)}finally{working=false;if(b&&b.isConnected){b.disabled=false;b.textContent='Try again'}}}
@@ -1298,6 +1304,10 @@ function exportFinance(){
  downloadCSV(rows,`padel-on-matchmaking-${slug}-${state.month}.csv`);
 }
 async function handleAction(target){const act=target.dataset.action,id=target.dataset.id;
+ if(act?.startsWith('tm-')){
+  if(state.tab!=='tournament'||!state.staff)throw Error('Authorized staff only.');
+  if(await tournamentManagement.action(target))return;
+ }
  if(act?.startsWith('cafe-')){
   if(state.tab!=='cafeteria-finances'||!state.staff)throw Error('Authorized staff only.');
   if(await cafeteriaFinances.action(target))return;
@@ -1433,7 +1443,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'private-add-balance':if(!state.privateSelected)throw Error('Select a client.');openModal('private-deposit',null,{clientId:state.privateSelected});break;
  case 'private-void-entry':if(state.staff?.role!=='admin')throw Error('Only admins can correct financial entries.');if(!state.privateEntries.some(e=>e.id===id))throw Error('Entry not found.');openModal('private-void',id);break;
  case 'private-export':exportPrivateClientCSV();break;
- case 'refresh':await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
+ case 'refresh':if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
  case 'training-prev-month':
   state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
  case 'training-next-month':
@@ -1487,12 +1497,12 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'prev-month':state.month=shiftMonth(state.month,-1);render();break;
  case 'next-month':if(state.month<monthKey(today())){state.month=shiftMonth(state.month,1);render()}break;
  case 'export-finance':exportFinance();break;
- case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;cafeteriaFinances.reset();clubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
+ case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;cafeteriaFinances.reset();tournamentManagement.reset();clubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
  }}
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
  if(e.target.id==='modal-backdrop'){closeModal();return;}
- const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview(true);}if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);
+ const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview(true);}if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);if(state.tab==='tournament')await tournamentManagement.load(true);
  if(state.tab==='settings'&&state.staff?.role==='admin'){
   await Promise.all([loadPrivateClients(),loadDebtData()]);
   if(state.tab==='settings'&&api.getSession()?.access_token)render();
@@ -1501,6 +1511,12 @@ document.addEventListener('click',async e=>{
  const action=e.target.closest('[data-action]');if(action){try{await handleAction(action)}catch(err){toast(err.message,true)}}
 });
 document.addEventListener('submit',async e=>{
+ if(e.target.dataset?.tmSubmit){
+  e.preventDefault();
+  if(state.tab!=='tournament'||!state.staff){toast('Authorized staff only.',true);return;}
+  try{await tournamentManagement.submit(e.target)}catch(err){toast(err.message||'Tournament could not be saved.',true)}
+  return;
+ }
  if(['entry','closing','whish','court-amount'].includes(e.target.dataset?.cafeSave)){
   e.preventDefault();
   if(state.tab!=='cafeteria-finances'||!state.staff){toast('Authorized staff only.',true);return;}
@@ -1603,6 +1619,10 @@ document.addEventListener('toggle',e=>{
   cafeteriaFinances.rememberFold(e.target.dataset.cafeFold,e.target.open);
 },true);
 document.addEventListener('change',e=>{
+ if(state.tab==='tournament'&&['tm-team-count','tm-archive-saved'].includes(e.target.id)){
+  try{tournamentManagement.change(e.target)}catch(err){toast(err.message||'Unable to update tournament.',true)}
+  return;
+ }
  if((e.target.id==='cafe-finance-date'||e.target.id==='cafe-quick-category'||e.target.dataset?.cafeMarker)&&state.tab==='cafeteria-finances'){
   void cafeteriaFinances.change(e.target).catch(err=>toast(err.message||'Could not update finances.',true));return;
  }
@@ -1657,6 +1677,8 @@ async function refreshCurrentPageWhenDue(){
  try{
   if(tab==='cafeteria-finances'){
    await cafeteriaFinances.load(true);
+  }else if(tab==='tournament'){
+   await tournamentManagement.load(true);
   }else if(tab==='private-clients'){
    await loadPrivateClients();
   }else if(tab==='debts'){
