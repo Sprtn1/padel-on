@@ -57,3 +57,28 @@ test('Operational warnings remain meaningful after shortening visible content',(
  assert.match(cashbook,/To make corrections, open Private Sessions/);
  assert.doesNotMatch(cashbook,/history retained\./i);
 });
+
+test('Saving court notes always intercepts the form instead of reloading the page',async()=>{
+ const start=app.indexOf("document.addEventListener('submit',async e=>{");
+ const end=app.indexOf(" if(e.target.dataset?.save==='order-add-item'",start);
+ assert.ok(start>=0&&end>start,'Locate submit listener');
+ const listeners={},saved=[];
+ // Execute the actual tournament and cafeteria dispatch branches.
+ const snippet=app.slice(start,end)+'\n});';
+ new Function('document','state','cafeteriaFinances','toast','tournamentManagement',snippet)(
+  {addEventListener:(name,handler)=>{listeners[name]=handler;}},
+  {tab:'cafeteria-finances',staff:{role:'staff'}},
+  {submit:async form=>saved.push(form.dataset.cafeSave)},
+  error=>{throw Error(error)},
+  {submit:async()=>{throw Error('Unexpected tournament action')}}
+ );
+ for(const kind of ['court-notes','court-amount','entry','closing','whish']){
+  let cancelled=false;
+  await listeners.submit({
+   target:{dataset:{cafeSave:kind}},
+   preventDefault:()=>{cancelled=true;}
+  });
+  assert.equal(cancelled,true,kind+' must prevent native form submission');
+ }
+ assert.deepEqual(saved,['court-notes','court-amount','entry','closing','whish']);
+});
