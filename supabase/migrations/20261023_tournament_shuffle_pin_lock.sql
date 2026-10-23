@@ -140,15 +140,28 @@ begin
  end loop;
 
 
- -- This check runs inside the shuffle RPC; direct API callers cannot skip it.
+ -- The PIN check belongs to this RPC so direct API calls cannot bypass it.
  if t.shuffle_locked then
   select * into v_lock from public.tournament_shuffle_locks
    where tournament_id=p_id for update;
   if not found then raise exception 'Tournament shuffle lock needs administrator attention'; end if;
   if v_lock.blocked_until > now() then return -2; end if;
-  -- Old clients without a PIN cannot silently consume the attempt limit.
+  -- Requests without a PIN cannot consume the attempt allowance.
   if p_pin is null then return -1; end if;
-  if p_pin !~ '^[0-9]{4,8}
+  if p_pin !~ '^[0-9]{4,8}$'
+     or extensions.crypt(p_pin,v_lock.pin_hash) is distinct from v_lock.pin_hash then
+   update public.tournament_shuffle_locks
+    set failed_attempts=case when v_lock.failed_attempts>=4 then 0 else v_lock.failed_attempts+1 end,
+        blocked_until=case when v_lock.failed_attempts>=4 then now()+interval '15 minutes' else null end
+    where tournament_id=p_id;
+   if v_lock.failed_attempts>=4 then return -2; end if;
+   return -1;
+  end if;
+  update public.tournament_shuffle_locks
+   set failed_attempts=0,blocked_until=null where tournament_id=p_id;
+ end if;
+
+ v_old_teams := t.state->'teams';
  if jsonb_typeof(v_old_teams) is distinct from 'array'
     or jsonb_array_length(v_old_teams) not between 2 and 32 then
   raise exception 'Invalid tournament teams';
@@ -204,76 +217,6 @@ begin
 end;
 $function$
 ;
-     or extensions.crypt(p_pin,v_lock.pin_hash) is distinct from v_lock.pin_hash then
-   update public.tournament_shuffle_locks
-     set failed_attempts=case when v_lock.failed_attempts>=4 then 0 else v_lock.failed_attempts+1 end,
-         blocked_until=case when v_lock.failed_attempts>=4 then now()+interval '15 minutes' else null end
-    where tournament_id=p_id;
-   if v_lock.failed_attempts>=4 then return -2; end if;
-   return -1;
-  end if;
-  update public.tournament_shuffle_locks
-    set failed_attempts=0,blocked_until=null where tournament_id=p_id;
- end if;
-
- v_old_teams := t.state->'teams';
- if jsonb_typeof(v_old_teams) is distinct from 'array'
-    or jsonb_array_length(v_old_teams) not between 2 and 32 then
-  raise exception 'Invalid tournament teams';
- end if;
- v_count := jsonb_array_length(v_old_teams);
- v_group_count := ceil(v_count / 4.0)::integer;
- 
- -- Change only the group field. Keep team IDs, members, fees and payments intact.
- for v_team in
-  select value from jsonb_array_elements(v_old_teams) order by random()
- loop
-  v_group_index := v_position % v_group_count;
-  v_group_label := chr(65 + v_group_index);
-  v_teams := v_teams || jsonb_build_array(
-   jsonb_set(v_team, '{group}', to_jsonb(v_group_label), true));
-  v_position := v_position + 1;
- end loop;
-
- -- Rebuild balanced, round-robin fixtures from the new draw.
- for v_group_index in 0..v_group_count-1 loop
-  v_group_label := chr(65 + v_group_index);
-  select array_agg(g.team->>'id' order by g.ordinal)
-    into v_group_teams
-  from jsonb_array_elements(v_teams) with ordinality as g(team,ordinal)
-  where g.team->>'group'=v_group_label;
-  v_ring := v_group_teams;
-  if array_length(v_ring,1) % 2 = 1 then
-   v_ring := v_ring || array[null::text];
-  end if;
-  v_length := array_length(v_ring,1);
-  for v_round in 1..v_length-1 loop
-   for v_i in 1..v_length/2 loop
-    v_a := v_ring[v_i];
-    v_b := v_ring[v_length+1-v_i];
-    if v_a is not null and v_b is not null then
-     v_ordinal := v_ordinal + 1;
-     v_matches := v_matches || jsonb_build_array(jsonb_build_object(
-      'id', 'g' || v_ordinal, 'phase', 'group', 'group', v_group_label,
-      'round', v_round, 'slot', v_ordinal, 'a', v_a, 'b', v_b,
-      'sets', '[]'::jsonb, 'winner', null::text
-     ));
-    end if;
-   end loop;
-   v_ring := array[v_ring[1],v_ring[v_length]] || v_ring[2:v_length-1];
-  end loop;
- end loop;
-
- t.state := jsonb_set(jsonb_set(t.state, '{teams}', v_teams), '{matches}', v_matches);
- update public.tournaments
- set state=t.state, version=version+1
- where id=p_id returning version into v_version;
- return v_version;
-end;
-$function$
-;
-revoke all on function public.tournament_shuffle_groups(uuid,bigint) from public,anon,authenticated;
-grant execute on function public.tournament_shuffle_groups(uuid,bigint) to authenticated;
 revoke all on function public.tournament_shuffle_groups(uuid,bigint,text) from public,anon,authenticated;
 grant execute on function public.tournament_shuffle_groups(uuid,bigint,text) to authenticated;
 commit;
