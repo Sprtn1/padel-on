@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseTournamentMoney,makeInitialTournament,makeKnockoutMatches,padelSetWinner,
  padelMatchWinner,groupStandings,getQualifiers,tournamentTotals,tournamentChampion,
- knockoutSeedEntrants,reseedTournamentKnockout,makeSeededKnockoutMatches} from '../lib/tournament-engine.js';
+ knockoutSeedEntrants,reseedTournamentKnockout,makeSeededKnockoutMatches,tournamentCanResize,resizeTournamentDraw} from '../lib/tournament-engine.js';
 import {createTournamentManagement} from '../lib/tournament-management.js';
 import {knockoutBracketLayout} from '../lib/tournament-bracket-layout.js';
 import {tournamentArchivePdf,downloadTournamentPdf} from '../lib/tournament-pdf.js';
@@ -30,7 +30,7 @@ test('Shuffle creates all group pairings once, without teams playing twice in on
   assert.equal(unique.size,matches.length);
   for(const g of groups){
    const members=state.teams.filter(t=>t.group===g);
-   assert.ok(members.length>=2&&members.length<=4);
+   assert.ok(members.length>=2&&members.length<=(n===5?5:4));
    assert.equal(matches.filter(m=>m.group===g).length,members.length*(members.length-1)/2);
    const rounds=new Set(matches.filter(m=>m.group===g).map(m=>m.round));
    for(const r of rounds){
@@ -108,6 +108,13 @@ function makeUI(isAdmin=false,backing=[]){
   rpc:async(name,args)=>{
    calls.push({name,args});
    if(name==='tournament_create')return 'new-tournament';
+   if(name==='tournament_resize_teams'){
+    const row=backing.find(x=>x.id===args.p_id);
+    assert.equal(row.version,args.p_expected_version);
+    row.state=args.p_state;
+    row.version++;
+    return row.version;
+   }
    if(name==='tournament_shuffle_groups'){
     const row=backing.find(x=>x.id===args.p_id);
     assert.equal(args.p_expected_version,row.version);
@@ -629,4 +636,104 @@ test('Tournament PDF archive includes scheduled times in the bordered fixtures t
   assert.ok(drawn.includes('19:15'));
   assert.ok(drawn.includes('ALL MATCHES AND SCORES - GROUP STAGE'));
  }finally{globalThis.document=before;globalThis.atob=oldAtob}
+});
+
+test('Exactly five teams form one group and play ten unique matches in five rounds',()=>{
+ const s=makeInitialTournament(players(5),1000,'groups',fixedRandom);
+ assert.equal(new Set(s.teams.map(t=>t.group)).size,1);
+ assert.ok(s.teams.every(t=>t.group==='A'));
+ assert.equal(s.matches.length,10);
+ const unique=new Set(s.matches.map(m=>[m.a,m.b].sort().join(':')));
+ assert.equal(unique.size,10);
+ for(let round=1;round<=5;round++){
+  const games=s.matches.filter(m=>m.round===round);
+  assert.equal(games.length,2);
+  assert.equal(new Set(games.flatMap(m=>[m.a,m.b])).size,4);
+ }
+});
+test('Five-team semifinals are strictly first vs fourth and second vs third',()=>{
+ const s=makeInitialTournament(players(5),1500,'groups',fixedRandom);
+ for(const match of s.matches){
+  match.sets=[{a:6,b:2},{a:6,b:4}];
+  match.winner=match.a;
+ }
+ const ranked=groupStandings(s,'A').map(x=>x.id);
+ const seeded=getQualifiers(s).map(t=>t.id);
+ assert.deepEqual(seeded,[ranked[0],ranked[3],ranked[1],ranked[2]]);
+ const bracket=makeKnockoutMatches(getQualifiers(s));
+ assert.equal(bracket.filter(m=>m.round===1).length,2);
+ assert.deepEqual([bracket[0].a,bracket[0].b],[ranked[0],ranked[3]]);
+ assert.deepEqual([bracket[1].a,bracket[1].b],[ranked[1],ranked[2]]);
+});
+test('Team editor preserves old dues, payment amounts, and participant IDs when reducing and adding teams',()=>{
+ const s=makeInitialTournament(players(6),1250,'groups',fixedRandom);
+ s.teams[0].members[0].paid=500;
+ s.teams[0].members[1].due=750;
+ const original=s.teams[0];
+ const five=resizeTournamentDraw(s,1250,s.teams.slice(0,5).map(t=>({id:t.id})),fixedRandom);
+ const kept=five.teams.find(t=>t.id===original.id);
+ assert.deepEqual(kept.members,original.members);
+ assert.equal(five.matches.length,10);
+ assert.equal(new Set(five.teams.map(t=>t.group)).size,1);
+ const six=resizeTournamentDraw(five,1250,[
+   ...five.teams.map(t=>({id:t.id})),{p1:'New Player One',p2:'New Player Two'}
+ ],fixedRandom);
+ assert.equal(six.teams.length,6);
+ assert.equal(six.matches.length,6);
+ const added=six.teams.find(t=>!five.teams.some(old=>old.id===t.id));
+ assert.deepEqual(added.members.map(p=>[p.due,p.paid]),[[1250,0],[1250,0]]);
+ assert.equal(new Set(six.teams.flatMap(t=>t.members.map(p=>p.id))).size,12);
+ assert.deepEqual(six.teams.find(t=>t.id===original.id).members,original.members);
+});
+test('Cannot remove a team with paid participation; resizing locks after a match result',()=>{
+ const s=makeInitialTournament(players(6),1500,'groups',fixedRandom);
+ s.teams[5].members[0].paid=250;
+ assert.throws(()=>resizeTournamentDraw(s,1500,s.teams.slice(0,5).map(t=>({id:t.id})),fixedRandom));
+ s.matches[0].sets=[{a:6,b:0},{a:6,b:2}];
+ s.matches[0].winner=s.matches[0].a;
+ assert.equal(tournamentCanResize(s),false);
+ assert.throws(()=>resizeTournamentDraw(s,1500,s.teams.map(t=>({id:t.id})).concat({p1:'Extra One',p2:'Extra Two'}),fixedRandom));
+});
+test('Staff may edit an active tournament team count and save five-team draw without losing payment history',async()=>{
+ const row=sampleRow('groups');
+ row.state=makeInitialTournament(players(6),1500,'groups',fixedRandom);
+ row.state.teams[0].members[0].paid=400;
+ const originalMember=JSON.stringify(row.state.teams[0].members[0]);
+ const {widget,calls}=makeUI(false,[row]);
+ await widget.load();
+ assert.match(widget.page(),/Edit Team Count/);
+ await widget.action({dataset:{action:'tm-team-start'}});
+ assert.match(widget.page(),/id="tm-existing-team-count"/);
+ await widget.change({id:'tm-existing-team-count',value:'5',closest:()=>null});
+ assert.match(widget.page(),/Five teams: one group/);
+ const before=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'resize-teams'},_values:[]});
+ }finally{globalThis.FormData=before}
+ assert.equal(row.state.teams.length,5);
+ assert.equal(row.state.matches.length,10);
+ assert.equal(JSON.stringify(row.state.teams.find(t=>t.id===JSON.parse(originalMember).id)?.members[0]||row.state.teams[0].members[0]),originalMember);
+ assert.equal(calls.filter(x=>x.name==='tournament_resize_teams').length,1);
+ assert.match(widget.page(),/5-team group/);
+});
+test('Team count editor can add new participants and block deletion of paid teams',async()=>{
+ const row=sampleRow('knockout'),{widget}=makeUI(false,[row]);
+ row.state.teams[0].members[0].paid=100;
+ await widget.load();
+ await widget.action({dataset:{action:'tm-team-start'}});
+ let blocked=false;
+ try{await widget.action({dataset:{action:'tm-team-remove',index:'0'},closest:()=>null})}
+ catch(e){blocked=/payments/i.test(e.message)}
+ assert.ok(blocked);
+ await widget.action({dataset:{action:'tm-team-add',closest:()=>null}});
+ assert.match(widget.page(),/New Team 5/);
+ const old=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'resize-teams'},_values:[['new_p1_4','Added Alice'],['new_p2_4','Added Bob']]});
+ }finally{globalThis.FormData=old}
+ assert.equal(row.state.teams.length,5);
+ assert.equal(row.state.teams.flatMap(t=>t.members).filter(x=>x.name.startsWith('Added')).length,2);
+ assert.equal(row.state.teams.find(t=>t.members[0].paid===100)?.members[0].paid,100);
 });
