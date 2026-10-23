@@ -4,6 +4,7 @@ import {parseTournamentMoney,makeInitialTournament,makeKnockoutMatches,padelSetW
  padelMatchWinner,groupStandings,getQualifiers,tournamentTotals,tournamentChampion,
  knockoutSeedEntrants,reseedTournamentKnockout,makeSeededKnockoutMatches} from '../lib/tournament-engine.js';
 import {createTournamentManagement} from '../lib/tournament-management.js';
+import {knockoutBracketLayout} from '../lib/tournament-bracket-layout.js';
 import {tournamentArchivePdf,downloadTournamentPdf} from '../lib/tournament-pdf.js';
 
 const players=n=>Array.from({length:n},(_,i)=>({p1:'First '+i,p2:'Second '+i,label:'Pair '+i}));
@@ -321,14 +322,16 @@ test('Double-booking a seeded team or reserving overlapping branches is rejected
  played.matches[0].sets=scoreA;played.matches[0].winner=played.matches[0].a;
  assert.throws(()=>reseedTournamentKnockout(played,[first]));
 });
-test('Pyramid layout displays final above semifinals and includes staff seeding controls',async()=>{
+test('Sideways bracket shows semifinals to the left of a connected final',async()=>{
  const row=sampleRow('knockout');
- const {widget,calls}=makeUI(false,[row]);
+ const {widget}=makeUI(false,[row]);
  await widget.load();
  const html=widget.page();
- assert.match(html,/tm-pyramid-scroll/);
- assert.match(html,/tm-pyramid-grid/);
- assert.ok(html.indexOf('>Final</h3>')<html.indexOf('>Semifinals</h3>'));
+ assert.match(html,/tm-bracket-scroll/);
+ assert.match(html,/tm-bracket-board/);
+ assert.match(html,/tm-bracket-edges/);
+ assert.match(html,/aria-label="Knockout bracket: earlier rounds on the left, final on the right"/);
+ assert.ok(html.indexOf('>Semifinals</h3>')<html.indexOf('>Final</h3>'));
  assert.match(html,/data-tm-submit="seed-placement"/);
  assert.match(html,/Choose a team/);
  assert.match(html,/Add Seed/);
@@ -394,4 +397,62 @@ test('Score editor allows extended tie-break points, not only seven',async()=>{
  assert.match(markup,/max="999" step="1" name="s1ta"/);
  assert.match(markup,/max="999" step="1" name="s1tb"/);
  assert.match(markup,/max="7" step="1" name="s1a"/);
+});
+
+test('Sideways bracket centers every parent between its two feeder matches from 2 to 32 teams',()=>{
+ for(let n=2;n<=32;n++){
+  const state=makeInitialTournament(players(n),1500,'knockout',fixedRandom);
+  const layout=knockoutBracketLayout(state.matches);
+  const lookup=new Map(layout.nodes.map(x=>[x.round+':'+x.slot,x]));
+  const last=layout.rounds.at(-1);
+  for(const node of layout.nodes){
+   assert.equal(node.x,(node.round-1)*(layout.cardWidth+layout.columnGap));
+   if(node.round===last)continue;
+   const parent=lookup.get(node.round+1+':'+Math.ceil(node.slot/2));
+   assert.ok(parent,'Parent match should exist');
+   assert.ok(parent.x>node.x,'Later rounds must be further right');
+   const first=lookup.get(node.round+':'+(Math.ceil(node.slot/2)*2-1));
+   const second=lookup.get(node.round+':'+(Math.ceil(node.slot/2)*2));
+   assert.equal(parent.y,(first.y+second.y)/2,'Parent must be vertically centered on feeders');
+  }
+  if(n>=3)assert.ok(layout.links.length>0);
+ }
+});
+test('Final is directly to the right of both semifinal cards for screenshot-sized bracket',()=>{
+ const state=makeInitialTournament(players(4),1000,'knockout',fixedRandom);
+ const layout=knockoutBracketLayout(state.matches);
+ const semis=layout.nodes.filter(x=>x.round===1).sort((a,b)=>a.slot-b.slot);
+ const final=layout.nodes.find(x=>x.round===2);
+ assert.equal(semis.length,2);
+ assert.ok(final.x>semis[0].x);
+ assert.equal(final.y,(semis[0].y+semis[1].y)/2);
+ assert.equal(layout.links.length,2);
+ assert.ok(layout.links.every(edge=>edge.to===final.match.id));
+ assert.ok(layout.links.every(edge=>edge.d.includes('H '+final.x)));
+});
+test('Seeded semifinal routes do not draw phantom connections through reserved feeder branches',()=>{
+ const state=makeInitialTournament(players(8),1000,'knockout',fixedRandom);
+ const seeded=reseedTournamentKnockout(state,[
+  {team:state.teams[0].id,stage:'semifinal',slot:1,side:'a'}
+ ]);
+ const layout=knockoutBracketLayout(seeded.matches);
+ const semis=layout.nodes.find(x=>x.round===2&&x.slot===1);
+ assert.equal(semis.match.seedA,state.teams[0].id);
+ const leftFeeders=layout.nodes.filter(x=>x.round===1&&x.slot<=2);
+ assert.ok(leftFeeders.length===2);
+ assert.equal(layout.links.filter(x=>leftFeeders.some(y=>y.match.id===x.from)).length,0,
+  'Reserved semifinalist cannot also receive earlier-round winners in their half');
+ assert.ok(layout.links.some(x=>x.to!==semis.match.id));
+});
+test('Sidebar-free scroll area remains navigable and exposes recorded scores',async()=>{
+ const row=sampleRow('knockout');
+ row.state.matches[0].sets=[{a:6,b:4},{a:6,b:2}];
+ row.state.matches[0].winner=row.state.matches[0].a;
+ row.state.matches.at(-1).a=row.state.matches[0].winner;
+ const {widget}=makeUI(false,[row]);
+ await widget.load();
+ const html=widget.page();
+ assert.match(html,/role="region" tabindex="0"/);
+ assert.match(html,/6-4 \/ 6-2/);
+ assert.match(html,/Edit score/);
 });
