@@ -724,6 +724,19 @@
 .tm-payments th,.tm-payments td,.tm-group th,.tm-group td{padding:10px 9px;border-bottom:1px solid #e6eee8;vertical-align:top}
 .tm-payments th,.tm-group th{font-weight:750;color:#567261;background:#f5faf6;white-space:nowrap}
 .tm-payments td{color:#315540}
+
+/* Search the participant payment table without re-rendering or losing input focus. */
+.tm-payment-head{align-items:flex-end}
+.tm-payment-head>div:first-child{display:grid;gap:5px}
+.tm-payment-search{display:grid;gap:6px;width:min(100%,290px)}
+.tm-payment-search span{font-size:11px;font-weight:700;color:#5b7665}
+.tm-payment-search input{width:100%;min-width:0;border:1px solid #d5e4d9;border-radius:9px;background:#fff;color:#264b36;padding:10px 12px;font-size:12px;outline:none}
+.tm-payment-search input:focus{border-color:#2a9862;box-shadow:0 0 0 3px rgba(42,152,98,.12)}
+.tm-payment-count{font-size:11px;color:#799184;margin:-3px 0 11px}
+.tm-payments tbody tr[hidden],.tm-payment-empty[hidden]{display:none!important}
+.tm-payment-empty{padding:22px 10px;margin:0;text-align:center;color:#799184;font-size:12px}
+@media(max-width:560px){.tm-payment-head{align-items:stretch}.tm-payment-search{width:100%;max-width:none}}
+
 .tm-payment-actions{display:flex;gap:6px;flex-wrap:wrap}
 .tm-mini-btn{background:#eaf6ed;border:1px solid #cce4d2;border-radius:7px;padding:6px 9px;cursor:pointer;font-size:10px;font-weight:750;color:#26734c;white-space:nowrap}
 .tm-mini-btn:disabled{opacity:.38;cursor:not-allowed}
