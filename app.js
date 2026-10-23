@@ -1519,7 +1519,9 @@ document.addEventListener('submit',async e=>{
   try{await tournamentManagement.submit(e.target)}catch(err){toast(err.message||'Tournament could not be saved.',true)}
   return;
  }
- if(['entry','closing','whish','court-amount'].includes(e.target.dataset?.cafeSave)){
+ // Intercept every Cafeteria form before the browser can navigate away.
+ // The finance module validates individual actions and rejects unknown ones.
+ if(e.target.dataset?.cafeSave){
   e.preventDefault();
   if(state.tab!=='cafeteria-finances'||!state.staff){toast('Authorized staff only.',true);return;}
   try{await cafeteriaFinances.submit(e.target)}catch(err){toast(err.message||'Unable to save entry.',true)}
