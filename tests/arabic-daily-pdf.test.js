@@ -389,15 +389,15 @@ test('One generated PDF Blob can be downloaded and reused for WhatsApp without r
  }finally{globalThis.document=before;globalThis.URL=oldURL}
 });
 
-test('Arabic ledger number is anchored at 1148 on October 23, 2026',()=>{
+test('Arabic ledger number is anchored at 1150 on October 24, 2026',()=>{
  const expected=[
-  ['2026-10-21',1146],
-  ['2026-10-22',1147],
-  ['2026-10-23',1148],
-  ['2026-10-24',1149],
-  ['2026-10-25',1150],
-  ['2026-11-01',1157],
-  ['2027-01-01',1218]
+  ['2026-10-21',1147],
+  ['2026-10-22',1148],
+  ['2026-10-23',1149],
+  ['2026-10-24',1150],
+  ['2026-10-25',1151],
+  ['2026-11-01',1158],
+  ['2027-01-01',1219]
  ];
  for(const [day,number] of expected){
   assert.equal(arabicDailyEntryNumber(day),number,day);
@@ -426,7 +426,7 @@ test('Arabic daily PDF prints the calculated entry number in its top-right heade
   globalThis.document={createElement:()=>({
    width:1346,height:1742,getContext:()=>context,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q=='
   })};
-  for(const [day,number] of [['2026-10-22',1147],['2026-10-23',1148],['2026-10-24',1149]]){
+  for(const [day,number] of [['2026-10-22',1148],['2026-10-23',1149],['2026-10-24',1150]]){
    painted.length=0;
    const {sheet,pages}=makeArabicDailySheetPdf({...sample(),date:day});
    assert.equal(sheet.entryNumber,number);
