@@ -1632,6 +1632,10 @@ document.addEventListener('toggle',e=>{
   cafeteriaFinances.rememberNote(e.target.dataset.cafeNote,e.target.open);
 },true);
 document.addEventListener('change',e=>{
+ if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-payment-status'){
+  try{tournamentManagement.searchPayments(e.target)}catch(err){toast(err.message||'Unable to filter participant payments.',true)}
+  return;
+ }
  if(state.tab==='tournament'&&['tm-team-count','tm-existing-team-count','tm-archive-saved','tm-seed-stage','tm-seed-slot','tm-seed-side','tm-seed-team'].includes(e.target.id)){
   try{tournamentManagement.change(e.target)}catch(err){toast(err.message||'Unable to update tournament.',true)}
   return;
