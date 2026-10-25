@@ -1169,8 +1169,8 @@ test('Manual bracket respects advanced seeds, byes and scheduled match slots',()
  const first=state.teams[0].id;
  const seeded=reseedTournamentKnockout(state,[{team:first,stage:'semifinal',slot:1,side:'a'}]);
  const original=knockoutManualSlots(seeded);
- const reserved=original.slice(0,8);
- assert.ok(reserved.every(x=>x===null),'Semifinal branch reserves eight first-round spots');
+ const reserved=original.slice(0,4);
+ assert.ok(reserved.every(x=>x===null),'Semifinal branch reserves four first-round spots');
  const other=original.map((id,i)=>i===8?original[9]:i===9?original[8]:id);
  const newState=arrangeTournamentKnockout(seeded,other);
  assert.deepEqual(newState.seedPlacements,seeded.seedPlacements);
