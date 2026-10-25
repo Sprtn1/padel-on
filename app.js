@@ -385,9 +385,13 @@ async function loadReport({background=false}={}){
  try{
   const data=await fetchPeriod(start,end);
   if(request===reportSeq)state.reportData=data;
-  if(background)await insightFetch;
  }catch(e){if(request===reportSeq)toast('Could not load report: '+e.message,true)}
- finally{if(request===reportSeq){state.reportLoading=false;if(!background)render()}}
+ finally{
+  // Let the background finance report finish before ending auto-refresh, even
+  // when the match report fails. This avoids a delayed repaint over a form.
+  if(background)await insightFetch;
+  if(request===reportSeq){state.reportLoading=false;if(!background)render()}
+ }
 }
 function reportMetrics(){
  const data=state.reportData;
