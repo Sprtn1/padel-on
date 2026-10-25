@@ -957,5 +957,7 @@ test('Create tournament Team Player checkboxes set stored participant dues and s
  assert.deepEqual(duesFor('D first'),[2000,2000]);
  assert.equal(create.args.p_fee_cents,2000);
  assert.equal(tournamentTotals(create.args.p_state).due,10000);
- assert.match(widget.page(),/Team Player/);
+ // The creator closes when saved; member badges are shown on the tournament's
+ // Participant Payments page once the newly created row is loaded.
+ assert.doesNotMatch(widget.page(),/data-tm-submit="create"/);
 });
