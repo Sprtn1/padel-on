@@ -377,7 +377,7 @@ async function loadReport({background=false}={}){
  if(background&&state.reportLoading)return;
  const [start,end]=reportRange(),mode=state.reportMode;
  const request=++reportSeq;
- void clubInsights.loadReport(start,end,true);
+ const insightFetch=clubInsights.loadReport(start,end,true);
  state.reportLoading=true;
  if(!background)state.reportData=null;
  state.reportKey=`${mode}:${start}`;
@@ -385,6 +385,7 @@ async function loadReport({background=false}={}){
  try{
   const data=await fetchPeriod(start,end);
   if(request===reportSeq)state.reportData=data;
+  if(background)await insightFetch;
  }catch(e){if(request===reportSeq)toast('Could not load report: '+e.message,true)}
  finally{if(request===reportSeq){state.reportLoading=false;if(!background)render()}}
 }
@@ -1047,7 +1048,7 @@ async function loadDebtData({background=false}={}){
   if(!background&&(state.tab==='debts'||state.tab==='dashboard'||state.tab==='reports')&&!state.modal&&api.getSession()?.access_token)render();updateGlobalSearchResults();
  }
 }
-async function loadOverviewTraining(){
+async function loadOverviewTraining({background=false}={}){
  if(!api.getSession()?.access_token||!state.staff||state.overviewTrainingLoading)return;
  const ym=monthKey(today());
  if(state.overviewTrainingMonth===ym&&Date.now()-state.overviewTrainingFetchedAt<30000)return;
@@ -1061,7 +1062,7 @@ async function loadOverviewTraining(){
   if(api.getSession()?.access_token)state.overviewTrainingError=e?.message||'Training attendance unavailable';
  }finally{
   state.overviewTrainingLoading=false;state.overviewTrainingFetchedAt=Date.now();
-  if(state.tab==='dashboard'&&!state.modal&&api.getSession()?.access_token)render();
+  if(state.tab==='dashboard'&&!state.modal&&!background&&api.getSession()?.access_token)render();
  }
 }
 function loadClubSources(){
@@ -1691,42 +1692,60 @@ document.addEventListener('keydown',e=>{
 });
 async function start(){if(!api.configured){renderAuth();return}if(api.getSession()?.access_token){if(idleExpired()){await autoSignOut();return}await loadData()}else renderAuth();}
 start();
-// Keep a lightweight 30-second clock tick for Beirut date/week/month rollovers.
-// Network refresh is gated separately by page, not performed every clock tick.
-let lastPageAutoRefreshTab=state.tab;
-let lastPageAutoRefreshAt=Date.now();
-let pageAutoRefreshBusy=false;
-async function refreshCurrentPageWhenDue(){
- if(!api.configured||!api.getSession()?.access_token||!state.staff||
-    idleLogoutStarted||idleExpired()||state.modal||working||state.loading||
-    document.hidden||pageAutoRefreshBusy)return false;
- const tab=state.tab,now=Date.now();
- // Navigation loads the selected page immediately, so reset the interval.
- if(lastPageAutoRefreshTab!==tab){
-  lastPageAutoRefreshTab=tab;
-  lastPageAutoRefreshAt=now;
-  return false;
- }
- if(!refreshPolicy.isPageRefreshDue(tab,lastPageAutoRefreshAt,now))return false;
- // Staff must not lose partially typed forms to an automatic rerender.
- if(document.activeElement?.closest('form,.cafe-quick-sheet'))return false;
- pageAutoRefreshBusy=true;
- lastPageAutoRefreshAt=now;
+// All authenticated page datasets share one 30-second sync interval.
+// Background reads update app state even for pages that aren't currently open,
+// but do not redraw a staff member's partially completed form.
+let lastAllDataRefreshAt=Date.now();
+let allDataRefreshBusy=false;
+async function refreshHistoricalWeekInBackground(){
+ const current=weekStart(today()),week=state.historyWeek;
+ if(week===current)return;
+ const request=++historySeq;
  try{
-  if(tab==='cafeteria-finances'){
-   await cafeteriaFinances.load(true);
-  }else if(tab==='tournament'){
-   await tournamentManagement.load(true);
-  }else if(tab==='private-clients'){
-   await loadPrivateClients();
-  }else if(tab==='debts'){
-   await loadDebtData();
-  }else{
-   await loadData();
-   if(tab==='settings'&&state.tab==='settings')
-    await Promise.all([loadPrivateClients(),loadDebtData()]);
+  const data=await fetchPeriod(week,addDays(week,6));
+  if(request===historySeq&&week===state.historyWeek&&api.getSession()?.access_token)
+   state.historyData=data;
+ }catch(err){
+  console.warn('Historical team data refresh failed',err);
+ }
+}
+async function refreshAllPagesWhenDue(){
+ if(!api.configured||!api.getSession()?.access_token||!state.staff||
+  idleLogoutStarted||idleExpired()||state.modal||working||state.loading||
+  document.hidden||allDataRefreshBusy)return false;
+ const now=Date.now();
+ if(!refreshPolicy.isPageRefreshDue(state.tab,lastAllDataRefreshAt,now))return false;
+ lastAllDataRefreshAt=now;
+ allDataRefreshBusy=true;autoRefreshRunning=true;
+ try{
+  // Shared data: Overview, Team Members, Other Benefits, Matchmaking,
+  // Game Activity, Settings, and report member/matchmaker totals.
+  await loadData(false,{background:true});
+  if(!api.getSession()?.access_token||idleLogoutStarted)return false;
+  // Date-specific and independently stored data across ALL other pages.
+  // One failing feed does not prevent the remaining pages from updating.
+  const feeds=[
+   ['Cafeteria Finances',()=>cafeteriaFinances.load(true,true)],
+   ['Tournament Management',()=>tournamentManagement.load(true,true)],
+   ['Private Sessions',()=>loadPrivateClients({background:true})],
+   ['Cafeteria Debts',()=>loadDebtData({background:true})],
+   ['Monthly Training',()=>loadTrainingMonth({background:true})],
+   ['Overview attendance',()=>loadOverviewTraining({background:true})],
+   ['Overview financial totals',()=>clubInsights.loadOverview(true)],
+   ['Reports and report financial totals',()=>loadReport({background:true})],
+   ['Historical Team Members',refreshHistoricalWeekInBackground]
+  ];
+  const results=await Promise.allSettled(feeds.map(([,task])=>task()));
+  for(let i=0;i<results.length;i++){
+   if(results[i].status==='rejected')
+    console.warn('Auto-refresh failed: '+feeds[i][0],results[i].reason);
   }
- }finally{pageAutoRefreshBusy=false}
+  // Only repaint when no draft, search field, or input is being edited.
+  if(api.getSession()?.access_token&&!idleLogoutStarted&&canAutoRender())render();
+ }finally{
+  autoRefreshRunning=false;
+  allDataRefreshBusy=false;
+ }
  return true;
 }
 setInterval(()=>{
@@ -1743,12 +1762,11 @@ setInterval(()=>{
    if(state.trainingMonth===lastKnownMonth){state.trainingMonth=currentMonth;state.trainingLoadedMonth=null;}
    lastKnownMonth=currentMonth;
  }
- void refreshCurrentPageWhenDue().catch(err=>toast(err.message||'Automatic refresh failed.',true));
+ void refreshAllPagesWhenDue().catch(err=>console.warn('Automatic data refresh failed',err));
 },30000);
 document.addEventListener('visibilitychange',()=>{
  if(document.hidden)return;
  checkStaffInactivity();
- // Returning after the refresh window updates immediately; brief tab
- // switches do not make additional Supabase requests.
- void refreshCurrentPageWhenDue().catch(err=>toast(err.message||'Refresh failed.',true));
+ // Returning after a missed refresh window updates all page feeds immediately.
+ void refreshAllPagesWhenDue().catch(err=>console.warn('Visible data refresh failed',err));
 });
