@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseTournamentMoney,makeInitialTournament,makeKnockoutMatches,padelSetWinner,
  padelMatchWinner,groupStandings,getQualifiers,tournamentTotals,tournamentChampion,proSetWinner,tournamentMatchWinner,
- knockoutSeedEntrants,reseedTournamentKnockout,makeSeededKnockoutMatches,tournamentCanResize,resizeTournamentDraw,tournamentTeamPlayerDues} from '../lib/tournament-engine.js';
+ knockoutSeedEntrants,reseedTournamentKnockout,makeSeededKnockoutMatches,tournamentCanResize,resizeTournamentDraw,tournamentTeamPlayerDues,knockoutManualSlots,arrangeTournamentKnockout} from '../lib/tournament-engine.js';
 import {createTournamentManagement} from '../lib/tournament-management.js';
 import {knockoutBracketLayout} from '../lib/tournament-bracket-layout.js';
 import {tournamentArchivePdf,downloadTournamentPdf} from '../lib/tournament-pdf.js';
@@ -190,7 +190,12 @@ function makeUI(isAdmin=false,backing=[]){
    }
    if(name==='tournament_reseed'){
     const row=backing.find(x=>x.id===args.p_id);
-    row.state=reseedTournamentKnockout(row.state,args.p_placements);
+    assert.equal(row.version,args.p_expected_version);
+    const originals=knockoutSeedEntrants(row.state).map(t=>t.id);
+    assert.ok(args.p_matches.every(m=>m.phase==='knockout'));
+    row.state={...row.state,knockoutEntrants:originals,
+     seedPlacements:args.p_placements,
+     matches:[...row.state.matches.filter(m=>m.phase!=='knockout'),...args.p_matches]};
     row.version++;return row.version;
    }
    if(name==='tournament_close'){
@@ -1139,4 +1144,92 @@ test('Group format is editable multiple times before play, but not in knockout t
  }finally{globalThis.FormData=prior;}
  const ko=makeUI(false,[sampleRow('knockout')]);await ko.widget.load();
  assert.doesNotMatch(ko.widget.page(),/data-tm-submit="group-scoring"/);
+});
+
+test('Manual knockout arrangement keeps every pair once and supports any available first-round slot',()=>{
+ for(const count of [2,3,4,5,6,8,12,16,24,32]){
+  const state=makeInitialTournament(players(count),1500,'knockout',fixedRandom);
+  const before=knockoutManualSlots(state);
+  const shuffled=before.filter(Boolean).reverse();
+  const positions=Array(before.length).fill(null);
+  shuffled.forEach((id,i)=>{positions[i]=id;});
+  const layout=arrangeTournamentKnockout(state,positions);
+  const now=knockoutManualSlots(layout);
+  assert.deepEqual(now,positions);
+  assert.deepEqual(now.filter(Boolean).sort(),state.teams.map(t=>t.id).sort());
+  assert.equal(layout.matches.length,state.matches.length);
+  assert.ok(layout.matches.filter(m=>m.phase==='knockout').every(m=>m.sets.length===0));
+  assert.deepEqual(layout.teams,state.teams,'Player IDs, payment amounts and notes preserved');
+  assert.deepEqual(state.matches.filter(m=>m.round===1).flatMap(m=>[m.a,m.b]),before,
+   'Preview should not modify saved tournament');
+ }
+});
+test('Manual bracket respects advanced seeds, byes and scheduled match slots',()=>{
+ const state=makeInitialTournament(players(12),2000,'knockout',fixedRandom);
+ const first=state.teams[0].id;
+ const seeded=reseedTournamentKnockout(state,[{team:first,stage:'semifinal',slot:1,side:'a'}]);
+ const original=knockoutManualSlots(seeded);
+ const reserved=original.slice(0,8);
+ assert.ok(reserved.every(x=>x===null),'Semifinal branch reserves eight first-round spots');
+ const other=original.map((id,i)=>i===8?original[9]:i===9?original[8]:id);
+ const newState=arrangeTournamentKnockout(seeded,other);
+ assert.deepEqual(newState.seedPlacements,seeded.seedPlacements);
+ assert.deepEqual(knockoutManualSlots(newState),other);
+ assert.equal(newState.matches.find(m=>m.seedA===first)?.round,
+  Math.max(...newState.matches.map(m=>m.round))-1);
+ assert.throws(()=>arrangeTournamentKnockout(seeded,[
+  first,...original.slice(1)
+ ]),/reserved or team is invalid/);
+ const duplicated=[...other];duplicated[8]=duplicated[9];
+ assert.throws(()=>arrangeTournamentKnockout(seeded,duplicated),/exactly one/);
+ const paidState=makeInitialTournament(players(4),1200,'knockout',fixedRandom);
+ paidState.matches[0].scheduledTime='19:30';
+ paidState.teams[0].members[0].paid=875;
+ paidState.teams[0].members[0].note='Water to pay';
+ const same=arrangeTournamentKnockout(paidState,knockoutManualSlots(paidState));
+ assert.equal(same.matches[0].scheduledTime,'19:30');
+ assert.deepEqual(same.teams,paidState.teams);
+ const blank=knockoutManualSlots(paidState);blank[0]=null;
+ assert.throws(()=>arrangeTournamentKnockout(paidState,blank),/exactly one/);
+});
+test('Manual knockout layout is blocked after any knockout score, not group scores',()=>{
+ const k=makeInitialTournament(players(4),1000,'knockout',fixedRandom);
+ k.matches[0].sets=scoreA;k.matches[0].winner=k.matches[0].a;
+ assert.throws(()=>arrangeTournamentKnockout(k,knockoutManualSlots(k)),/locked once knockout scores/);
+ const group=makeInitialTournament(players(4),1000,'groups',fixedRandom);
+ for(const m of group.matches){m.sets=scoreA;m.winner=m.a;}
+ group.knockoutSeeded=true;
+ group.matches.push(...makeKnockoutMatches(getQualifiers(group)));
+ assert.doesNotThrow(()=>arrangeTournamentKnockout(group,knockoutManualSlots(group)));
+});
+test('Manual Bracket Layout UI can swap pairs and save via version-locked RPC',async()=>{
+ const row=sampleRow('knockout'),{widget,calls}=makeUI(false,[row]);
+ row.state.teams[0].members[0].paid=325;row.state.teams[0].members[0].note='Owes one drink';
+ const original=JSON.stringify(row.state.teams);
+ await widget.load();
+ assert.match(widget.page(),/data-action="tm-manual-open"/);
+ await widget.action({dataset:{action:'tm-manual-open'}});
+ let html=widget.page();
+ assert.match(html,/Manual Bracket Layout/);
+ assert.match(html,/data-action="tm-manual-save"/);
+ assert.equal((html.match(/data-manual-slot="/g)||[]).length,4);
+ const previous=knockoutManualSlots(row.state);
+ await widget.change({dataset:{manualSlot:'0'},value:previous[2]});
+ await widget.action({dataset:{action:'tm-manual-save'}});
+ assert.equal(row.version,1);
+ const updated=knockoutManualSlots(row.state);
+ assert.equal(updated[0],previous[2]);
+ assert.equal(updated[2],previous[0]);
+ assert.equal(JSON.stringify(row.state.teams),original);
+ assert.deepEqual(calls.map(c=>c.name),['tournament_reseed']);
+ assert.deepEqual(calls[0].args.p_matches.filter(m=>m.round===1).flatMap(m=>[m.a,m.b]),updated);
+ assert.doesNotMatch(widget.page(),/class="panel tm-bracket-manual-panel"/);
+ await widget.action({dataset:{action:'tm-manual-open'}});
+ await widget.action({dataset:{action:'tm-manual-reset'}});
+ await widget.action({dataset:{action:'tm-manual-cancel'}});
+ assert.match(widget.page(),/data-action="tm-manual-open"/);
+ row.state.matches.find(m=>m.phase==='knockout').sets=scoreA;
+ const locked=widget.page();
+ assert.match(locked,/data-action="tm-manual-open" disabled/);
+ await assert.rejects(()=>widget.action({dataset:{action:'tm-manual-open'}}),/locked after knockout scores/);
 });
