@@ -1733,7 +1733,9 @@ async function refreshAllPagesWhenDue(){
    ['Overview attendance',()=>loadOverviewTraining({background:true})],
    ['Overview financial totals',()=>clubInsights.loadOverview(true)],
    ['Reports and report financial totals',()=>loadReport({background:true})],
-   ['Historical Team Members',refreshHistoricalWeekInBackground]
+   ['Historical Team Members',refreshHistoricalWeekInBackground],
+   ['Order Counter',()=>orderCounter.refreshOrderCounterFromStorage(state.staff?.id||state.staff?.email)],
+   ["Reem's Items List",()=>reemItems.refreshReemItemsFromStorage(state.staff?.id||state.staff?.email)]
   ];
   const results=await Promise.allSettled(feeds.map(([,task])=>task()));
   for(let i=0;i<results.length;i++){
