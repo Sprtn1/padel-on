@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {parseTournamentMoney,makeInitialTournament,makeKnockoutMatches,padelSetWinner,
  padelMatchWinner,groupStandings,getQualifiers,tournamentTotals,tournamentChampion,proSetWinner,tournamentMatchWinner,
  knockoutSeedEntrants,reseedTournamentKnockout,makeSeededKnockoutMatches,tournamentCanResize,resizeTournamentDraw,tournamentTeamPlayerDues,knockoutManualSlots,arrangeTournamentKnockout} from '../lib/tournament-engine.js';
@@ -607,6 +608,24 @@ test('Participant payment search filters names instantly, preserves payment cont
  assert.match(widget.page(),/Showing 8 of 8 players/);
 });
 
+
+test('Participant payment title and both filters are grouped without a wide header gap',async()=>{
+ const {widget}=makeUI(false,[sampleRow('groups')]);
+ await widget.load();
+ const html=widget.page();
+ const start=html.indexOf('<div class="tm-head tm-payment-head">');
+ const end=html.indexOf('<p class="tm-payment-count"',start);
+ assert.ok(start>0&&end>start);
+ const header=html.slice(start,end);
+ assert.ok(header.indexOf('Participant Payments')<header.indexOf('tm-payment-filters'));
+ assert.ok(header.indexOf('tm-payment-filters')<header.indexOf('tm-payment-search'));
+ assert.ok(header.indexOf('tm-payment-search')<header.indexOf('tm-payment-status'));
+ assert.match(header,/<div class="tm-payment-heading">/);
+ const css=readFileSync(new URL('../styles.css',import.meta.url),'utf8');
+ assert.match(css,/\\.tm-payment-head\\{display:grid;grid-template-columns:minmax\\(0,1fr\\)/);
+ assert.match(css,/\\.tm-payment-filters\\{display:grid;grid-template-columns:minmax\\(0,1\\.8fr\\) minmax\\(0,1fr\\)/);
+ assert.match(css,/@media\\(max-width:560px\\)\\{\\.tm-payment-head\\{gap:10px\\}/);
+});
 
 test('Participant payment filters All, Paid and Unpaid combine with name search',async()=>{
  const first=sampleRow('groups'),second=sampleRow('knockout');
