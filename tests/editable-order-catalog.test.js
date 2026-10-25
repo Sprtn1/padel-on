@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {normalizeCatalog, catalogProducts, makeCustomProduct} from '../lib/editable-order-catalog.js';
 import {orderProducts, defaultOrderDraft, orderMessage, orderStats} from '../lib/order-counter.js';
 import {reemProducts, defaultReemDraft, reemMessage, reemStats} from '../lib/reem-items.js';
+import {orderCounterPage,orderInput,refreshOrderCounterFromStorage} from '../lib/order-counter-ui.js';
+import {reemItemsPage,reemInput,refreshReemItemsFromStorage} from '../lib/reem-items-ui.js';
 
 test('each list can add its own product and include it in a generated message', () => {
   const general = makeCustomProduct('Sparkling Orange Soda', orderProducts, []);
@@ -40,4 +42,38 @@ test('catalog validation survives storage reload and rejects accidental duplicat
   assert.deepEqual(catalogProducts(reemProducts, stored.custom, stored.hidden, true).map(x => x.name), ['New Rimas Flavor']);
   assert.match(makeCustomProduct('new rimas flavor', reemProducts, stored.custom).error, /already exists/);
   assert.match(makeCustomProduct('  ', reemProducts, []).error, /Enter an item name/);
+});
+
+test('Both supplier lists sync external local changes without losing their search fields',()=>{
+ const stored=new Map(),previous=globalThis.localStorage,doc=globalThis.document;
+ const owner='refresh-order-local-tab';
+ globalThis.localStorage={getItem:key=>stored.get(key)??null,
+  setItem:(key,value)=>stored.set(key,value)};
+ globalThis.document={getElementById:()=>null};
+ try{
+  orderCounterPage(owner);
+  reemItemsPage(owner);
+  assert.equal(refreshOrderCounterFromStorage(owner),false);
+  assert.equal(refreshReemItemsFromStorage(owner),false);
+  orderInput({dataset:{orderInput:'search'},value:'Twix'});
+  reemInput({dataset:{reemInput:'search'},value:'Water'});
+  const general='padelon_admin_order_counter_v1:'+encodeURIComponent(owner);
+  const reem='padelon_admin_reem_items_v1:'+encodeURIComponent(owner);
+  stored.set(general,JSON.stringify({qty:{twix:7},intro:'Updated remotely'}));
+  stored.set(reem,JSON.stringify({qty:{tannourine_05:12}}));
+  assert.equal(refreshOrderCounterFromStorage(owner),true);
+  assert.equal(refreshReemItemsFromStorage(owner),true);
+  let html=orderCounterPage(owner);
+  assert.match(html,/id="order-search"[^>]*value="Twix"/);
+  assert.match(html,/Twix x7/);
+  html=reemItemsPage(owner);
+  assert.match(html,/id="reem-search"[^>]*value="Water"/);
+  assert.match(html,/Tannourine Water 0.5 L x12/);
+  assert.equal(refreshOrderCounterFromStorage(owner),false);
+  assert.equal(refreshReemItemsFromStorage(owner),false);
+  assert.ok(stored.has(general)&&stored.has(reem));
+ }finally{
+  globalThis.localStorage=previous;
+  globalThis.document=doc;
+ }
 });
