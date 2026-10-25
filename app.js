@@ -1622,7 +1622,10 @@ function updateQuickPreview(){
 }
 // A native details element preserves its open state across full-page rerenders.
 document.addEventListener('toggle',e=>{
- if(state.tab!=='cafeteria-finances'||!e.target?.isConnected)return;
+ if(!e.target?.isConnected)return;
+ if(state.tab==='tournament'&&e.target.dataset?.tmMemberNote)
+  tournamentManagement.rememberNote(e.target.dataset.tmMemberNote,e.target.open);
+ if(state.tab!=='cafeteria-finances')return;
  if(e.target.dataset.cafeFold)
   cafeteriaFinances.rememberFold(e.target.dataset.cafeFold,e.target.open);
  if(e.target.dataset.cafeNote)
