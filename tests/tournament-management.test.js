@@ -162,6 +162,14 @@ function makeUI(isAdmin=false,backing=[]){
       throw Error('Group scoring cannot be changed after scores are recorded');
     row.group_scoring=args.p_group_scoring;row.version++;return row.version;
    }
+   if(name==='tournament_set_knockout_scoring'){
+    const row=backing.find(x=>x.id===args.p_id);
+    assert.equal(args.p_expected_version,row.version);
+    if(row.state.matches.some(m=>m.phase==='knockout'&&m.sets?.length))
+     throw Error('Knockout scoring cannot be changed after knockout scores are recorded');
+    row.knockout_scoring=args.p_knockout_scoring;row.version++;
+    return row.version;
+   }
    if(name==='tournament_set_match_time'){
     const row=backing.find(x=>x.id===args.p_id);
     assert.equal(args.p_expected_version,row.version);
@@ -181,7 +189,7 @@ function makeUI(isAdmin=false,backing=[]){
     }
     if(args.p_action==='score'){
      const m=row.state.matches.find(m=>m.id===p.match);
-     m.sets=p.sets;m.winner=tournamentMatchWinner(p.sets,m.phase==='group'?(row.group_scoring||'best_of_3'):'best_of_3')==='a'?m.a:m.b;
+     m.sets=p.sets;m.winner=tournamentMatchWinner(p.sets,m.phase==='group'?(row.group_scoring||'best_of_3'):(row.knockout_scoring||'best_of_3'))==='a'?m.a:m.b;
     }
     if(args.p_action==='seed'){
      row.state.matches.push(...p.matches);row.state.knockoutSeeded=true;
@@ -1232,4 +1240,128 @@ test('Manual Bracket Layout UI can swap pairs and save via version-locked RPC',a
  const locked=widget.page();
  assert.match(locked,/data-action="tm-manual-open" disabled/);
  await assert.rejects(()=>widget.action({dataset:{action:'tm-manual-open'}}),/locked after knockout scores/);
+});
+
+test('Knockout scoring menu is independent during tournament creation, including knockout-only events',async()=>{
+ const run=async format=>{
+  const {widget,calls}=makeUI(false,[]);
+  await widget.load();await widget.action({dataset:{action:'tm-create-show'}});
+  const markup=widget.page();
+  assert.match(markup,/name="group_scoring"/);
+  assert.match(markup,/name="knockout_scoring"/);
+  const old=globalThis.FormData;
+  try{
+   globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+   await widget.submit({dataset:{tmSubmit:'create'},_values:[
+    ['name','Knockout Settings'],['date','2026-11-18'],['time','19:00'],['fee','20'],
+    ['format',format],['group_scoring','pro_8'],['knockout_scoring','pro_9'],['team_count','4'],
+    ...players(4).flatMap((p,i)=>[['player_'+(i+1)+'_1',p.p1],['player_'+(i+1)+'_2',p.p2]])
+   ]});
+  }finally{globalThis.FormData=old;}
+  const creation=calls.find(x=>x.name==='tournament_create');
+  assert.ok(creation);
+  assert.equal(creation.args.p_knockout_scoring,'pro_9');
+  assert.equal(creation.args.p_group_scoring,format==='groups'?'pro_8':'best_of_3');
+ };
+ await run('groups');
+ await run('knockout');
+});
+
+test('Existing knockout-only tournament switches its score editor to Pro Set and locks after a result',async()=>{
+ const row=sampleRow('knockout'),{widget,calls}=makeUI(false,[row]);await widget.load();
+ assert.match(widget.page(),/data-tm-submit="knockout-scoring"/);
+ const before=JSON.stringify(row.state.teams);
+ const match=row.state.matches.find(m=>m.phase==='knockout'&&m.a&&m.b);
+ assert.ok(match);
+ const old=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'knockout-scoring'},_values:[['knockout_scoring','pro_8']]});
+  assert.equal(row.knockout_scoring,'pro_8');
+  assert.equal(row.version,1);
+  assert.equal(JSON.stringify(row.state.teams),before,'Payments and player notes unaffected');
+  await widget.action({dataset:{action:'tm-edit-score',id:match.id}});
+  const html=widget.page();
+  assert.match(html,/tm-pro-set-editor/);
+  assert.match(html,/reach 8 games/);
+  assert.doesNotMatch(html,/name="s2a"/);
+  await widget.submit({dataset:{tmSubmit:'score',match:match.id},_values:[['s1a','8'],['s1b','7']]});
+  assert.deepEqual(match.sets,[{a:8,b:7}]);
+  assert.equal(match.winner,match.a);
+  assert.equal(row.version,2);
+  assert.doesNotMatch(widget.page(),/data-tm-submit="knockout-scoring"/);
+  assert.match(widget.page(),/Locked after the first knockout score/);
+  await assert.rejects(()=>widget.submit({dataset:{tmSubmit:'knockout-scoring'},_values:[
+   ['knockout_scoring','best_of_3']]}),/can only change before knockout scores/);
+  assert.deepEqual(calls.map(x=>x.name),['tournament_set_knockout_scoring','tournament_change']);
+ }finally{globalThis.FormData=old;}
+});
+
+test('Group matches may be scored before knockout scoring changes and bracket generation',async()=>{
+ const row=sampleRow('groups'),{widget,calls}=makeUI(false,[row]);
+ row.group_scoring='pro_9';
+ const participant=row.state.teams[0].members[0];
+ participant.paid=400;participant.note='Owes a juice';
+ const memberBefore=JSON.stringify(participant);
+ await widget.load();
+ assert.match(widget.page(),/data-tm-submit="knockout-scoring"/);
+ const saved=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  const group=row.state.matches.find(m=>m.phase==='group');
+  await widget.action({dataset:{action:'tm-edit-score',id:group.id}});
+  await widget.submit({dataset:{tmSubmit:'score',match:group.id},_values:[['s1a','9'],['s1b','2']]});
+  assert.equal(group.winner,group.a);
+  assert.doesNotMatch(widget.page(),/data-tm-submit="group-scoring"/);
+  assert.match(widget.page(),/data-tm-submit="knockout-scoring"/,'Group results do not lock knockout format');
+  await widget.submit({dataset:{tmSubmit:'knockout-scoring'},_values:[['knockout_scoring','pro_8']]});
+  assert.equal(row.knockout_scoring,'pro_8');
+  assert.equal(row.group_scoring,'pro_9');
+  assert.equal(JSON.stringify(participant),memberBefore);
+  assert.equal(row.version,2);
+  assert.ok(row.state.matches.every(m=>m.phase==='group'));
+  assert.deepEqual(calls.map(x=>x.name),['tournament_change','tournament_set_knockout_scoring']);
+ }finally{globalThis.FormData=saved;}
+});
+
+test('Knockout scoring stays editable after byes and seeding, and when toggling before play',async()=>{
+ const row=sampleRow('knockout'),{widget}=makeUI(false,[row]);
+ await widget.load();
+ const old=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  for(const mode of ['pro_9','pro_8','best_of_3']){
+   await widget.submit({dataset:{tmSubmit:'knockout-scoring'},_values:[['knockout_scoring',mode]]});
+  }
+  assert.equal(row.knockout_scoring,'best_of_3');
+  assert.equal(row.version,3);
+  assert.match(widget.page(),/data-tm-submit="knockout-scoring"/);
+  const oldRow=sampleRow('knockout');
+  const seeded=makeUI(false,[oldRow]);await seeded.widget.load();
+  // Winner automatically assigned a bye, but no match has been scored.
+  const bye=oldRow.state.matches.find(m=>m.winner&&!m.sets?.length);
+  if(bye)assert.match(seeded.widget.page(),/data-tm-submit="knockout-scoring"/);
+ }finally{globalThis.FormData=old;}
+});
+
+test('Tournament PDF includes separate group and knockout score formats',()=>{
+ const original=globalThis.document,oldAtob=globalThis.atob,texts=[];
+ const draw={
+  fillRect(){},strokeRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},
+  measureText:s=>({width:String(s).length*9}),fillText:s=>texts.push(String(s))
+ };
+ try{
+  globalThis.document={createElement:()=>({
+   width:1200,height:1553,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q==',
+   getContext:()=>draw
+  })};
+  globalThis.atob=()=>String.fromCharCode(255,216,255,217);
+  const a=sampleRow('groups');a.group_scoring='pro_9';a.knockout_scoring='pro_8';
+  tournamentArchivePdf(a);
+  assert.ok(texts.some(s=>s.includes('Pro Set to 9')&&s.includes('Pro Set to 8')));
+  texts.length=0;
+  const b=sampleRow('knockout');b.knockout_scoring='pro_9';
+  tournamentArchivePdf(b);
+  assert.ok(texts.some(s=>s.includes('Knockout Only (Pro Set to 9)')));
+ }finally{globalThis.document=original;globalThis.atob=oldAtob;}
 });
