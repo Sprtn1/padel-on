@@ -607,6 +607,111 @@ test('Participant payment search filters names instantly, preserves payment cont
  assert.match(widget.page(),/Showing 8 of 8 players/);
 });
 
+
+test('Participant payment filters All, Paid and Unpaid combine with name search',async()=>{
+ const first=sampleRow('groups'),second=sampleRow('knockout');
+ second.id='another-tournament';
+ const members=first.state.teams.flatMap(team=>team.members);
+ // Fully paid, partial, waived, overpaid, and completely unpaid.
+ members[0].paid=members[0].due;
+ members[1].paid=300;
+ members[2].due=0;members[2].paid=0;
+ members[3].paid=members[3].due+200;
+ const original=JSON.stringify(members);
+ const {widget,calls}=makeUI(false,[first,second]);
+ await widget.load();
+ let html=widget.page();
+ assert.match(html,/id="tm-payment-status"/);
+ assert.match(html,/>All<\/option>/);
+ assert.match(html,/>Paid<\/option>/);
+ assert.match(html,/>Unpaid<\/option>/);
+ assert.match(html,/Showing 8 of 8 players/);
+ assert.equal((html.match(/data-payment-status="paid"/g)||[]).length,3);
+ assert.equal((html.match(/data-payment-status="unpaid"/g)||[]).length,5);
+ const rows=members.map(member=>({
+  dataset:{
+   paymentPlayer:member.name.toLowerCase(),
+   paymentStatus:member.paid>=member.due?'paid':'unpaid'
+  },hidden:false
+ }));
+ const count={textContent:''},empty={hidden:true};
+ const panel={
+  querySelectorAll:()=>rows,
+  querySelector:selector=>selector==='.tm-payment-count'?count:
+   selector==='.tm-payment-empty'?empty:null
+ };
+ const status={id:'tm-payment-status',value:'paid',closest:()=>panel};
+ const search={id:'tm-payment-search',value:'',closest:()=>panel};
+ assert.equal(widget.searchPayments(status),true);
+ assert.equal(rows.filter(x=>!x.hidden).length,3);
+ assert.equal(count.textContent,'Showing 3 of 8 players');
+ assert.equal(empty.hidden,true);
+ html=widget.page();
+ assert.match(html,/id="tm-payment-status"[^>]*>/);
+ assert.match(html,/value="paid" selected/);
+ assert.equal((html.match(/data-payment-status="unpaid" hidden/g)||[]).length,5);
+ search.value='FIRST';
+ assert.equal(widget.searchPayments(search),true);
+ assert.equal(rows.filter(x=>!x.hidden).length,2);
+ assert.equal(count.textContent,'Showing 2 of 8 players');
+ status.value='unpaid';
+ assert.equal(widget.searchPayments(status),true);
+ assert.equal(rows.filter(x=>!x.hidden).length,2);
+ assert.match(widget.page(),/value="unpaid" selected/);
+ status.value='all';
+ widget.searchPayments(status);
+ assert.equal(rows.filter(x=>!x.hidden).length,4);
+ assert.equal(count.textContent,'Showing 4 of 8 players');
+ search.value='';
+ widget.searchPayments(search);
+ assert.equal(rows.filter(x=>!x.hidden).length,8);
+ status.value='invalid';
+ assert.throws(()=>widget.searchPayments(status),/valid payment filter/);
+ assert.equal(rows.filter(x=>!x.hidden).length,8);
+ assert.equal(JSON.stringify(members),original,'Filtering never updates player dues, paid amounts, or IDs');
+ assert.equal(calls.length,0,'Filtering requires no Supabase calls');
+ await widget.action({dataset:{action:'tm-select',id:second.id}});
+ html=widget.page();
+ assert.match(html,/id="tm-payment-search"[^>]*value=""/);
+ assert.match(html,/value="all" selected/);
+ assert.match(html,/Showing 8 of 8 players/);
+});
+
+test('Unpaid filter includes partial balances and refreshes after a payment',async()=>{
+ const row=sampleRow('groups'),{widget,calls}=makeUI(false,[row]);
+ const team=row.state.teams[0],member=team.members[1];
+ member.paid=300;member.due=1500;
+ member.note='Owes 1 water';member.teamPlayer=true;
+ const before={id:member.id,due:member.due,note:member.note,teamPlayer:member.teamPlayer};
+ await widget.load();
+ const status={id:'tm-payment-status',value:'unpaid',closest:()=>null};
+ const search={id:'tm-payment-search',value:member.name,closest:()=>null};
+ widget.searchPayments(status);
+ widget.searchPayments(search);
+ assert.match(widget.page(),/Showing 1 of 8 players/);
+ assert.match(widget.page(),/value="unpaid" selected/);
+ await widget.action({dataset:{action:'tm-pay',team:team.id,member:member.id}});
+ assert.match(widget.page(),/value="unpaid" selected/);
+ const old=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'finance',team:team.id,member:member.id},
+   _values:[['amount','12.00']]});
+ }finally{globalThis.FormData=old;}
+ assert.equal(member.paid,1500);
+ assert.equal(member.due,before.due);
+ assert.equal(member.id,before.id);
+ assert.equal(member.note,before.note);
+ assert.equal(member.teamPlayer,before.teamPlayer);
+ assert.match(widget.page(),/Showing 0 of 8 players/);
+ assert.match(widget.page(),/No participants match the current search or payment filter/);
+ assert.equal(calls.at(-1).args.p_action,'pay');
+ widget.searchPayments({id:'tm-payment-status',value:'paid',closest:()=>null});
+ const html=widget.page();
+ assert.match(html,/Showing 1 of 8 players/);
+ assert.match(html,/value="paid" selected/);
+ assert.ok(html.includes('data-payment-status="paid"'));
+});
 test('Group fixture time appears below Upcoming, can be edited and cleared without touching scores',async()=>{
  const row=sampleRow('groups'),{widget,calls}=makeUI(false,[row]);
  await widget.load();
