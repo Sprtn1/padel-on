@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseTournamentMoney,makeInitialTournament,makeKnockoutMatches,padelSetWinner,
- padelMatchWinner,groupStandings,getQualifiers,tournamentTotals,tournamentChampion,
+ padelMatchWinner,groupStandings,getQualifiers,tournamentTotals,tournamentChampion,proSetWinner,tournamentMatchWinner,
  knockoutSeedEntrants,reseedTournamentKnockout,makeSeededKnockoutMatches,tournamentCanResize,resizeTournamentDraw,tournamentTeamPlayerDues} from '../lib/tournament-engine.js';
 import {createTournamentManagement} from '../lib/tournament-management.js';
 import {knockoutBracketLayout} from '../lib/tournament-bracket-layout.js';
@@ -154,6 +154,14 @@ function makeUI(isAdmin=false,backing=[]){
     if(String(member.note??'')===args.p_note)return row.version;
     member.note=args.p_note;row.version++;return row.version;
    }
+   if(name==='tournament_set_group_scoring'){
+    const row=backing.find(x=>x.id===args.p_id);
+    if(row.version!==args.p_expected_version)throw Error('Tournament changed on another device');
+    if(row.format!=='groups'||row.state.knockoutSeeded||
+       row.state.matches.some(m=>m.phase!=='group'||m.winner||m.sets?.length))
+      throw Error('Group scoring cannot be changed after scores are recorded');
+    row.group_scoring=args.p_group_scoring;row.version++;return row.version;
+   }
    if(name==='tournament_set_match_time'){
     const row=backing.find(x=>x.id===args.p_id);
     assert.equal(args.p_expected_version,row.version);
@@ -173,7 +181,7 @@ function makeUI(isAdmin=false,backing=[]){
     }
     if(args.p_action==='score'){
      const m=row.state.matches.find(m=>m.id===p.match);
-     m.sets=p.sets;m.winner=padelMatchWinner(p.sets)==='a'?m.a:m.b;
+     m.sets=p.sets;m.winner=tournamentMatchWinner(p.sets,m.phase==='group'?(row.group_scoring||'best_of_3'):'best_of_3')==='a'?m.a:m.b;
     }
     if(args.p_action==='seed'){
      row.state.matches.push(...p.matches);row.state.knockoutSeeded=true;
@@ -1040,4 +1048,95 @@ test('Canceled note editors cannot save and saved notes survive team roster chan
   ...row.state.teams.map(t=>({id:t.id})),{p1:'Extra Player',p2:'New Partner'}
  ],fixedRandom);
  assert.equal(JSON.stringify(resized.teams.flatMap(t=>t.members).find(m=>m.id===p.id)),original);
+});
+
+test('Pro Set to 8 or 9 accepts exactly one first-to-target set',()=>{
+ for(const [mode,target] of [['pro_8',8],['pro_9',9]]){
+  assert.equal(proSetWinner([{a:target,b:0}],mode),'a');
+  assert.equal(proSetWinner([{a:target-1,b:target}],mode),'b');
+  for(const sets of [[{a:target-1,b:target-1}],[{a:target,b:target}],
+   [{a:target+1,b:1}],[{a:6,b:4}],[{a:target,b:4,ta:7,tb:5}],
+   [{a:target,b:3},{a:target,b:4}],[{a:-1,b:target}]]){
+   assert.throws(()=>proSetWinner(sets,mode),undefined,JSON.stringify(sets));
+  }
+ }
+ assert.equal(tournamentMatchWinner([{a:6,b:4},{a:6,b:4}],'best_of_3'),'a');
+ assert.throws(()=>tournamentMatchWinner([{a:8,b:4}],'best_of_3'));
+});
+
+test('Group standings and five-team qualification handle pro-set scores',()=>{
+ const state=makeInitialTournament(players(5),1800,'groups',fixedRandom);
+ for(const match of state.matches){match.sets=[{a:9,b:8}];match.winner=match.a;}
+ const standings=groupStandings(state,'A','pro_9');
+ assert.equal(standings.reduce((n,t)=>n+t.played,0),20);
+ assert.equal(standings.reduce((n,t)=>n+t.setsWon,0),10);
+ assert.equal(standings.reduce((n,t)=>n+t.gamesWon,0),170);
+ assert.equal(getQualifiers(state,'pro_9').length,4);
+ assert.throws(()=>groupStandings(state,'A','best_of_3'),/Sets end/);
+});
+
+test('Tournament creation sends selected group scoring to Supabase',async()=>{
+ const {widget,calls}=makeUI(false,[]);
+ await widget.load();await widget.action({dataset:{action:'tm-create-show'}});
+ assert.match(widget.page(),/Group stage scoring/);
+ assert.match(widget.page(),/Pro Set · First to 9 games/);
+ const old=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'create'},_values:[
+   ['name','Pro Set Cup'],['date','2026-11-08'],['time','18:00'],['fee','20'],
+   ['format','groups'],['group_scoring','pro_9'],['team_count','8'],
+   ...players(8).flatMap((p,i)=>[['player_'+(i+1)+'_1',p.p1],['player_'+(i+1)+'_2',p.p2]])
+  ]});
+ }finally{globalThis.FormData=old;}
+ assert.equal(calls[0].name,'tournament_create');
+ assert.equal(calls[0].args.p_group_scoring,'pro_9');
+ assert.equal(calls[0].args.p_state.teams.length,8);
+});
+
+test('Existing tournament format can change before scores without losing payments or times',async()=>{
+ const row=sampleRow('groups'),{widget,calls}=makeUI(false,[row]);
+ row.shuffle_locked=true;
+ row.state.teams[0].members[0].paid=500;
+ row.state.teams[0].members[0].note='Owes two drinks';
+ row.state.matches[0].scheduledTime='20:30';
+ const original=JSON.stringify(row.state.teams[0].members[0]);
+ await widget.load();
+ assert.match(widget.page(),/data-tm-submit="group-scoring"/);
+ const old=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'group-scoring'},_values:[['group_scoring','pro_8']]});
+  assert.equal(row.group_scoring,'pro_8');assert.equal(row.version,1);
+  assert.equal(row.state.matches[0].scheduledTime,'20:30');
+  assert.equal(JSON.stringify(row.state.teams[0].members[0]),original);
+  const match=row.state.matches[0];
+  await widget.action({dataset:{action:'tm-edit-score',id:match.id}});
+  assert.match(widget.page(),/tm-pro-set-editor/);
+  assert.doesNotMatch(widget.page(),/name="s2a"/);
+  await widget.submit({dataset:{tmSubmit:'score',match:match.id},
+   _values:[['s1a','8'],['s1b','7']]});
+  assert.deepEqual(match.sets,[{a:8,b:7}]);
+  assert.equal(match.winner,match.a);assert.equal(row.version,2);
+  assert.doesNotMatch(widget.page(),/data-tm-submit="group-scoring"/);
+  assert.match(widget.page(),/Locked after the first score/);
+  await assert.rejects(()=>widget.submit({dataset:{tmSubmit:'group-scoring'},
+   _values:[['group_scoring','best_of_3']]}),/only change before/);
+  assert.equal(row.group_scoring,'pro_8');
+  assert.deepEqual(calls.map(c=>c.name),['tournament_set_group_scoring','tournament_change']);
+ }finally{globalThis.FormData=old;}
+});
+
+test('Group format is editable multiple times before play, but not in knockout tournaments',async()=>{
+ const row=sampleRow('groups'),{widget}=makeUI(false,[row]);
+ await widget.load();
+ const prior=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  for(const mode of ['pro_9','pro_8','best_of_3'])
+   await widget.submit({dataset:{tmSubmit:'group-scoring'},_values:[['group_scoring',mode]]});
+  assert.equal(row.group_scoring,'best_of_3');assert.equal(row.version,3);
+ }finally{globalThis.FormData=prior;}
+ const ko=makeUI(false,[sampleRow('knockout')]);await ko.widget.load();
+ assert.doesNotMatch(ko.widget.page(),/data-tm-submit="group-scoring"/);
 });
