@@ -5,6 +5,7 @@ const orderCounter = await import(`./lib/order-counter-ui.js?v=${assetVersion}`)
 const reemItems = await import(`./lib/reem-items-ui.js?v=${assetVersion}`);
 const cafeteriaFinanceModule = await import(`./lib/cafeteria-finances.js?v=${assetVersion}`);
 const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
+const {getDebtDayEntries,summarizeDebtDay} = await import(`./lib/cafeteria-debt-daily.js?v=${assetVersion}`);
 const refreshPolicy = await import(`./lib/refresh-policy.js?v=${assetVersion}`);
 const tournamentModule = await import(`./lib/tournament-management.js?v=${assetVersion}`);
 const arabicDailyPdf = await import(`./lib/arabic-daily-pdf.js?v=${assetVersion}`);
@@ -48,7 +49,7 @@ const tabs=[['dashboard','Overview','grid'],['cafeteria-finances','Cafeteria Fin
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
-const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
+const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',debtDay:todayBeirut(),settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
 // The daily cashbook owns its own dated Supabase query and does not mix with other ledgers.
 const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
  api,heading,icon,amount,today,addDays,
@@ -586,6 +587,29 @@ function debtOutstanding(id){
 
 function debtBalanceLabel(cents){return cents>0?'Owes '+amount(cents):cents<0?'Credit '+amount(-cents):'Paid in full';}
 
+function debtDailyPanel(){
+ const day=state.debtDay,limit=today();
+ const entries=getDebtDayEntries(state.debtEntries,day),totals=summarizeDebtDay(entries);
+ const people=new Map(state.debtPeople.map(person=>[person.id,person]));
+ const rows=entries.map(e=>{
+  const person=people.get(e.person_id);
+  const account=person&&!person.deleted_at
+   ?btn('View account','debt-day-open-account','btn-light btn-xs',`data-id="${esc(person.id)}"`)
+   :'<span class="tiny">Unavailable</span>';
+  return `<tr><td><strong>${esc(person?.name||'Unknown account')}</strong></td><td>${e.entry_type==='charge'?tag('New debt','amber'):tag('Payment','green')}</td><td class="num"><strong class="${e.entry_type==='payment'?'debt-clear':'debt-owing'}">${e.entry_type==='payment'?'−':'+'}${amount(e.amount_cents)}</strong></td><td>${esc(e.notes||'—')}</td><td>${account}</td></tr>`;
+ }).join('');
+ const controls=`<div class="debt-daily-nav">
+ <button type="button" class="btn btn-light btn-icon" data-action="debt-day-prev" aria-label="Previous day" title="Previous day">${icon('chevronLeft')}</button>
+ <input type="date" id="debt-day-date" aria-label="Choose debt entry date" value="${day}" max="${limit}"/>
+ <button type="button" class="btn btn-light btn-icon" data-action="debt-day-next" aria-label="Next day" title="Next day" ${day>=limit?'disabled':''}>${icon('chevronRight')}</button>
+ ${btn('Today','debt-day-today','btn-light',day===limit?'disabled':'')}</div>`;
+ return `<article class="panel debt-daily-panel">
+ <div class="debt-daily-heading"><div><div class="eyebrow">Daily cafeteria activity</div><h2>Entries for ${niceDay(day,{weekday:'long',month:'long',day:'numeric',year:'numeric'})}</h2><p>Review purchases and payments across all cafeteria accounts for the selected date.</p></div>${controls}</div>
+ <div class="debt-daily-summary"><div><span>Entries</span><strong>${totals.count}</strong></div><div><span>New debt</span><strong>${amount(totals.charges)}</strong></div><div><span>Payments</span><strong>${amount(totals.payments)}</strong></div><div><span>Net debt change</span><strong>${totals.net>0?'+':totals.net<0?'−':''}${amount(Math.abs(totals.net))}</strong></div></div>
+ <div class="data-table-wrap"><table class="data-table debt-daily-table"><thead><tr><th>Person</th><th>Type</th><th>Amount</th><th>Notes</th><th>Account</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="panel-empty">No cafeteria debt entries recorded for this date.</td></tr>'}</tbody></table></div>
+ </article>`;
+}
+
 function debtPage(){
  const ready=state.debtLoaded&&!state.debtError;
  const all=state.debtPeople.filter(p=>!p.deleted_at),owed=all.reduce((sum,p)=>sum+Math.max(0,debtOutstanding(p.id)),0);
@@ -596,17 +620,18 @@ function debtPage(){
  const header=heading('Cafeteria / running balances','Cafeteria Debts','Track unpaid purchases, partial payments, and prepaid cafeteria credit in one account.',btn(`${icon('plus')} New Person`,'debt-new-person','btn-primary',ready?'':'disabled')+(ready?btn(`${icon('download')} Export Statement`,'debt-export','btn-light',selected?'':'disabled'):''));
  if(!ready)return `${header}<article class="panel"><div class="empty-prompt"><strong>${state.debtLoading?'Loading cafeteria debt records…':state.debtError?'Unable to load cafeteria debts':'Loading cafeteria debts…'}</strong><span>${state.debtError?esc(state.debtError):'Track cafeteria purchases, payments, and outstanding balances.'}</span>${state.debtError?btn('Retry','debt-retry','btn-light'):''}</div></article>`;
  const metrics=`<section class="finance-grid four-up">${summaryCard('Outstanding debt',amount(owed),'Amount customers still owe','wallet',true)}${summaryCard('Prepaid credit',amount(credit),'Available for future purchases','gift')}${summaryCard('People owing',open.length,'Accounts with balance due','users')}${summaryCard('Payments received',amount(paidTotal),'All recorded payments','activity')}</section>`;
+ const daily=debtDailyPanel();
  const displayed=all.filter(p=>(state.debtFilter!=='open'||debtOutstanding(p.id)>0)&&(state.debtFilter!=='settled'||debtOutstanding(p.id)===0)&&(state.debtFilter!=='credit'||debtOutstanding(p.id)<0)).filter(p=>!state.debtSearch||p.name.toLowerCase().includes(state.debtSearch.toLowerCase())).sort((a,b)=>debtOutstanding(b.id)-debtOutstanding(a.id)||a.name.localeCompare(b.name));
  const filters=`<div class="debt-filter-controls"><label class="search">${icon('search')}<input id="debt-search" autocomplete="off" placeholder="Find a person…" value="${esc(state.debtSearch)}"/></label><select id="debt-filter" class="select" aria-label="Debt status"><option value="all" ${state.debtFilter==='all'?'selected':''}>All people</option><option value="open" ${state.debtFilter==='open'?'selected':''}>Unpaid</option><option value="credit" ${state.debtFilter==='credit'?'selected':''}>Prepaid credit</option><option value="settled" ${state.debtFilter==='settled'?'selected':''}>Paid in full</option></select></div>`;
  const directory=`<article class="panel debt-directory"><div class="panel-head"><div><h2>Cafeteria accounts</h2><p>${open.length} unpaid · ${all.length} total</p></div></div>${filters}<div class="debt-people-list">${displayed.map(p=>{
  const remaining=debtOutstanding(p.id);
  return `<button class="debt-person-item ${selected?.id===p.id?'selected':''}" data-action="debt-select-person" data-id="${p.id}"><div><strong>${esc(p.name)}</strong>${p.active?'':tag('Inactive','amber')}</div><span class="debt-person-sub">${remaining>0?'Remaining to pay':remaining<0?'Prepaid credit':'Paid in full'}</span><b class="${remaining>0?'debt-owing':'debt-clear'}">${remaining<0?amount(-remaining)+' credit':amount(remaining)}</b></button>`;
  }).join('')||'<div class="panel-empty">No matching people.</div>'}</div></article>`;
- if(!selected)return `${header}${metrics}<div class="debt-layout">${directory}<article class="panel"><div class="empty-prompt"><strong>No cafeteria accounts yet</strong><span>Add someone along with their starting debt to begin.</span>${btn(`${icon('plus')} Add First Person`,'debt-new-person','btn-primary')}</div></article></div>`;
+ if(!selected)return `${header}${metrics}${daily}<div class="debt-layout">${directory}<article class="panel"><div class="empty-prompt"><strong>No cafeteria accounts yet</strong><span>Add someone along with their starting debt to begin.</span>${btn(`${icon('plus')} Add First Person`,'debt-new-person','btn-primary')}</div></article></div>`;
  const balance=debtOutstanding(selected.id);
  let accumulated=0;
  const history=debtPersonTransactions(selected.id).map(e=>{accumulated+=e.entry_type==='charge'?Number(e.amount_cents):-Number(e.amount_cents);return {e,running:accumulated}}).reverse();
- const details=`<article class="panel debt-details">
+ const details=`<article class="panel debt-details" id="debt-account-details">
  <div class="debt-person-header"><div><div class="eyebrow">Cafeteria account</div><h2>${esc(selected.name)}</h2><p>${esc(selected.notes||'Cafeteria purchases and payments')}${selected.active?'':' · Inactive'}</p></div><div class="debt-total ${balance<=0?'cleared':''}"><small>${balance>0?'Remaining debt':balance<0?'Prepaid credit':'Account status'}</small><strong>${balance>0?amount(balance):balance<0?amount(-balance):'Paid in full'}</strong></div></div>
  <div class="debt-person-actions">${btn(`${icon('plus')} Add Debt`,'debt-add-charge','btn-primary',selected.active?'':'disabled')}${btn('Record Payment / Add Credit','debt-add-payment','btn-light',selected.active?'':'disabled')}${btn('Edit Person','debt-edit-person','btn-light')}</div>
  <div class="debt-info-text">${balance>0?'Unpaid balance. Partial payments are accepted.':balance<0?'Prepaid credit will be used for future purchases.':'No outstanding balance.'}</div>
@@ -614,7 +639,7 @@ function debtPage(){
  <div class="data-table-wrap"><table class="data-table debt-transactions"><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Remaining after</th><th>Notes</th><th>Correction</th></tr></thead><tbody>
  ${history.map(({e,running})=>`<tr><td>${niceDay(e.entry_date)}</td><td>${e.entry_type==='charge'?tag('New debt','amber'):tag('Payment','green')}</td><td><strong class="${e.entry_type==='payment'?'debt-clear':'debt-owing'}">${e.entry_type==='payment'?'−':'+'}${amount(e.amount_cents)}</strong></td><td>${debtBalanceLabel(running)}</td><td>${esc(e.notes||'—')}</td><td>${state.staff?.role==='admin'?btn('Void','debt-void','btn-danger btn-xs',`data-id="${e.id}"`):'<span class="tiny">Recorded</span>'}</td></tr>`).join('')||'<tr><td colspan="6" class="panel-empty">No cafeteria transactions yet.</td></tr>'}
  </tbody></table></div></article>`;
- return `${header}${metrics}<div class="debt-layout">${directory}${details}</div>`;
+ return `${header}${metrics}${daily}<div class="debt-layout">${directory}${details}</div>`;
 }
 
 function debtExport(){
@@ -1419,6 +1444,13 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
    throw Error('Settle the account balance before removal.');
   openModal('admin-account-manage',person.id,{accountKind:isPrivate?'private':'cafeteria',remove:isRemoval});break;
  }
+ case 'debt-day-prev':state.debtDay=addDays(state.debtDay,-1);render();break;
+ case 'debt-day-next':if(state.debtDay<today())state.debtDay=addDays(state.debtDay,1);render();break;
+ case 'debt-day-today':state.debtDay=today();render();break;
+ case 'debt-day-open-account':
+  if(!state.debtPeople.some(p=>p.id===id&&!p.deleted_at))throw Error('Account is unavailable.');
+  state.debtSelected=id;state.debtFilter='all';render();
+  document.getElementById('debt-account-details')?.scrollIntoView({behavior:'smooth',block:'start'});break;
  case 'debt-retry':await loadDebtData();break;
  case 'debt-new-person':if(!state.debtLoaded||state.debtError)throw Error('Cafeteria debt records are unavailable. Try refreshing.');openModal('debt-person');break;
  case 'debt-select-person':if(!state.debtPeople.some(p=>p.id===id&&!p.deleted_at))throw Error('Person not found.');state.debtSelected=id;render();break;
@@ -1676,6 +1708,11 @@ document.addEventListener('change',e=>{
 
  if(e.target.id==='private-client-filter'){state.privateListFilter=e.target.value==='owing'?'owing':'all';render();return}
  if(e.target.id==='private-client-sort'){state.privateSort=e.target.value==='id'?'id':'name';render();return}
+ if(e.target.id==='debt-day-date'){
+  const value=e.target.value;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(value)&&value<=today())state.debtDay=value;
+  render();return;
+ }
  if(e.target.id==='private-day-date'){
   const value=e.target.value;
   if(/^\d{4}-\d{2}-\d{2}$/.test(value)&&value<=today())state.privateDay=value;
