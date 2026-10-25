@@ -66,7 +66,7 @@ begin
  values(btrim(p_name),p_date,p_time,p_fee_cents,p_format,p_state)
  returning id into v_id;
  return v_id;
-end;$function$
+end;$function$;
 
 revoke all on function public.tournament_create(text,date,time,bigint,text,jsonb) from public,anon,authenticated;
 grant execute on function public.tournament_create(text,date,time,bigint,text,jsonb) to authenticated;
