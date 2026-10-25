@@ -577,7 +577,7 @@ test('Participant payment search filters names instantly, preserves payment cont
  assert.equal(empty.hidden,true);
  let html=widget.page();
  assert.match(html,/value="FIRST 2"/);
- assert.match(html,/data-payment-player="first 0" hidden/);
+ assert.match(html,/data-payment-player="first 0"[^>]* hidden/);
  assert.match(html,/data-payment-player="first 2"/);
  assert.match(html,/data-action="tm-pay"/);
  await widget.action({dataset:{action:'tm-pay',team:first.state.teams[2].id,
