@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseTournamentMoney,makeInitialTournament,makeKnockoutMatches,padelSetWinner,
  padelMatchWinner,groupStandings,getQualifiers,tournamentTotals,tournamentChampion,
- knockoutSeedEntrants,reseedTournamentKnockout,makeSeededKnockoutMatches,tournamentCanResize,resizeTournamentDraw} from '../lib/tournament-engine.js';
+ knockoutSeedEntrants,reseedTournamentKnockout,makeSeededKnockoutMatches,tournamentCanResize,resizeTournamentDraw,tournamentTeamPlayerDues} from '../lib/tournament-engine.js';
 import {createTournamentManagement} from '../lib/tournament-management.js';
 import {knockoutBracketLayout} from '../lib/tournament-bracket-layout.js';
 import {tournamentArchivePdf,downloadTournamentPdf} from '../lib/tournament-pdf.js';
@@ -877,4 +877,85 @@ test('Only administrators see a recovery action for a lost tournament PIN',async
  try{await admin.widget.action({dataset:{action:'tm-shuffle-reset-pin'}});}
  finally{globalThis.window=oldWindow;}
  assert.equal(a.shuffle_locked,false);
+});
+
+test('Team Player fee rules charge correctly for zero, one, or two eligible players',()=>{
+ assert.deepEqual(tournamentTeamPlayerDues(2000,false,false),[2000,2000]);
+ assert.deepEqual(tournamentTeamPlayerDues(2000,true,false),[0,2000]);
+ assert.deepEqual(tournamentTeamPlayerDues(2000,false,true),[2000,0]);
+ assert.deepEqual(tournamentTeamPlayerDues(2000,true,true),[1000,1000]);
+ assert.deepEqual(tournamentTeamPlayerDues(1501,true,true),[750,751]);
+ assert.deepEqual(tournamentTeamPlayerDues(0,true,true),[0,0]);
+ assert.throws(()=>tournamentTeamPlayerDues(1000,'yes',false),/checkbox/);
+});
+
+test('Tournament draws preserve Team Player discounts with stable IDs and no automatic payment',()=>{
+ const participants=[
+  {p1:'A first',p2:'A second'},
+  {p1:'B first',p2:'B second',teamPlayer1:true},
+  {p1:'C first',p2:'C second',teamPlayer2:true},
+  {p1:'D first',p2:'D second',teamPlayer1:true,teamPlayer2:true}
+ ];
+ for(const format of ['groups','knockout']){
+  const original=makeInitialTournament(participants,2000,format,fixedRandom);
+  const byId=original.teams.flatMap(t=>t.members);
+  assert.deepEqual(byId.map(p=>p.due).sort((a,b)=>a-b),[0,0,1000,1000,2000,2000,2000,2000].sort((a,b)=>a-b));
+  assert.equal(new Set(byId.map(p=>p.id)).size,8);
+  assert.ok(byId.every(p=>p.paid===0));
+  assert.equal(tournamentTotals(original).due,10000);
+  assert.deepEqual(
+   original.teams.find(t=>t.members[0].name==='D first').members.map(p=>[p.teamPlayer,p.due]),
+   [[true,1000],[true,1000]]
+  );
+  const copied=resizeTournamentDraw(original,2000,[...original.teams.map(t=>({id:t.id})),{p1:'New regular',p2:'New player'}],fixedRandom);
+  for(const participant of byId){
+   const kept=copied.teams.flatMap(t=>t.members).find(p=>p.id===participant.id);
+   assert.deepEqual(kept,participant,'Resize must preserve status, dues, IDs, payments');
+  }
+  const added=copied.teams.find(t=>t.members.some(p=>p.name==='New regular'));
+  assert.deepEqual(added.members.map(p=>[p.due,p.paid]),[[2000,0],[2000,0]]);
+ }
+});
+
+test('Create tournament Team Player checkboxes set stored participant dues and survive team-count redraw',async()=>{
+ const {widget,calls}=makeUI(false,[]);
+ await widget.load();await widget.action({dataset:{action:'tm-create-show'}});
+ let html=widget.page();
+ assert.equal((html.match(/>Team Player<\/span>/g)||[]).length,16);
+ assert.match(html,/name="team_player_1_1"/);
+ assert.match(html,/name="team_player_1_2"/);
+ const oldFormData=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.change({id:'tm-team-count',value:'4',closest:()=>({_values:[
+   ['name','Mixed Fees'],['date','2026-11-01'],['time','18:00'],
+   ['fee','20'],['format','groups'],['team_count','4'],
+   ['player_1_1','A first'],['player_1_2','A second'],
+   ['team_player_1_1','on'],['team_player_1_2','on']
+  ]})});
+  html=widget.page();
+  assert.equal((html.match(/>Team Player<\/span>/g)||[]).length,8);
+  assert.match(html,/name="team_player_1_1" checked/);
+  assert.match(html,/name="team_player_1_2" checked/);
+  const values=[
+   ['name','Mixed Fees'],['date','2026-11-01'],['time','18:00'],
+   ['fee','20'],['format','groups'],['team_count','4'],
+   ['player_1_1','A first'],['player_1_2','A second'],['team_player_1_1','on'],['team_player_1_2','on'],
+   ['player_2_1','B first'],['player_2_2','B second'],['team_player_2_1','on'],
+   ['player_3_1','C first'],['player_3_2','C second'],['team_player_3_2','on'],
+   ['player_4_1','D first'],['player_4_2','D second']
+  ];
+  await widget.submit({dataset:{tmSubmit:'create'},_values:values});
+ }finally{globalThis.FormData=oldFormData;}
+ const create=calls.find(c=>c.name==='tournament_create');
+ assert.ok(create);
+ const teams=create.args.p_state.teams;
+ const duesFor=name=>teams.find(t=>t.members[0].name===name).members.map(m=>m.due);
+ assert.deepEqual(duesFor('A first'),[1000,1000]);
+ assert.deepEqual(duesFor('B first'),[0,2000]);
+ assert.deepEqual(duesFor('C first'),[2000,0]);
+ assert.deepEqual(duesFor('D first'),[2000,2000]);
+ assert.equal(create.args.p_fee_cents,2000);
+ assert.equal(tournamentTotals(create.args.p_state).due,10000);
+ assert.match(widget.page(),/Team Player/);
 });
