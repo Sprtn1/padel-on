@@ -747,7 +747,13 @@
 .tm-team-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}
 .tm-team-input{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;border:1px solid #dae8dd;border-radius:11px;background:#fbfdfb}
 .tm-team-input strong{grid-column:1/-1;color:#285a3c;font-size:12px}
-.tm-team-input input:first-of-type{grid-column:1/-1}
+.tm-team-input input:first-of-type{grid-column:auto}
+.tm-tournament-player{display:flex;flex-direction:column;gap:7px;min-width:0}
+.tm-tournament-player>input{width:100%;min-width:0;box-sizing:border-box}
+.tm-team-player-option{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:#486f55;cursor:pointer;min-height:26px}
+.tm-team-player-option input[type=checkbox]{width:17px;height:17px;min-width:17px;accent-color:#148c60;cursor:pointer}
+.tm-team-player-badge{display:block;margin-top:3px;color:#258355;font-size:10px;font-weight:700}
+@media(max-width:560px){.tm-team-input{grid-template-columns:1fr}}
 .tm-hint{font-size:11px;color:#778e7f;line-height:1.6}
 .tm-tournament-info{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px}
 .tm-tournament-info p{color:#6c8173;margin:9px 0 0;font-size:12px;line-height:1.6}
