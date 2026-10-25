@@ -42,7 +42,9 @@ test('Arabic sheet matches the numbered account structure without inventing miss
  assert.equal(sheet.amountRows.find(x=>x[0]==='ملعب بادل')[1],13400);
  assert.equal(sheet.amountRows.find(x=>x[0]==='ملعب باسكت')[1],1000);
  assert.equal(sheet.amountRows.find(x=>x[0]==='صف تدريب جمناستك')[1],10000);
- assert.equal(sheet.amountRows.find(x=>x[0].startsWith('طابات (2) / جربات (3)'))[1],3400);
+ assert.deepEqual(sheet.amountRows.find(x=>x[0]==='طابات (2)'),['طابات (2)',2000,'701']);
+ assert.deepEqual(sheet.amountRows.find(x=>x[0]==='جربات (3)'),['جربات (3)',1400,'701']);
+ assert.ok(!sheet.amountRows.some(x=>x[0].includes(' / جربات')));
  assert.equal(sheet.amountRows.find(x=>x[0].includes('Client 1')&&x[0].includes('PS-42'))[2],'401');
  assert.equal(sheet.amountRows.find(x=>x[0].includes('Client 2')&&x[0].includes('PS-72'))[1],1000);
  assert.equal(sheet.trainingRows[0].clientName,'جانا بليبل');
@@ -62,6 +64,54 @@ test('Arabic sheet matches the numbered account structure without inventing miss
  assert.ok(sheet.details.some(x=>x.identifier==='PS-42'));
  assert.ok(!sheet.details.some(x=>x.name==='Voided court'));
  assert.ok(!sheet.details.some(x=>x.name==='Yesterday'));
+});
+
+test('Arabic daily PDF renders separate balls and grips rows with each quantity and amount',()=>{
+ const previousDocument=globalThis.document,printed=[];
+ const context={
+  save(){},restore(){},scale(){},fillRect(){},strokeRect(){},beginPath(){},moveTo(){},
+  lineTo(){},stroke(){},fillText(value){printed.push(String(value))}
+ };
+ try{
+  globalThis.document={createElement:()=>({
+   width:1346,height:1742,getContext:()=>context,
+   toDataURL:()=>'data:image/jpeg;base64,/9j/2Q=='
+  })};
+  const sheet=prepareArabicDailySheet(sample());
+  const ballsIndex=sheet.amountRows.findIndex(r=>r[0]==='طابات (2)');
+  const gripsIndex=sheet.amountRows.findIndex(r=>r[0]==='جربات (3)');
+  assert.equal(gripsIndex,ballsIndex+1,'Separate rows are adjacent');
+  assert.equal(sheet.amountRows.length,18,'Original one-page income table size is preserved');
+  const {pages}=makeArabicDailySheetPdf(sample());
+  assert.equal(pages,1);
+  for(const value of ['طابات (2)','جربات (3)','20','14'])
+   assert.ok(printed.includes(value),'Missing balls/grips quantity or amount in rendered PDF: '+value);
+  assert.ok(!printed.some(x=>x.includes(' / جربات')),'Combined line must not render');
+ }finally{globalThis.document=previousDocument;}
+});
+
+test('Separated balls and grips rows aggregate transactions without changing day totals or overflowing data',()=>{
+ const data=sample();
+ data.rows.push(
+  {entry_date:DAY,category:'balls',name:'Extra balls',amount_cents:750,quantity:3},
+  {entry_date:DAY,category:'grips',name:'Extra grips',amount_cents:400,quantity:2},
+  {entry_date:DAY,category:'balls',amount_cents:9999,quantity:7,voided_at:'x'},
+  {entry_date:'2026-10-20',category:'grips',amount_cents:9999,quantity:9}
+ );
+ const sheet=prepareArabicDailySheet(data);
+ assert.deepEqual(sheet.amountRows.find(x=>x[0]==='طابات (5)'),['طابات (5)',2750,'701']);
+ assert.deepEqual(sheet.amountRows.find(x=>x[0]==='جربات (5)'),['جربات (5)',1800,'701']);
+ assert.equal(sheet.ballsQuantity,5);
+ assert.equal(sheet.gripsQuantity,5);
+ assert.equal(sheet.receipts,32650,'Total income still includes both sales exactly once');
+ assert.equal(sheet.amountRows.length,18);
+ assert.equal(sheet.amountRows.find(x=>x[0].includes('Client 1'))[1],2500);
+ assert.equal(sheet.amountRows.find(x=>x[0].includes('Client 2'))[1],1000);
+ const empty=sample();
+ empty.rows=empty.rows.filter(x=>!['balls','grips'].includes(x.category));
+ const sheetEmpty=prepareArabicDailySheet(empty);
+ assert.deepEqual(sheetEmpty.amountRows.find(x=>x[0]==='طابات (0)'),['طابات (0)',0,'701']);
+ assert.deepEqual(sheetEmpty.amountRows.find(x=>x[0]==='جربات (0)'),['جربات (0)',0,'701']);
 });
 
 test('Arabic sheet derives Goods Sold from known daily cash and appends per-entry detail',()=>{
