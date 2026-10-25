@@ -1737,13 +1737,13 @@ async function refreshAllPagesWhenDue(){
    ['Order Counter',()=>orderCounter.refreshOrderCounterFromStorage(state.staff?.id||state.staff?.email)],
    ["Reem's Items List",()=>reemItems.refreshReemItemsFromStorage(state.staff?.id||state.staff?.email)]
   ];
-  const results=await Promise.allSettled(feeds.map(([,task])=>task()));
+  const results=await Promise.allSettled(feeds.map(([,task])=>Promise.resolve().then(task)));
   for(let i=0;i<results.length;i++){
    if(results[i].status==='rejected')
     console.warn('Auto-refresh failed: '+feeds[i][0],results[i].reason);
   }
   // Only repaint when no draft, search field, or input is being edited.
-  if(api.getSession()?.access_token&&!idleLogoutStarted&&canAutoRender())render();
+  if(api.getSession()?.access_token&&!idleLogoutStarted&&!document.hidden&&canAutoRender())render();
  }finally{
   autoRefreshRunning=false;
   allDataRefreshBusy=false;
