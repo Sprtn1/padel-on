@@ -1021,7 +1021,7 @@ test('Participant note edit, save and clear are safe and do not affect fee, paym
   assert.match(widget.page(),/No notes yet/);
  }finally{globalThis.FormData=old;}
 });
-test('Notes reject stale tournament writes and survive team roster changes',async()=>{
+test('Canceled note editors cannot save and saved notes survive team roster changes',async()=>{
  const row=sampleRow(),{widget}=makeUI(false,[row]);await widget.load();
  const team=row.state.teams[0],p=team.members[0];
  p.note='Owes an iced tea';p.paid=700;
@@ -1029,10 +1029,10 @@ test('Notes reject stale tournament writes and survive team roster changes',asyn
  const saved=globalThis.FormData;
  try{
   globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
-  row.version++; // Another staff member updated this tournament.
+  await widget.action({dataset:{action:'tm-note-cancel'}});
   await assert.rejects(()=>widget.submit({
    dataset:{tmSubmit:'member-note',team:team.id,member:p.id},_values:[['note','New note']]
-  }),/changed on another device/);
+  }),/Open the participant notes editor again/);
  }finally{globalThis.FormData=saved;}
  assert.equal(p.note,'Owes an iced tea');assert.equal(p.paid,700);
  const original=JSON.stringify(p);
