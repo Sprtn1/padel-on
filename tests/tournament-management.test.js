@@ -143,6 +143,17 @@ function makeUI(isAdmin=false,backing=[]){
     row.version++;
     return row.version;
    }
+   if(name==='tournament_set_member_note'){
+    const row=backing.find(x=>x.id===args.p_id);
+    if(!row)throw Error('Tournament not found');
+    if(row.version!==args.p_expected_version)throw Error('Tournament changed on another device. Refresh before saving');
+    const team=row.state.teams.find(x=>x.id===args.p_team);
+    const member=team?.members.find(x=>x.id===args.p_member);
+    if(!member)throw Error('Participant not found');
+    if(String(args.p_note).trim().length>1000)throw Error('Participant notes cannot exceed 1000 characters');
+    if(String(member.note??'')===args.p_note)return row.version;
+    member.note=args.p_note;row.version++;return row.version;
+   }
    if(name==='tournament_set_match_time'){
     const row=backing.find(x=>x.id===args.p_id);
     assert.equal(args.p_expected_version,row.version);
@@ -960,4 +971,73 @@ test('Create tournament Team Player checkboxes set stored participant dues and s
  // The creator closes when saved; member badges are shown on the tournament's
  // Participant Payments page once the newly created row is loaded.
  assert.doesNotMatch(widget.page(),/data-tm-submit="create"/);
+});
+
+test('Player notes are minimized per participant and only the selected notes expand',async()=>{
+ const first=sampleRow(),second=sampleRow();second.id='second-event';
+ const {widget}=makeUI(false,[first,second]);await widget.load();
+ const team=first.state.teams[0],one=team.members[0],two=team.members[1];
+ const keyA=first.id+':'+team.id+':'+one.id,keyB=first.id+':'+team.id+':'+two.id;
+ assert.equal((widget.page().match(/class="tm-member-notes"/g)||[]).length,8);
+ assert.match(widget.page(),/No notes yet/,'Older players without notes are supported');
+ assert.doesNotMatch(widget.page(),new RegExp('data-tm-member-note="'+keyA+'" open'));
+ widget.rememberNote(keyA,true);
+ assert.match(widget.page(),new RegExp('data-tm-member-note="'+keyA+'" open'));
+ assert.doesNotMatch(widget.page(),new RegExp('data-tm-member-note="'+keyB+'" open'));
+ await widget.load(true);
+ assert.match(widget.page(),new RegExp('data-tm-member-note="'+keyA+'" open'));
+ await widget.action({dataset:{action:'tm-select',id:second.id}});
+ assert.doesNotMatch(widget.page(),/class="tm-member-notes"[^>]* open/);
+ await widget.action({dataset:{action:'tm-select',id:first.id}});
+ assert.doesNotMatch(widget.page(),new RegExp('data-tm-member-note="'+keyA+'" open'));
+});
+test('Participant note edit, save and clear are safe and do not affect fee, payment, or ID',async()=>{
+ const row=sampleRow(),{widget,calls}=makeUI(false,[row]);await widget.load();
+ const team=row.state.teams[0],p=team.members[0],other=team.members[1];
+ p.paid=300;p.due=800;p.teamPlayer=true;
+ const before=JSON.stringify({id:p.id,paid:p.paid,due:p.due,teamPlayer:p.teamPlayer});
+ await widget.action({dataset:{action:'tm-note-edit',team:team.id,member:p.id}});
+ assert.match(widget.page(),/data-tm-submit="member-note"/);
+ const old=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  const form=note=>({dataset:{tmSubmit:'member-note',team:team.id,member:p.id},
+   _values:[['note',note]]});
+  await assert.rejects(()=>widget.submit(form('z'.repeat(1001))),/1000/);
+  assert.equal(calls.length,0);
+  await widget.submit(form('  Owes 2 waters <script>alert(1)</script>  '));
+  assert.equal(p.note,'Owes 2 waters <script>alert(1)</script>');
+  assert.match(widget.page(),/&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  assert.doesNotMatch(widget.page(),/<script>/);
+  assert.doesNotMatch(widget.page(),/data-tm-submit="member-note"/);
+  assert.equal(row.version,1);
+  assert.equal(other.note,undefined);
+  assert.equal(JSON.stringify({id:p.id,paid:p.paid,due:p.due,teamPlayer:p.teamPlayer}),before);
+  assert.deepEqual(calls.map(c=>c.name),['tournament_set_member_note']);
+  await widget.action({dataset:{action:'tm-note-edit',team:team.id,member:p.id}});
+  await widget.submit(form(''));
+  assert.equal(p.note,'');
+  assert.equal(row.version,2);
+  assert.match(widget.page(),/No notes yet/);
+ }finally{globalThis.FormData=old;}
+});
+test('Notes reject stale tournament writes and survive team roster changes',async()=>{
+ const row=sampleRow(),{widget}=makeUI(false,[row]);await widget.load();
+ const team=row.state.teams[0],p=team.members[0];
+ p.note='Owes an iced tea';p.paid=700;
+ await widget.action({dataset:{action:'tm-note-edit',team:team.id,member:p.id}});
+ const saved=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  row.version++; // Another staff member updated this tournament.
+  await assert.rejects(()=>widget.submit({
+   dataset:{tmSubmit:'member-note',team:team.id,member:p.id},_values:[['note','New note']]
+  }),/changed on another device/);
+ }finally{globalThis.FormData=saved;}
+ assert.equal(p.note,'Owes an iced tea');assert.equal(p.paid,700);
+ const original=JSON.stringify(p);
+ const resized=resizeTournamentDraw(row.state,row.fee_cents,[
+  ...row.state.teams.map(t=>({id:t.id})),{p1:'Extra Player',p2:'New Partner'}
+ ],fixedRandom);
+ assert.equal(JSON.stringify(resized.teams.flatMap(t=>t.members).find(m=>m.id===p.id)),original);
 });
