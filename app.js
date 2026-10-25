@@ -37,6 +37,13 @@ function initials(name){return String(name).split(/\s+/).slice(0,2).map(s=>s[0])
 function tag(label,color='green'){return `<span class="tag tag-${color}">${esc(label)}</span>`}
 function btn(label,action,cls='btn-light',more=''){return `<button class="btn ${cls}" data-action="${action}" ${more}>${label}</button>`}
 function toast(message,bad=false){const host=document.getElementById('toast-host');const node=document.createElement('div');node.className=`toast ${bad?'bad':''}`;node.textContent=message;host.append(node);setTimeout(()=>node.remove(),4100)}
+// 30-second all-page sync updates data in memory without discarding active drafts.
+let autoRefreshRunning=false;
+function canAutoRender(){
+ const active=document.activeElement;
+ return !state.modal && !active?.closest('form,.cafe-quick-sheet,[contenteditable="true"]') &&
+  !['INPUT','TEXTAREA','SELECT'].includes(active?.tagName);
+}
 const tabs=[['dashboard','Overview','grid'],['cafeteria-finances','Cafeteria Finances','coins'],['debts','Cafeteria Debts','wallet'],['private-clients','Private Sessions','users'],['team','Team Members','users'],['training','Monthly Training','calendar'],['other','Other Benefits','gift'],['finance','Matchmaking','wallet'],['tournament','Tournament Management','activity'],['activity','Game Activity','list'],['reports','Reports','download'],['settings','Settings','settings']];
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
@@ -70,7 +77,7 @@ const tournamentManagement=tournamentModule.createTournamentManagement({
  isAdmin:()=>state.staff?.role==='admin'
 });
 const clubInsights=clubInsightsModule.createCashInsights({
- api,today,amount,renderIfVisible:tab=>{if(state.tab===tab&&api.getSession()?.access_token)render()}
+ api,today,amount,renderIfVisible:tab=>{if(state.tab===tab&&api.getSession()?.access_token&&(!autoRefreshRunning||canAutoRender()))render()}
 });
 // Staff inactivity policy: six hours without user interaction logs out every open tab.
 // Background database polling and token refreshes never extend this timer.
@@ -366,17 +373,20 @@ function reportRange(){
  const first=state.reportMonth+'-01',last=addDays(shiftMonth(state.reportMonth,1)+'-01',-1);
  return [first,last];
 }
-async function loadReport(){
+async function loadReport({background=false}={}){
+ if(background&&state.reportLoading)return;
  const [start,end]=reportRange(),mode=state.reportMode;
  const request=++reportSeq;
  void clubInsights.loadReport(start,end,true);
- state.reportLoading=true;state.reportData=null;state.reportKey=`${mode}:${start}`;
- render();
+ state.reportLoading=true;
+ if(!background)state.reportData=null;
+ state.reportKey=`${mode}:${start}`;
+ if(!background)render();
  try{
   const data=await fetchPeriod(start,end);
   if(request===reportSeq)state.reportData=data;
  }catch(e){if(request===reportSeq)toast('Could not load report: '+e.message,true)}
- finally{if(request===reportSeq){state.reportLoading=false;render()}}
+ finally{if(request===reportSeq){state.reportLoading=false;if(!background)render()}}
 }
 function reportMetrics(){
  const data=state.reportData;
@@ -501,12 +511,12 @@ function trainingMonthData(){
  return {sessions,attendance,attended,members,used:members.filter(m=>attended.has(m.id)).length,remaining:members.filter(m=>!attended.has(m.id)).length};
 }
 let trainingLoadSequence=0;
-async function loadTrainingMonth(){
+async function loadTrainingMonth({background=false}={}){
  if(!api.getSession()?.access_token||!state.staff)return;
  const target=state.trainingMonth,seq=++trainingLoadSequence;
  const start=target+'-01',end=addDays(shiftMonth(target,1)+'-01',-1);
  state.trainingLoading=true;state.trainingError=null;state.trainingLoadedMonth=null;
- if(state.tab==='training')render();
+ if(state.tab==='training'&&!background)render();
  try{
   const [sessions,attendance]=await Promise.all([
    api.listAll('training_sessions','session_date=gte.'+start+'&session_date=lte.'+end),
@@ -519,7 +529,7 @@ async function loadTrainingMonth(){
  }finally{
   if(seq===trainingLoadSequence){
    state.trainingLoading=false;
-   if(state.tab==='training'&&api.getSession()?.access_token)render();
+   if(state.tab==='training'&&!background&&api.getSession()?.access_token)render();
   }
  }
 }
@@ -1015,10 +1025,10 @@ function closeModal(){state.modal=null;document.getElementById('modal-root').inn
 function renderAuth(message=''){
  app.innerHTML=`<main class="auth-wrap"><section class="auth-lead"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><h1>The team.<br/><em>All in one place.</em></h1><p>Weekly padel benefits, special players, and matchmaking revenue—securely tracked together.</p></section><section class="auth-card"><div class="eyebrow">Private club workspace</div><h2>Welcome back</h2><p class="sub">Sign in with your PADEL ON staff account.</p>${!api.configured?'<div class="auth-error">Unable to connect. Please contact an administrator.</div>':''}${message?`<div class="auth-error">${esc(message)}</div>`:''}<form id="login-form">${field('email','Email address','','email','required autocomplete="email"')}${field('password','Password','','password','required autocomplete="current-password"')}<button class="btn btn-primary" ${!api.configured?'disabled':''} type="submit">Sign In ${icon('arrow')}</button></form><div class="auth-foot">Authorized PADEL ON staff only · Staff access only</div></section></main>`;
 }
-async function loadDebtData(){
+async function loadDebtData({background=false}={}){
  if(!api.getSession()?.access_token||!state.staff||state.debtLoading)return;
  state.debtLoading=true;state.debtError=null;
- if(state.tab==='debts'&&!state.debtLoaded)render();
+ if(state.tab==='debts'&&!state.debtLoaded&&!background)render();
  try{
   const [people,entries]=await Promise.all([
    api.listAll('cafeteria_debt_people'),
@@ -1034,7 +1044,7 @@ async function loadDebtData(){
   }
  }finally{
   state.debtLoading=false;
-  if((state.tab==='debts'||state.tab==='dashboard'||state.tab==='reports')&&!state.modal&&api.getSession()?.access_token)render();updateGlobalSearchResults();
+  if(!background&&(state.tab==='debts'||state.tab==='dashboard'||state.tab==='reports')&&!state.modal&&api.getSession()?.access_token)render();updateGlobalSearchResults();
  }
 }
 async function loadOverviewTraining(){
@@ -1060,10 +1070,10 @@ function loadClubSources(){
  if(!state.debtLoading)void loadDebtData();
  if(state.tab==='dashboard')void loadOverviewTraining();
 }
-async function loadPrivateClients(){
+async function loadPrivateClients({background=false}={}){
  if(!api.getSession()?.access_token||!state.staff||state.privateLoading)return;
  state.privateLoading=true;state.privateError=null;
- if(state.tab==='private-clients'&&!state.privateLoaded)render();
+ if(state.tab==='private-clients'&&!state.privateLoaded&&!background)render();
  try{
   const [clients,coaches,entries]=await Promise.all([
    api.listAll('private_clients'),
@@ -1083,10 +1093,10 @@ async function loadPrivateClients(){
   }
  }finally{
   state.privateLoading=false;
-  if((state.tab==='private-clients'||state.tab==='dashboard'||state.tab==='reports')&&!state.modal&&api.getSession()?.access_token)render();updateGlobalSearchResults();
+  if(!background&&(state.tab==='private-clients'||state.tab==='dashboard'||state.tab==='reports')&&!state.modal&&api.getSession()?.access_token)render();updateGlobalSearchResults();
  }
 }
-async function loadData(resetTab=false){if(state.loading)return;state.loading=true;try{
+async function loadData(resetTab=false,{background=false}={}){if(state.loading)return;state.loading=true;try{
  const auth=api.getSession();if(!auth?.access_token)throw Error('Sign in required');
  const profiles=await api.list('staff_profiles',`id=eq.${auth.user.id}`);
  if(!profiles.length){await api.signOut();throw Error('This account does not have staff access. Contact an administrator.');}
@@ -1099,7 +1109,18 @@ async function loadData(resetTab=false){if(state.loading)return;state.loading=tr
  if(!api.getSession()?.access_token || idleLogoutStarted)return;
  Object.assign(state,{members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers});
  if(matchmakers.length&&!matchmakers.some(p=>p.id===state.matchmakerId))state.matchmakerId=matchmakers[0].id;
- if(resetTab)state.tab='dashboard'; render(); if(state.tab==='reports'&&!state.reportLoading)void loadReport(); if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth(); if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients(); if(state.tab==='debts'&&!state.debtLoading)void loadDebtData(); if(state.tab==='cafeteria-finances')void cafeteriaFinances.load(true);if(state.tab==='tournament')void tournamentManagement.load(true); if(state.tab==='dashboard'||state.tab==='reports')loadClubSources();if(state.tab==='dashboard')void clubInsights.loadOverview(true);
+ if(resetTab)state.tab='dashboard';
+ if(!background){
+  render();
+  if(state.tab==='reports'&&!state.reportLoading)void loadReport();
+  if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth();
+  if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients();
+  if(state.tab==='debts'&&!state.debtLoading)void loadDebtData();
+  if(state.tab==='cafeteria-finances')void cafeteriaFinances.load(true);
+  if(state.tab==='tournament')void tournamentManagement.load(true);
+  if(state.tab==='dashboard'||state.tab==='reports')loadClubSources();
+  if(state.tab==='dashboard')void clubInsights.loadOverview(true);
+ }
  }catch(e){if((idleLogoutStarted || !api.getSession()?.access_token) && !e.message.includes('no PADEL ON staff access'))return;if(e.message.includes('sign in')||e.message.includes('JWT')||e.message.includes('refresh token')){clearStaffActivity();await api.signOut();renderAuth(e.message)}else if(state.staff){toast(e.message,true)}else renderAuth(e.message)}finally{state.loading=false;}}
 let working=false;
 async function runMutation(task,success='Saved successfully'){if(working)return;working=true;const b=document.getElementById('save-button');if(b){b.disabled=true;b.textContent='Saving…'}try{await task();state.modal=null;await loadData();toast(success)}catch(e){toast(e?.message||'Could not save. Try again.',true)}finally{working=false;if(b&&b.isConnected){b.disabled=false;b.textContent='Try again'}}}
