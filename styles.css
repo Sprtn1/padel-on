@@ -785,6 +785,25 @@
 .tm-payment-count{font-size:11px;color:#799184;margin:-3px 0 11px}
 .tm-payments tbody tr[hidden],.tm-payment-empty[hidden]{display:none!important}
 .tm-payment-empty{padding:22px 10px;margin:0;text-align:center;color:#799184;font-size:12px}
+
+/* Small per-player notes live under the participant name, not in their balance. */
+.tm-member-notes{margin-top:8px;width:min(100%,220px);min-width:145px;font-weight:400}
+.tm-member-notes>summary{display:flex;align-items:center;gap:6px;min-height:28px;width:max-content;max-width:100%;cursor:pointer;list-style:none;color:#4c8060;font-size:11px;font-weight:750}
+.tm-member-notes>summary::-webkit-details-marker{display:none}
+.tm-member-notes>summary::before{content:'▸';color:#648e72;font-size:13px;transition:transform .16s ease}
+.tm-member-notes[open]>summary::before{transform:rotate(90deg)}
+.tm-member-notes>summary:focus-visible{outline:2px solid #238d60;outline-offset:3px;border-radius:4px}
+.tm-note-saved{font-size:10px;color:#388658;background:#e9f5ec;border-radius:5px;padding:2px 5px}
+.tm-member-note-body{display:grid;justify-items:start;gap:7px;margin-top:7px}
+.tm-member-note-body>small{color:#82988a;font-size:11px}
+.tm-member-note-text{margin:0;color:#425e4b;font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;line-height:1.5}
+.tm-member-note-form{display:grid;gap:8px;width:100%;min-width:0}
+.tm-member-note-form label{display:grid;gap:5px;color:#53715b;font-size:11px;font-weight:700}
+.tm-member-note-form textarea{width:100%;min-width:0;min-height:75px;box-sizing:border-box;border:1px solid #cee2d4;border-radius:8px;padding:9px;background:white;color:#244633;font:inherit;font-size:12px;line-height:1.4;resize:vertical}
+.tm-member-note-form textarea:focus{outline:2px solid #c6ecd2;border-color:#34885f}
+.tm-member-note-actions{display:flex;gap:6px;flex-wrap:wrap}
+.tm-member-note-actions .btn{padding:6px 8px;font-size:10px}
+
 @media(max-width:560px){.tm-payment-head{align-items:stretch}.tm-payment-search{width:100%;max-width:none}}
 
 .tm-payment-actions{display:flex;gap:6px;flex-wrap:wrap}
