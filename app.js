@@ -1698,7 +1698,7 @@ document.addEventListener('change',e=>{
   try{tournamentManagement.change(e.target)}catch(err){toast(err.message||'Unable to update tournament.',true)}
   return;
  }
- if((e.target.id==='cafe-finance-date'||e.target.id==='cafe-quick-category'||e.target.dataset?.cafeMarker)&&state.tab==='cafeteria-finances'){
+ if((e.target.id==='cafe-finance-date'||e.target.id==='cafe-quick-category'||e.target.dataset?.cafeMarker||e.target.dataset?.cafePrivateCash!==undefined||e.target.dataset?.cafeWhishClientSearch!==undefined)&&state.tab==='cafeteria-finances'){
   void cafeteriaFinances.change(e.target).catch(err=>toast(err.message||'Could not update finances.',true));return;
  }
  if(e.target.dataset?.reemInput==='quantity' && state.tab==='reem-items' && canUseOrderLists()){render();return;}
