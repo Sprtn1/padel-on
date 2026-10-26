@@ -43,3 +43,24 @@ test('Mobile and desktop wrappers preserve trusted origins and safe browser boun
  assert.match(workflow,/assembleDebug/);
  assert.match(workflow,/CODE_SIGNING_ALLOWED=NO/);
 });
+
+test('All three packaged apps use the original Padel On SVG for branded icons',()=>{
+ const logo=file('assets/logo.svg');
+ assert.match(logo,/#73f648/);
+ assert.match(logo,/#ffffff/);
+ const mobile=JSON.parse(file('packaging/mobile/package.json'));
+ const windows=JSON.parse(file('packaging/windows/package.json'));
+ for(const name of ['add:android','add:ios','sync:android','sync:ios'])
+  assert.match(mobile.scripts[name],/branding:(android|ios)/);
+ assert.match(mobile.scripts['branding:android'],/capacitor-assets generate --android/);
+ assert.match(mobile.scripts['branding:ios'],/capacitor-assets generate --ios/);
+ assert.equal(mobile.devDependencies['@capacitor/assets'],'3.0.5');
+ assert.match(file('scripts/prepare-mobile-branding.mjs'),/assets[\x27,]..logo\.svg|assets\x27,\x27logo\.svg/);
+ assert.match(file('packaging/windows/generate-icon.mjs'),/assets\/logo\.svg/);
+ assert.equal(windows.build.win.icon,'build/icon.ico');
+ assert.equal(windows.build.win.signAndEditExecutable,true);
+ assert.equal(windows.build.win.signExecutable,false);
+ assert.ok(windows.build.files.includes('build/icon.ico'));
+ assert.match(windows.scripts['build:exe'],/branding:windows/);
+ assert.match(file('packaging/windows/main.cjs'),/build\x27,\x27icon\.ico/);
+});

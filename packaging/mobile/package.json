@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "prepare:web": "node ../../scripts/prepare-native-web.mjs",
-    "add:android": "npm run prepare:web && cap add android && cap sync android",
-    "add:ios": "npm run prepare:web && cap add ios && cap sync ios",
-    "sync:android": "npm run prepare:web && cap sync android",
-    "sync:ios": "npm run prepare:web && cap sync ios"
+    "add:android": "npm run prepare:web && cap add android && cap sync android && npm run branding:android",
+    "add:ios": "npm run prepare:web && cap add ios && cap sync ios && npm run branding:ios",
+    "sync:android": "npm run prepare:web && cap sync android && npm run branding:android",
+    "sync:ios": "npm run prepare:web && cap sync ios && npm run branding:ios",
+    "branding:prepare": "node ../../scripts/prepare-mobile-branding.mjs",
+    "branding:android": "npm run branding:prepare && capacitor-assets generate --android --iconBackgroundColor \"#0b1715\" --iconBackgroundColorDark \"#0b1715\" --splashBackgroundColor \"#0b1715\" --splashBackgroundColorDark \"#0b1715\"",
+    "branding:ios": "npm run branding:prepare && capacitor-assets generate --ios --iconBackgroundColor \"#0b1715\" --iconBackgroundColorDark \"#0b1715\" --splashBackgroundColor \"#0b1715\" --splashBackgroundColorDark \"#0b1715\""
   },
   "dependencies": {
     "@capacitor/core": "8.5.3",
@@ -16,6 +19,7 @@
     "@capacitor/ios": "8.5.3"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.3"
+    "@capacitor/cli": "8.5.3",
+    "@capacitor/assets": "3.0.5"
   }
 }

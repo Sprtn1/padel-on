@@ -2,6 +2,7 @@
 // Hardened desktop shell. The existing web app + Supabase remain authoritative.
 // Remote web content has NO Node.js privileges, preload bridge, or file access.
 const {app,BrowserWindow,shell}=require('electron');
+const {join}=require('node:path');
 
 const BASE_URL='https://padelon.publicvm.com/';
 const APP_ORIGIN=new URL(BASE_URL).origin;
@@ -14,6 +15,7 @@ function safeExternal(url){
 function createMainWindow(){
  const win=new BrowserWindow({
   title:'Padel On',
+  icon:join(__dirname,'build','icon.ico'),
   width:1280,height:860,minWidth:375,minHeight:570,
   show:false,backgroundColor:'#f5f8f6',autoHideMenuBar:true,
   webPreferences:{

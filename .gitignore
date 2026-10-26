@@ -77,3 +77,7 @@ packaging/mobile/android/
 packaging/mobile/ios/
 packaging/mobile/PadelOn-iOS-Xcode.zip
 packaging/windows/release/
+
+# Generated branded icons and splash source copies
+packaging/mobile/assets/
+packaging/windows/build/

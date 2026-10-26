@@ -6,11 +6,13 @@
   "description": "Padel On desktop client, connecting securely to the existing managed website",
   "scripts": {
     "start": "electron .",
-    "build:exe": "electron-builder --win portable --x64 --publish never"
+    "build:exe": "npm run branding:windows && electron-builder --win portable --x64 --publish never",
+    "branding:windows": "node generate-icon.mjs"
   },
   "devDependencies": {
     "electron": "45.0.0",
-    "electron-builder": "26.18.0"
+    "electron-builder": "26.18.0",
+    "sharp": "0.35.5"
   },
   "build": {
     "appId": "com.padelon.management",
@@ -21,12 +23,15 @@
     },
     "files": [
       "main.cjs",
-      "package.json"
+      "package.json",
+      "build/icon.ico"
     ],
     "win": {
       "target": "portable",
       "artifactName": "PadelOn-${version}-${arch}.${ext}",
-      "signAndEditExecutable": false
+      "signAndEditExecutable": true,
+      "icon": "build/icon.ico",
+      "signExecutable": false
     }
   }
 }
