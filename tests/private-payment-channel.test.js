@@ -71,7 +71,7 @@ test('Closing verifies the newest private Cash/Whish route before submitting',as
  assert.match(widget.page(),/Negative difference/);
  paymentChannel='whish'; // staff updates it on another device while page remains open
  await widget.action({dataset:{action:'cafe-day-close'}});
- assert.equal(reads,2,'A new private-payment fetch must precede closing');
+ assert.equal(reads,3,'Closing reads private payments before validation and reloads after saving');
  assert.match(widget.page(),/\$152\.52/);
  assert.equal(rpcCalls.filter(c=>c.name==='cafeteria_change_day_status'&&c.params.p_action==='close').length,1);
 });
