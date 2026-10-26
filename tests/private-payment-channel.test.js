@@ -104,3 +104,28 @@ test('Closing blocks a truly negative cash amount after fresh recheck',async()=>
  assert.match(widget.page(),/Negative difference/);
  assert.ok(!rpcCalls.includes('cafeteria_change_day_status'));
 });
+
+test('Supabase closing RPC counts only cash-routed private payments, mirroring daily Goods Sold',()=>{
+ const sql=readFileSync(new URL('../supabase/migrations/20261026_close_day_exclude_private_whish.sql',import.meta.url),'utf8');
+ assert.match(sql,/create or replace function public\.cafeteria_change_day_status/i);
+ assert.match(sql,/perform pg_advisory_xact_lock/i);
+ assert.match(sql,/private_ledger_entries[\s\S]{0,180}payment_channel='cash'/);
+ assert.match(sql,/v_difference<0/);
+ assert.match(sql,/grant execute on function public\.cafeteria_change_day_status\(date,text,text\) to authenticated/i);
+ const rows=[
+  {entry_type:'session',paid_cents:20000,payment_channel:'whish'},
+  {entry_type:'deposit',deposit_cents:1000,payment_channel:'cash'}
+ ];
+ const cashReceipts=rows.filter(x=>x.payment_channel==='cash').reduce((sum,e)=>
+  sum+Number(e.entry_type==='session'?e.paid_cents:e.deposit_cents),0);
+ const dashboard=cafeReconciliation([{category:'padel_courts',amount_cents:40698},
+  {category:'general_payment',amount_cents:10450}],45500,rows.map(e=>({
+   payment_channel:e.payment_channel,
+   amount_cents:Number(e.entry_type==='session'?e.paid_cents:e.deposit_cents)
+  })));
+ const serverDifference=45500+10450-40698-cashReceipts;
+ assert.equal(serverDifference,dashboard.goodsSold);
+ assert.equal(serverDifference,14252);
+ const oldBrokenDifference=45500+10450-40698-21000;
+ assert.ok(oldBrokenDifference<0,'The old RPC produced a false negative by counting Whish as cash');
+});
