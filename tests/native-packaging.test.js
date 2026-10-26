@@ -42,6 +42,14 @@ test('Mobile and desktop wrappers preserve trusted origins and safe browser boun
   assert.ok(workflow.includes(artifact),artifact);
  assert.match(workflow,/assembleDebug/);
  assert.match(workflow,/CODE_SIGNING_ALLOWED=NO/);
+ assert.match(workflow,/PadelOn-iOS-Unsigned-IPA/);
+ assert.match(workflow,/\-sdk iphoneos/);
+ assert.match(workflow,/Debug-iphoneos\/App\.app/);
+ assert.match(workflow,/CODE_SIGNING_REQUIRED=NO/);
+ assert.match(workflow,/Payload\/App\.app/);
+ assert.match(workflow,/PlistBuddy/);
+ assert.match(workflow,/zip -qry/);
+ assert.doesNotMatch(workflow,/APPLE_ID_PASSWORD|APPLE_APP_SPECIFIC_PASSWORD/);
 });
 
 test('All three packaged apps use the original Padel On SVG for branded icons',()=>{

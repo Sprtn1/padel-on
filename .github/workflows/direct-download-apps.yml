@@ -89,6 +89,33 @@ jobs:
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO build
+      # Build for real iPhones, NOT the simulator. Sideloadly will sign the
+      # unsigned .ipa on the user's computer using their own Apple ID.
+      - name: Build unsigned iPhone app for Sideloadly
+        working-directory: packaging/mobile
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/PadelOnDevice" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+          APP="$RUNNER_TEMP/PadelOnDevice/Build/Products/Debug-iphoneos/App.app"
+          test -d "$APP"
+          test -f "$APP/Info.plist"
+          test -f "$APP/App"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist" |
+            grep -Fx 'com.padelon.management'
+          file "$APP/App" | grep -E '(arm64|aarch64)'
+          mkdir -p "$RUNNER_TEMP/PadelOnIPA/Payload"
+          ditto "$APP" "$RUNNER_TEMP/PadelOnIPA/Payload/App.app"
+          (cd "$RUNNER_TEMP/PadelOnIPA" && zip -qry \
+            "$GITHUB_WORKSPACE/packaging/mobile/PadelOn-unsigned.ipa" Payload)
+          unzip -l PadelOn-unsigned.ipa | grep 'Payload/App.app/Info.plist'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PadelOn-iOS-Unsigned-IPA
+          path: packaging/mobile/PadelOn-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
       - name: Archive project for manual ad hoc signing
         run: |
           cd packaging/mobile
