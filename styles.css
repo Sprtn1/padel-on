@@ -634,11 +634,6 @@
 .cafe-payment-channel-toggle span{font-size:10px;color:#648273}
 .cafe-private-payment-totals{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:#698375}
 .cafe-private-payment-totals b{color:#176f4a}
-.whish-client-lookup{margin:0 0 13px;padding:10px 12px;border:1px solid #e2eee6;border-radius:10px}
-.whish-client-lookup summary{font-size:11px;color:#147c51;font-weight:800;cursor:pointer}
-.whish-client-lookup .cafe-input-label{display:block;margin:12px 0 0}
-.whish-client-lookup input{width:100%;min-width:0;min-height:40px;border:1px solid #dae7de;border-radius:9px;padding:8px 10px;font-size:12px;background:#fff;color:#234333}
-.whish-client-lookup input:focus{outline:2px solid #d7f0df;border-color:#149668}
 
 /* Quick-fill Whish description options; the name input remains editable. */
 .whish-quick-descriptions{display:grid;gap:7px;margin-bottom:12px}
