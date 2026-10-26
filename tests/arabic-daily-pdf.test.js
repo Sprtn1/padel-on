@@ -353,8 +353,10 @@ test('Whish PDF converts Goods Sold and cash-box transfer only and keeps data in
  );
  const before=JSON.parse(JSON.stringify(input));
  const sheet=prepareArabicDailySheet(input);
- assert.equal(sheet.whishIn.find(e=>e.name==='مبيع متفرقات').amount_cents,1580);
- assert.equal(sheet.whishOut.find(e=>e.name==='خروج إلى صندوق متفرقات').amount_cents,700);
+ assert.equal(sheet.whishIn.find(e=>e.name==='مبيع متفرقات').amount_cents,880);
+ assert.equal(sheet.whishOut.find(e=>e.name==='خروج إلى صندوق متفرقات'),undefined);
+ assert.equal(sheet.whishPdfDepositsToday,sheet.whishDepositsToday-700);
+ assert.equal(sheet.whishPdfWithdrawalsToday,sheet.whishWithdrawalsToday-700);
  assert.ok(sheet.whishOut.some(e=>e.name==='Other withdrawal'));
  assert.ok(sheet.whishDetails.some(e=>e.name==='خروج إلى صندوق متفرقات'));
  assert.ok(!sheet.whishDetails.some(e=>e.name==='Transfer from Whish to Miscellaneous Cash Box'));
@@ -487,4 +489,89 @@ test('Arabic daily PDF prints the calculated entry number in its top-right heade
    assert.ok(!painted.some(item=>item.value.includes('................')));
   }
  }finally{globalThis.document=previousDocument;}
+});
+
+test('Arabic PDF offsets Whish transfer larger than Goods Sold without changing actual accounting',()=>{
+ const day='2026-10-25';
+ const data={...sample(),date:day,rows:[],privatePayments:[],privateSessions:[],closingCash:45500,whishOpening:60,whishRows:[
+  {entry_date:day,entry_type:'deposit',name:'Padel Courts',amount_cents:10500},
+  {entry_date:day,entry_type:'deposit',name:'Goods Sold',amount_cents:2000},
+  {entry_date:day,entry_type:'deposit',name:'goods sold',amount_cents:2470},
+  {entry_date:day,entry_type:'deposit',name:'مشترك: مصطفى الدهان (91)',amount_cents:20000},
+  {entry_date:day,entry_type:'withdrawal',name:'Transfer from Whish to Miscellaneous Cash Box',amount_cents:6500},
+  {entry_date:day,entry_type:'withdrawal',name:'خروج إلى صندوق متفرقات',amount_cents:2500},
+  {entry_date:'2026-10-24',entry_type:'deposit',name:'Goods Sold',amount_cents:10000},
+  {entry_date:day,entry_type:'deposit',name:'Goods Sold',amount_cents:9900,voided_at:'void'}
+ ]};
+ const before=structuredClone(data),sheet=prepareArabicDailySheet(data);
+ assert.equal(sheet.whishDepositsToday,34970);
+ assert.equal(sheet.whishWithdrawalsToday,9000);
+ assert.equal(sheet.whishPdfDepositsToday,30500);
+ assert.equal(sheet.whishPdfWithdrawalsToday,4530);
+ assert.equal(sheet.walletBalance,36030);
+ assert.ok(!sheet.whishIn.some(x=>x.name==='مبيع متفرقات'));
+ assert.equal(sheet.whishOut.find(x=>x.name==='خروج إلى صندوق متفرقات').amount_cents,4530);
+ assert.equal(sheet.whishIn.find(x=>x.name==='Padel Courts').amount_cents,10500);
+ assert.equal(sheet.whishIn.find(x=>x.name==='مشترك: مصطفى الدهان (91)').amount_cents,20000);
+ assert.ok(sheet.whishDetails.some(x=>x.name==='مبيع متفرقات'&&x.amount_cents===2000));
+ assert.equal(sheet.goodsSold,45500);
+ assert.equal(sheet.receipts,0);
+ assert.deepEqual(data,before);
+ assert.equal(sheet.whishIn.reduce((n,x)=>n+x.amount_cents,0),sheet.whishPdfDepositsToday);
+ assert.equal(sheet.whishOut.reduce((n,x)=>n+x.amount_cents,0),sheet.whishPdfWithdrawalsToday);
+});
+test('Arabic PDF handles larger Goods Sold, equal values, or missing counterparty',()=>{
+ const data=sample();
+ data.whishRows=[
+  {entry_date:DAY,entry_type:'deposit',name:'Goods Sold',amount_cents:9000},
+  {entry_date:DAY,entry_type:'withdrawal',name:'Transfer from Whish to Miscellaneous Cash Box',amount_cents:4470},
+  {entry_date:DAY,entry_type:'deposit',name:'Other deposit',amount_cents:200},
+  {entry_date:DAY,entry_type:'withdrawal',name:'Other withdrawal',amount_cents:100}
+ ];
+ let sheet=prepareArabicDailySheet(data);
+ assert.equal(sheet.whishIn.find(x=>x.name==='مبيع متفرقات').amount_cents,4530);
+ assert.ok(!sheet.whishOut.some(x=>x.name==='خروج إلى صندوق متفرقات'));
+ assert.equal(sheet.whishPdfDepositsToday,4730);
+ assert.equal(sheet.whishPdfWithdrawalsToday,100);
+ assert.equal(sheet.whishDepositsToday,9200);
+ assert.equal(sheet.whishWithdrawalsToday,4570);
+ data.whishRows[0].amount_cents=4470;
+ sheet=prepareArabicDailySheet(data);
+ assert.ok(!sheet.whishIn.some(x=>x.name==='مبيع متفرقات'));
+ assert.ok(!sheet.whishOut.some(x=>x.name==='خروج إلى صندوق متفرقات'));
+ assert.equal(sheet.whishPdfDepositsToday,200);
+ assert.equal(sheet.whishPdfWithdrawalsToday,100);
+ data.whishRows=data.whishRows.filter(x=>x.name!=='Transfer from Whish to Miscellaneous Cash Box');
+ sheet=prepareArabicDailySheet(data);
+ assert.equal(sheet.whishIn.find(x=>x.name==='مبيع متفرقات').amount_cents,4470);
+ assert.equal(sheet.whishPdfDepositsToday,sheet.whishDepositsToday);
+ assert.equal(sheet.whishPdfWithdrawalsToday,sheet.whishWithdrawalsToday);
+});
+test('Rendered Arabic PDF shows only the adjusted Whish totals, not the raw amounts',()=>{
+ const data={...sample(),whishRows:[
+  {entry_date:DAY,entry_type:'deposit',name:'Padel Courts',amount_cents:10500},
+  {entry_date:DAY,entry_type:'deposit',name:'Goods Sold',amount_cents:4470},
+  {entry_date:DAY,entry_type:'deposit',name:'مشترك: مصطفى الدهان (91)',amount_cents:20000},
+  {entry_date:DAY,entry_type:'withdrawal',name:'Transfer from Whish to Miscellaneous Cash Box',amount_cents:9000}
+ ]};
+ const old=globalThis.document,paints=[];
+ const context={save(){},restore(){},scale(){},fillRect(){},strokeRect(){},beginPath(){},moveTo(){},
+  lineTo(){},stroke(){},fillText(value,x,y){paints.push({value:String(value),x,y})}};
+ try{
+  globalThis.document={createElement:()=>({
+   width:1346,height:1742,getContext:()=>context,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q=='
+  })};
+  const result=makeArabicDailySheetPdf(data);
+  assert.equal(result.pages,1);
+  assert.equal(result.sheet.whishPdfDepositsToday,30500);
+  assert.equal(result.sheet.whishPdfWithdrawalsToday,4530);
+  assert.equal(result.sheet.whishDepositsToday,34970);
+  assert.equal(result.sheet.whishWithdrawalsToday,9000);
+  assert.ok(paints.some(x=>x.value==='305'&&x.y===524.5&&x.x>300));
+  assert.ok(paints.some(x=>x.value==='45.3'&&x.y===524.5&&x.x<300));
+  assert.ok(!paints.some(x=>x.value==='349.7'&&x.y===524.5));
+  assert.ok(!paints.some(x=>x.value==='90'&&x.y===524.5));
+  assert.ok(!paints.some(x=>x.value==='مبيع متفرقات'&&x.y>539&&x.y<655));
+  assert.ok(paints.some(x=>x.value==='خروج إلى صندوق متفرقات'&&x.y>539&&x.y<655));
+ }finally{globalThis.document=old}
 });
