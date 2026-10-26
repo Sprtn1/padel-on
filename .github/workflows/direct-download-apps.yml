@@ -1,0 +1,101 @@
+name: Direct-download Padel On apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/direct-download-apps.yml'
+      - 'packaging/**'
+      - 'scripts/prepare-native-web.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  android-apk:
+    name: Android APK (direct installation)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Install pinned Capacitor dependencies
+        run: npm install --prefix packaging/mobile --no-audit --no-fund
+      - name: Stage the public web app and initialize Android
+        working-directory: packaging/mobile
+        run: npm run add:android
+      - name: Compile installable debug APK
+        working-directory: packaging/mobile/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon --max-workers=2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PadelOn-Android-APK
+          path: packaging/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  windows-exe:
+    name: Windows EXE (portable)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned Electron dependencies
+        run: npm install --prefix packaging/windows --no-audit --no-fund
+      - name: Build portable EXE
+        run: npm run build:exe --prefix packaging/windows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PadelOn-Windows-EXE
+          path: packaging/windows/release/*.exe
+          if-no-files-found: error
+          retention-days: 30
+
+  ios-project:
+    name: iOS project (ready for signing)
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Install pinned Capacitor dependencies
+        run: npm install --prefix packaging/mobile --no-audit --no-fund
+      - name: Generate Xcode project from existing app
+        working-directory: packaging/mobile
+        run: npm run add:ios
+      - name: Verify unsigned simulator build
+        working-directory: packaging/mobile
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Archive project for manual ad hoc signing
+        run: |
+          cd packaging/mobile
+          ditto -c -k --sequesterRsrc --keepParent ios PadelOn-iOS-Xcode.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PadelOn-iOS-Xcode-Project
+          path: packaging/mobile/PadelOn-iOS-Xcode.zip
+          if-no-files-found: error
+          retention-days: 30

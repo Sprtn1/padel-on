@@ -1,0 +1,32 @@
+{
+  "name": "padel-on-windows",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.cjs",
+  "description": "Padel On desktop client, connecting securely to the existing managed website",
+  "scripts": {
+    "start": "electron .",
+    "build:exe": "electron-builder --win portable --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.padelon.management",
+    "productName": "Padel On",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "artifactName": "PadelOn-${version}-${arch}.${ext}",
+      "signAndEditExecutable": false
+    }
+  }
+}

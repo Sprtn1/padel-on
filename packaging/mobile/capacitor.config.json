@@ -1,0 +1,14 @@
+{
+  "appId": "com.padelon.management",
+  "appName": "Padel On",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "automatic"
+  }
+}

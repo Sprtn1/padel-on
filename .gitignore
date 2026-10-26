@@ -70,3 +70,10 @@ Thumbs.db
 # config.js remains PUBLIC intentionally: only Supabase project URL + publishable key.
 # Do not put a service-role key, secret API key, database password, or reset code in it.
 # Structural SQL files under supabase/ remain tracked.
+
+# Generated native wrappers and packaged app artifacts
+packaging/mobile/www/
+packaging/mobile/android/
+packaging/mobile/ios/
+packaging/mobile/PadelOn-iOS-Xcode.zip
+packaging/windows/release/
