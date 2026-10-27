@@ -37,6 +37,28 @@ test('Cash report totals separate Whish from all physical cash figures and flag 
  assert.equal(r.days.find(x=>x.date===start).status,'approved');
  assert.equal(r.days.find(x=>x.date===end).goodsSold,null);
 });
+test('Reports count only cash private receipts and preserve Whish wallet values',()=>{
+ const data=sample();
+ data.privateLedger.push(
+  {entry_date:start,entry_type:'deposit',deposit_cents:20000,payment_channel:'whish'},
+  {entry_date:start,entry_type:'session',paid_cents:3800,session_fee_cents:5000,payment_channel:'whish'},
+  {entry_date:start,entry_type:'deposit',deposit_cents:700,payment_channel:'cash'},
+  {entry_date:start,entry_type:'deposit',deposit_cents:2000,payment_channel:'cash',voided_at:'now'}
+ );
+ data.whish.push({entry_date:start,entry_type:'deposit',amount_cents:23800});
+ const result=summarizeCashPeriod(start,end,data.entries,data.days,data.privateLedger,data.whish,data.closings);
+ assert.equal(result.privatePayments,1200); // $5 legacy cash plus $7 explicit cash.
+ assert.equal(result.recordedIncome,4100);
+ assert.equal(result.generated,6000);
+ assert.equal(result.goodsSold,2800);
+ assert.equal(result.whishDeposits,24500);
+ assert.equal(result.whishNet,24200);
+ const day=result.days.find(x=>x.date===start);
+ assert.equal(day.income,3200);
+ assert.equal(day.private,1200);
+ assert.equal(day.goodsSold,2800);
+ assert.equal(data.privateLedger.filter(x=>x.payment_channel==='whish').length,2);
+});
 test('Daily, weekly and monthly periods filter records by date, excluding voided transactions',()=>{
  const s=sample();
  const d=summarizeCashPeriod(end,end,s.entries,s.days,s.privateLedger,s.whish,s.closings);
