@@ -1212,3 +1212,17 @@ test('Starting a note edit reveals only that booking notes, without changing the
  assert.equal(entry.amount_cents,1600);
  assert.deepEqual(entry.checkmarks,[true,true,true,true]);
 });
+
+test('Court bookings save court/time with manual price override',()=>{
+ const booking=cafeEntryFromForm('padel_courts',{
+  name:'Players',court_number:'C2',booking_start_time:'18:00',
+  booking_end_time:'19:30',amount:'36.75',check0:'on'
+ });
+ assert.equal(booking.court_number,'C2');
+ assert.equal(booking.booking_end_time,'19:30');
+ assert.equal(booking.amount_cents,3675);
+ assert.throws(()=>cafeEntryFromForm('padel_courts',{
+  name:'Players',court_number:'C1',booking_start_time:'20:00',
+  booking_end_time:'18:00',amount:'25'
+ }),/later than start/);
+});
