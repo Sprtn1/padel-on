@@ -22,6 +22,14 @@ test('Reject invalid courts, backwards times, and incomplete booking data',()=>{
   {court_number:'C1',booking_start_time:'19:00',booking_end_time:'18:00'},
   {court_number:'C1',booking_start_time:'18:00',booking_end_time:'18:00'},
   {court_number:'C3',booking_start_time:'18:00'}
- ])assert.throws(()=>parseCourtBooking(sample));
- assert.equal(parseCourtBooking({}),null);
+ ])assert.throws(()=>parseCourtBooking('padel_courts',sample));
+ assert.equal(parseCourtBooking('padel_courts',{}),null);
+});
+test('Basketball and pickleball use times without a court selection',()=>{
+ for(const category of ['basketball_courts','pickleball_courts']){
+  assert.deepEqual(parseCourtBooking(category,{booking_start_time:'18:00',booking_end_time:'19:30'}),{
+   court_number:null,booking_start_time:'18:00',booking_end_time:'19:30'
+  });
+  assert.throws(()=>parseCourtBooking(category,{court_number:'C1',booking_start_time:'18:00',booking_end_time:'19:30'}));
+ }
 });

@@ -1003,6 +1003,8 @@ test('Court booking form has a notes box and validates notes separately from amo
  await widget.load();
  const page=widget.page();
  assert.equal((page.match(/name="court_notes" maxlength="1000"/g)||[]).length,3);
+ assert.equal((page.match(/name="court_number"/g)||[]).length,1,'Only padel asks for C1/C2/C3');
+ assert.equal((page.match(/name="booking_start_time"/g)||[]).length,3,'All booking types keep time selection');
  assert.match(page,/Cafeteria items, drinks, or booking details/);
 });
 
@@ -1013,10 +1015,11 @@ test('Saving a court booking includes notes in the same entry RPC; noncourt RPC 
   listAll:async table=>table==='cafeteria_finance_entries'?rows.map(x=>({...x})):[],
   rpc:async(name,args)=>{
    calls.push({name,args});
-   if(name==='cafeteria_finance_record_entry')rows.push({
+   if(name==='cafeteria_finance_record_entry'||name==='cafeteria_finance_record_court_booking')rows.push({
     id:args.p_entry_id,entry_date:args.p_entry_date,category:args.p_category,
     name:args.p_name,amount_cents:args.p_amount_cents,
-    checkmarks:args.p_checkmarks,court_notes:args.p_court_notes||''
+    checkmarks:args.p_checkmarks,court_notes:args.p_court_notes||'',
+    court_number:args.p_court||null,booking_start_time:args.p_start||null,booking_end_time:args.p_end||null
    });
   }
  };
@@ -1029,11 +1032,13 @@ test('Saving a court booking includes notes in the same entry RPC; noncourt RPC 
  try{
   globalThis.FormData=class{constructor(form){this._values=form.__values;}entries(){return this._values[Symbol.iterator]();}};
   await widget.submit({dataset:{cafeSave:'entry',category:'padel_courts'},querySelector:()=>null,
-   __values:[['name','Fajr'],['amount','16.00'],['check0','on'],['court_notes','Nescafe x2 / Water x1']]});
+   __values:[['name','Fajr'],['court_number','C1'],['booking_start_time','18:00'],['booking_end_time','19:00'],
+    ['amount','16.00'],['check0','on'],['court_notes','Nescafe x2 / Water x1']]});
   await widget.submit({dataset:{cafeSave:'entry',category:'shoes'},querySelector:()=>null,
    __values:[['name','Court shoes'],['amount','30.00']]});
  }finally{globalThis.FormData=oldFormData;}
  assert.equal(calls.length,2);
+ assert.equal(calls[0].name,'cafeteria_finance_record_court_booking');
  assert.equal(calls[0].args.p_court_notes,'Nescafe x2 / Water x1');
  assert.equal(calls[1].args.p_court_notes,undefined);
  assert.equal(rows[0].amount_cents,1600);
