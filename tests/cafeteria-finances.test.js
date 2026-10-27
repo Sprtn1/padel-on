@@ -695,6 +695,21 @@ test('Private Sessions exports preferred Arabic name independently of the Englis
  assert.equal(cafePrivatePayments(entries,clients,day).length,0);
 });
 
+test('Private Sessions mark clients created on the selected Beirut day for the Arabic PDF',()=>{
+ const day='2026-10-21';
+ const entries=[
+  {id:'new-session',entry_date:day,entry_type:'session',client_id:'new',session_fee_cents:3000,paid_cents:0},
+  {id:'old-session',entry_date:day,entry_type:'session',client_id:'old',session_fee_cents:2500,paid_cents:0}
+ ];
+ const clients=[
+  {id:'new',name:'New Client',created_at:'2026-10-20T22:30:00Z'},
+  {id:'old',name:'Old Client',created_at:'2026-10-20T20:30:00Z'}
+ ];
+ const sessions=cafePrivateSessions(entries,clients,day);
+ assert.equal(sessions[0].isNewClient,true,'00:30 in Beirut belongs to the selected day');
+ assert.equal(sessions[1].isNewClient,false,'23:30 in Beirut belongs to the previous day');
+});
+
 test('Day closing locks forms, requires saved cash count, and admin can approve or reopen',async()=>{
  const day='2026-10-22',rpcCalls=[];
  let currentStatus=null,admin=false,closingCash=10000;

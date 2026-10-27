@@ -372,14 +372,15 @@ test('Whish PDF converts Goods Sold and cash-box transfer only and keeps data in
 test('Training hours prefers corrected Arabic spelling but never changes client IDs or paid cash',()=>{
  const input=sample();
  input.privateSessions[0].clientArabicName='جنى بليبل';
+ input.privateSessions[0].isNewClient=true;
  input.privateSessions[1].clientArabicName='';
  const prepared=prepareArabicDailySheet(input);
- assert.equal(prepared.trainingRows[0].clientName,'جنى بليبل');
+ assert.equal(prepared.trainingRows[0].clientName,'جنى بليبل (مشترك جديد)');
  assert.equal(prepared.trainingRows[1].clientName,'علي أخضر');
  assert.deepEqual(prepared.trainingRows.map(s=>[s.clientCode,s.sessionFeeCents]),[['2',3000],['49',2500]]);
  assert.equal(prepared.receipts,31500);
  assert.equal(prepared.whishDepositsToday,2580);
- assert.equal(prepared.details.filter(e=>e.section==='ساعات تدريب')[0].name,'جنى بليبل');
+ assert.equal(prepared.details.filter(e=>e.section==='ساعات تدريب')[0].name,'جنى بليبل (مشترك جديد)');
 });
 
 test('Arabic PDF shows integer amounts without decimals and rounds fractional dollars to one decimal',()=>{
