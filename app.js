@@ -56,7 +56,7 @@ const tabs=[['dashboard','Overview','grid'],['cafeteria-finances','Cafeteria Fin
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
-const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',debtDay:todayBeirut(),settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
+const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateNotesOpen:false,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',debtDay:todayBeirut(),settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
 // The daily cashbook owns its own dated Supabase query and does not mix with other ledgers.
 const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
  api,heading,icon,amount,today,addDays,
@@ -771,7 +771,7 @@ function privateClientsPage(){
  let running=Number(selected.opening_balance_cents||0);
  const history=entries.map(e=>{running+=privateEntryDelta(e);return {entry:e,remaining:running}}).reverse();
  const details=`<div class="private-detail">
- <div class="private-detail-header"><div><div class="eyebrow">${esc(selected.client_code||'ID NOT ASSIGNED')}</div><h2>${esc(selected.name)}</h2><p>${selected.contact?esc(selected.contact):'Client account'} · ${sessions.length} session${sessions.length===1?'':'s'}</p></div><div class="private-balance-box ${balance<0?'negative':''}"><small>${balance<0?'Outstanding':'Account credit'}</small><strong>${amount(Math.abs(balance))}</strong></div></div>
+ <div class="private-detail-header"><div><div class="eyebrow">${esc(selected.client_code||'ID NOT ASSIGNED')}</div><h2>${esc(selected.name)}</h2><details class="private-client-notes" data-private-client-notes ${state.privateNotesOpen?'open':''}><summary>Internal notes</summary><p>${selected.notes?esc(selected.notes):'No internal notes saved.'}</p></details><p>${selected.contact?esc(selected.contact):'Client account'} · ${sessions.length} session${sessions.length===1?'':'s'}</p></div><div class="private-balance-box ${balance<0?'negative':''}"><small>${balance<0?'Outstanding':'Account credit'}</small><strong>${amount(Math.abs(balance))}</strong></div></div>
  <div class="private-client-actions">${btn(`${icon('plus')} Record Session`,'private-record-session','btn-primary',selected.active?'':'disabled')}${btn('Add Balance','private-add-balance','btn-light',selected.active?'':'disabled')}${btn('Edit Client','private-edit-client','btn-light')}</div>
  <div class="private-account-note">Balance = opening balance + top-ups + paid amounts − session fees. A negative balance is money owed by the client.</div>
  <div class="panel-head private-ledger-head"><div><h2>Session & payment history</h2><p>${entries.length} session and payment entries</p></div></div>
@@ -1131,6 +1131,7 @@ async function loadPrivateClients({background=false}={}){
   state.privateLoaded=true;state.privateError=null;
   if(!clients.some(c=>c.id===state.privateSelected&&!c.deleted_at)){
    state.privateSelected=clients.find(c=>c.active&&!c.deleted_at)?.id||clients.find(c=>!c.deleted_at)?.id||null;
+   state.privateNotesOpen=false;
   }
  }catch(e){
   if(api.getSession()?.access_token){
@@ -1262,6 +1263,7 @@ async function saveForm(form){const f=new FormData(form),data=Object.fromEntries
        const created=await api.rpc('private_add_client',{p_name:name,p_client_code:clientCode||null,p_contact:data.contact?.trim()||'',p_opening_balance_cents:privateSignedUSD(data.opening_balance),p_notes:data.notes?.trim()||''});
        if(typeof created==='string'){
          state.privateSelected=created;
+         state.privateNotesOpen=false;
          if(arabicName){
            try{await api.rpc('private_set_arabic_name',{p_client_id:created,p_arabic_name:arabicName});}
            catch(err){toast('Client created, but Arabic spelling was not saved. Edit the client to retry: '+(err.message||'Unknown error'),true);}
@@ -1413,7 +1415,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
   if(kind==='private'){
    const client=state.privateClients.find(x=>x.id===personId&&!x.deleted_at);
    if(!client)throw Error('Private client not found.');
-   state.tab='private-clients';state.privateSelected=personId;
+   state.tab='private-clients';state.privateSelected=personId;state.privateNotesOpen=false;
    state.privateSearch='';state.privateListFilter='all';
    state.privateShowArchived=!client.active;
   }else if(kind==='debt'){
@@ -1440,7 +1442,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
    state.historyWeek=weekStart(today());
   }else if(kind==='private'){
    const client=state.privateClients.find(x=>x.id===id);
-   state.tab='private-clients';state.privateSelected=id;state.privateSearch='';
+   state.tab='private-clients';state.privateSelected=id;state.privateNotesOpen=false;state.privateSearch='';
    state.privateListFilter='all';state.privateShowArchived=Boolean(!client?.active);
   }else if(kind==='debt'){
    state.tab='debts';state.debtSelected=id;state.debtSearch='';state.debtFilter='all';
@@ -1505,7 +1507,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'private-open-from-day':{
   const client=state.privateClients.find(c=>c.id===id);
   if(!client||client.deleted_at)throw Error('Client has been removed from active account management.');
-  state.privateSelected=id;state.privateListFilter='all';state.privateSearch='';
+  state.privateSelected=id;state.privateNotesOpen=false;state.privateListFilter='all';state.privateSearch='';
   if(!client.active)state.privateShowArchived=true;
   render();
   setTimeout(()=>document.querySelector('.private-detail')?.scrollIntoView({behavior:'smooth',block:'start'}),0);
@@ -1513,7 +1515,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  }
  case 'private-retry':await loadPrivateClients();break;
  case 'private-add-client':if(!state.privateLoaded||state.privateError)throw Error('Private Sessions are unavailable. Try refreshing or contact an administrator.');openModal('private-client');break;
- case 'private-select-client':if(!state.privateClients.some(c=>c.id===id&&!c.deleted_at))throw Error('Client not found.');state.privateSelected=id;render();break;
+ case 'private-select-client':if(!state.privateClients.some(c=>c.id===id&&!c.deleted_at))throw Error('Client not found.');state.privateSelected=id;state.privateNotesOpen=false;render();break;
  case 'private-edit-client':if(!state.privateSelected)throw Error('Select a client.');openModal('private-client',null,{clientId:state.privateSelected});break;
  case 'private-record-session':if(!state.privateSelected)throw Error('Select a client.');if(!state.privateCoaches.some(c=>c.active))throw Error('Coaches are not set up. Run the private coach setup script.');openModal('private-session',null,{clientId:state.privateSelected});break;
  case 'private-add-balance':if(!state.privateSelected)throw Error('Select a client.');openModal('private-deposit',null,{clientId:state.privateSelected});break;
@@ -1698,6 +1700,8 @@ function updateQuickPreview(){
 // A native details element preserves its open state across full-page rerenders.
 document.addEventListener('toggle',e=>{
  if(!e.target?.isConnected)return;
+ if(state.tab==='private-clients'&&e.target.dataset?.privateClientNotes!==undefined)
+  state.privateNotesOpen=e.target.open;
  if(state.tab==='tournament'&&e.target.dataset?.tmMemberNote)
   tournamentManagement.rememberNote(e.target.dataset.tmMemberNote,e.target.open);
  if(state.tab!=='cafeteria-finances')return;
