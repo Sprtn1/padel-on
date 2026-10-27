@@ -171,6 +171,14 @@ function makeUI(isAdmin=false,backing=[]){
     row.knockout_scoring=args.p_knockout_scoring;row.version++;
     return row.version;
    }
+   if(name==='tournament_set_match_schedule'){
+    const row=backing.find(x=>x.id===args.p_id);
+    assert.equal(row.version,args.p_expected_version);
+    const match=row.state.matches.find(m=>m.id===args.p_match_id);
+    if(args.p_time===null)delete match.scheduledTime;else match.scheduledTime=args.p_time;
+    if(args.p_court===null)delete match.scheduledCourt;else match.scheduledCourt=args.p_court;
+    row.version++;return row.version;
+   }
    if(name==='tournament_set_match_time'){
     const row=backing.find(x=>x.id===args.p_id);
     assert.equal(args.p_expected_version,row.version);
@@ -1488,4 +1496,23 @@ test('Tournament PDF includes separate group and knockout score formats',()=>{
   tournamentArchivePdf(b);
   assert.ok(texts.some(s=>s.includes('Knockout Only (Pro Set to 9)')));
  }finally{globalThis.document=original;globalThis.atob=oldAtob;}
+});
+
+test('Tournament match saves court C2 alongside time and validates court selection',async()=>{
+ const row=sampleRow('groups'),{widget,calls}=fixture([row]);
+ await widget.load();
+ const match=row.state.matches.find(m=>m.phase==='group');
+ await widget.action({dataset:{action:'tm-edit-time',id:match.id}});
+ assert.match(widget.page(),/name="court"/);
+ const old=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'time',match:match.id},_values:[['time','19:00'],['court','C2']]});
+  assert.equal(match.scheduledCourt,'C2');
+  assert.equal(match.scheduledTime,'19:00');
+  assert.match(widget.page(),/tm-court-label/);
+  await widget.action({dataset:{action:'tm-edit-time',id:match.id}});
+  await assert.rejects(()=>widget.submit({dataset:{tmSubmit:'time',match:match.id},_values:[['time','19:00'],['court','C4']]}),/Choose C1, C2 or C3/);
+ }finally{globalThis.FormData=old;}
+ assert.equal(calls.filter(c=>c.name==='tournament_set_match_schedule').length,1);
 });

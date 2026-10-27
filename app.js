@@ -1625,6 +1625,7 @@ document.addEventListener('submit',async e=>{
  }
 });
 document.addEventListener('input',e=>{
+ if(state.tab==='cafeteria-finances'&&cafeteriaFinances.courtPricePreview(e.target))return;
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-payment-search'){
   tournamentManagement.searchPayments(e.target);return;
  }
@@ -1706,6 +1707,7 @@ document.addEventListener('toggle',e=>{
   cafeteriaFinances.rememberNote(e.target.dataset.cafeNote,e.target.open);
 },true);
 document.addEventListener('change',e=>{
+ if(state.tab==='cafeteria-finances'&&cafeteriaFinances.courtPricePreview(e.target))return;
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-payment-status'){
   try{tournamentManagement.searchPayments(e.target)}catch(err){toast(err.message||'Unable to filter participant payments.',true)}
   return;
