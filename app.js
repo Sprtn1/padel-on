@@ -7,6 +7,7 @@ const cafeteriaFinanceModule = await import(`./lib/cafeteria-finances.js?v=${ass
 const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
 const {getDebtDayEntries,summarizeDebtDay} = await import(`./lib/cafeteria-debt-daily.js?v=${assetVersion}`);
 const refreshPolicy = await import(`./lib/refresh-policy.js?v=${assetVersion}`);
+const scrollPreservation = await import(`./lib/scroll-preservation.js?v=${assetVersion}`);
 const tournamentModule = await import(`./lib/tournament-management.js?v=${assetVersion}`);
 const arabicDailyPdf = await import(`./lib/arabic-daily-pdf.js?v=${assetVersion}`);
 const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus} = await import(`./lib/logic.js?v=${assetVersion}`);
@@ -40,9 +41,15 @@ function btn(label,action,cls='btn-light',more=''){return `<button class="btn ${
 function toast(message,bad=false){const host=document.getElementById('toast-host');const node=document.createElement('div');node.className=`toast ${bad?'bad':''}`;node.textContent=message;host.append(node);setTimeout(()=>node.remove(),4100)}
 // 30-second all-page sync updates data in memory without discarding active drafts.
 let autoRefreshRunning=false;
+// Sync the data but do not replace table elements while someone is scrolling.
+let lastScrollAt=0;
+document.addEventListener('scroll',event=>{
+ if(event.isTrusted)lastScrollAt=Date.now();
+},{capture:true,passive:true});
 function canAutoRender(){
  const active=document.activeElement;
- return !state.modal && !active?.closest('form,.cafe-quick-sheet,[contenteditable="true"]') &&
+ return Date.now()-lastScrollAt>1400 &&
+  !state.modal && !active?.closest('form,.cafe-quick-sheet,[contenteditable="true"]') &&
   !['INPUT','TEXTAREA','SELECT'].includes(active?.tagName);
 }
 const tabs=[['dashboard','Overview','grid'],['cafeteria-finances','Cafeteria Finances','coins'],['debts','Cafeteria Debts','wallet'],['private-clients','Private Sessions','users'],['team','Team Members','users'],['training','Monthly Training','calendar'],['other','Other Benefits','gift'],['finance','Matchmaking','wallet'],['tournament','Tournament Management','activity'],['activity','Game Activity','list'],['reports','Reports','download'],['settings','Settings','settings']];
@@ -78,7 +85,7 @@ const tournamentManagement=tournamentModule.createTournamentManagement({
  isAdmin:()=>state.staff?.role==='admin'
 });
 const clubInsights=clubInsightsModule.createCashInsights({
- api,today,amount,renderIfVisible:tab=>{if(state.tab===tab&&api.getSession()?.access_token&&(!autoRefreshRunning||canAutoRender()))render()}
+ api,today,amount,renderIfVisible:tab=>{if(state.tab===tab&&api.getSession()?.access_token&&!autoRefreshRunning&&canAutoRender())render()}
 });
 // Staff inactivity policy: six hours without user interaction logs out every open tab.
 // Background database polling and token refreshes never extend this timer.
@@ -866,11 +873,19 @@ function settingsPage(){
  return `${heading('Club tools','Settings',admin?'Manage club settings and member accounts.':'Ordering tools.',btn(`${icon('logout')} Sign out`,'signout','btn-light'))}${admin?`<div class="settings-grid">${adminTools}</div>`:''}${admin||listsEnabled?`<div class="settings-followup-grid ${admin?'':'single-column'}">${admin?'<div class="settings-followup-column">'+matchmakerCommissionSettings()+adminAccountManagementCards('private')+'</div>':''}<div class="settings-followup-column">${orderListsCard}${admin?adminAccountManagementCards('cafeteria'):''}</div></div>`:''}`;
 }
 function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'cafeteria-finances':return cafeteriaFinances.page();case'debts':return debtPage();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
+let lastRenderedMarkup=null,lastRenderedTab=null;
 function render(){
  if(['order-counter','reem-items'].includes(state.tab)&&!canUseOrderLists())state.tab='settings';
+ const html=shell();
+ // Ignore identical poll results rather than replacing the whole DOM.
+ if(autoRefreshRunning&&lastRenderedTab===state.tab&&html===lastRenderedMarkup)return;
  const searchFocus=state.globalSearchOpen&&document.activeElement?.id==='global-search-input';
  const cursor=searchFocus?document.activeElement.selectionStart:null;
- app.innerHTML=shell();
+ const scroll=lastRenderedTab===state.tab?
+  scrollPreservation.captureScrollPosition(app,window):null;
+ app.innerHTML=html;
+ lastRenderedMarkup=html;lastRenderedTab=state.tab;
+ if(scroll)scrollPreservation.restoreScrollPosition(app,window,scroll);
  if(searchFocus){const input=document.getElementById('global-search-input');input?.focus();if(cursor!==null)input?.setSelectionRange(cursor,cursor);}
 }
 function field(name,label,value='',type='text',attr=''){return `<label class="form-field"><span>${label}</span><input class="form-input" name="${name}" type="${type}" value="${esc(value)}" ${attr}/></label>`}
@@ -1053,6 +1068,7 @@ function formActions(text,danger=false){return `<div class="modal-actions">${btn
 function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance','training','private-session','private-deposit','debt-person','debt-charge','debt-payment'].includes(type)?{requestId:crypto.randomUUID()}:{}),...(['finance','settlement'].includes(type)?{personId:selectedMatchmaker()?.id||null}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();validatePrivateClientIdInput();},0)}
 function closeModal(){state.modal=null;document.getElementById('modal-root').innerHTML=''}
 function renderAuth(message=''){
+ lastRenderedMarkup=null;lastRenderedTab=null;
  app.innerHTML=`<main class="auth-wrap"><section class="auth-lead"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><h1>The team.<br/><em>All in one place.</em></h1><p>Weekly padel benefits, special players, and matchmaking revenue—securely tracked together.</p></section><section class="auth-card"><div class="eyebrow">Private club workspace</div><h2>Welcome back</h2><p class="sub">Sign in with your PADEL ON staff account.</p>${!api.configured?'<div class="auth-error">Unable to connect. Please contact an administrator.</div>':''}${message?`<div class="auth-error">${esc(message)}</div>`:''}<form id="login-form">${field('email','Email address','','email','required autocomplete="email"')}${field('password','Password','','password','required autocomplete="current-password"')}<button class="btn btn-primary" ${!api.configured?'disabled':''} type="submit">Sign In ${icon('arrow')}</button></form><div class="auth-foot">Authorized PADEL ON staff only · Staff access only</div></section></main>`;
 }
 async function loadDebtData({background=false}={}){
