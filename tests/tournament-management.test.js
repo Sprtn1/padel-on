@@ -1499,7 +1499,7 @@ test('Tournament PDF includes separate group and knockout score formats',()=>{
 });
 
 test('Tournament match saves court C2 alongside time and validates court selection',async()=>{
- const row=sampleRow('groups'),{widget,calls}=fixture([row]);
+ const row=sampleRow('groups'),{widget,calls}=makeUI(false,[row]);
  await widget.load();
  const match=row.state.matches.find(m=>m.phase==='group');
  await widget.action({dataset:{action:'tm-edit-time',id:match.id}});
