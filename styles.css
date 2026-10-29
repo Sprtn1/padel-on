@@ -32,6 +32,17 @@
 .report-mode{display:flex;gap:9px;margin-bottom:15px;flex-wrap:wrap}
 .report-mode .btn{min-width:130px}
 .report-mode+.period-control{margin-bottom:20px}
+.report-compare-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-4px 0 15px}
+.report-compare-toolbar span{font-size:11px;color:#71877b;font-weight:700}
+.report-compare-control{border-color:#cde8d7;background:#f8fcf9}
+.report-compare-picker{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.report-compare-picker .btn{min-width:39px;padding:9px}
+.report-compare-picker input{height:40px;min-width:145px;border:1px solid #d7e5dc;border-radius:10px;background:#fff;padding:7px 10px;color:#28483b;font-size:12px;font-weight:700}
+.report-comparison-panel{margin-bottom:22px;border-color:#cde8d7}
+.report-comparison-table{min-width:650px}
+.report-comparison-table th:not(:first-child),.report-comparison-table td:not(:first-child){text-align:right}
+.report-difference{font-weight:800;color:#216f4d!important}
+.report-comparison-loading{margin:0;padding:13px 20px;border-top:1px solid #edf2ee;color:#789087;font-size:11px}
 @media(max-width:830px){
  .mobile-bar{overflow-x:auto;justify-content:space-between;scrollbar-width:none}
  .mobile-bar::-webkit-scrollbar{display:none}
@@ -45,10 +56,15 @@
  .period-buttons .btn{padding:8px;min-width:33px}
  .period-buttons .btn svg{width:17px}
  .report-mode .btn{flex:1;min-width:0}
+ .report-compare-toolbar{align-items:stretch;flex-direction:column}
+ .report-compare-toolbar .btn{width:100%}
+ .report-compare-control{align-items:stretch;flex-direction:column}
+ .report-compare-picker{width:100%}
+ .report-compare-picker input{min-width:0;flex:1}
  .mobile-nav{font-size:8px;gap:4px}
 }
 @media print{
- .sidebar,.mobile-bar,.topbar,.page-footer,.heading-actions,.report-mode,.period-buttons,#toast-host,.modal-backdrop{display:none!important}
+ .sidebar,.mobile-bar,.topbar,.page-footer,.heading-actions,.report-mode,.period-buttons,.report-compare-toolbar,.report-compare-control,#toast-host,.modal-backdrop{display:none!important}
  .workspace{max-width:none;padding:10px!important}
  .app-layout,.main{display:block}
  .summary-card,.panel{break-inside:avoid;box-shadow:none}

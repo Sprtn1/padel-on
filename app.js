@@ -5,6 +5,7 @@ const orderCounter = await import(`./lib/order-counter-ui.js?v=${assetVersion}`)
 const reemItems = await import(`./lib/reem-items-ui.js?v=${assetVersion}`);
 const cafeteriaFinanceModule = await import(`./lib/cafeteria-finances.js?v=${assetVersion}`);
 const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
+const reportComparison = await import(`./lib/report-comparison.js?v=${assetVersion}`);
 const {getDebtDayEntries,summarizeDebtDay} = await import(`./lib/cafeteria-debt-daily.js?v=${assetVersion}`);
 const refreshPolicy = await import(`./lib/refresh-policy.js?v=${assetVersion}`);
 const scrollPreservation = await import(`./lib/scroll-preservation.js?v=${assetVersion}`);
@@ -56,7 +57,7 @@ const tabs=[['dashboard','Overview','grid'],['cafeteria-finances','Cafeteria Fin
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
-const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateNotesOpen:false,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',debtDay:todayBeirut(),settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
+const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,reportCompare:false,reportCompareDay:addDays(todayBeirut(),-1),reportCompareWeek:addDays(weekStart(todayBeirut()),-7),reportCompareMonth:shiftMonth(monthKey(todayBeirut()),-1),reportCompareData:null,reportCompareKey:'',trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateNotesOpen:false,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',debtDay:todayBeirut(),settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
 // The daily cashbook owns its own dated Supabase query and does not mix with other ledgers.
 const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
  api,heading,icon,amount,today,addDays,
@@ -87,6 +88,9 @@ const tournamentManagement=tournamentModule.createTournamentManagement({
 const clubInsights=clubInsightsModule.createCashInsights({
  api,today,amount,renderIfVisible:tab=>{if(state.tab===tab&&api.getSession()?.access_token&&!autoRefreshRunning&&canAutoRender())render()}
 });
+const compareClubInsights=clubInsightsModule.createCashInsights({
+ api,today,amount,renderIfVisible:tab=>{if(state.reportCompare&&state.tab===tab&&api.getSession()?.access_token&&!autoRefreshRunning&&canAutoRender())render()}
+});
 // Staff inactivity policy: six hours without user interaction logs out every open tab.
 // Background database polling and token refreshes never extend this timer.
 let lastKnownWeek=weekStart(todayBeirut());
@@ -114,7 +118,7 @@ async function autoSignOut(){
  idleLogoutStarted=true;
  clearStaffActivity();
  state.staff=null;
- cafeteriaFinances.reset();clubInsights.reset();
+ cafeteriaFinances.reset();clubInsights.reset();compareClubInsights.reset();
  state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';
  // api.signOut clears the local authentication token before contacting Supabase.
  const remoteLogout=api.signOut();
@@ -375,34 +379,55 @@ async function loadHistoryWeek(newWeek){
  catch(e){if(seq===historySeq)toast('Could not load week: '+e.message,true)}
  finally{if(seq===historySeq){state.historyLoading=false;render()}}
 }
-function reportRange(){
- if(state.reportMode==='day')return [state.reportDay,state.reportDay];
- if(state.reportMode==='week')return [state.reportWeek,addDays(state.reportWeek,6)];
- const first=state.reportMonth+'-01',last=addDays(shiftMonth(state.reportMonth,1)+'-01',-1);
- return [first,last];
+function reportPeriodValue(compare=false){
+ if(state.reportMode==='day')return compare?state.reportCompareDay:state.reportDay;
+ if(state.reportMode==='week')return compare?state.reportCompareWeek:state.reportWeek;
+ return compare?state.reportCompareMonth:state.reportMonth;
 }
+function setReportPeriodValue(compare,value){
+ const key=state.reportMode==='day'?'Day':state.reportMode==='week'?'Week':'Month';
+ state[compare?'reportCompare'+key:'report'+key]=value;
+}
+function reportRange(compare=false){return reportComparison.reportPeriodRange(state.reportMode,reportPeriodValue(compare))}
+function reportPeriodTitle(compare=false){return reportComparison.reportPeriodTitle(state.reportMode,reportPeriodValue(compare))}
+function resetReportComparison(){
+ setReportPeriodValue(true,reportComparison.previousReportPeriod(state.reportMode,reportPeriodValue(false)));
+}
+function shiftedComparison(steps){
+ let candidate=reportComparison.shiftReportPeriod(state.reportMode,reportPeriodValue(true),steps);
+ const primary=reportPeriodValue(false);
+ if(candidate===primary)candidate=reportComparison.shiftReportPeriod(state.reportMode,candidate,steps);
+ const maximum=state.reportMode==='day'?today():state.reportMode==='week'?weekStart(today()):monthKey(today());
+ return candidate<=maximum?candidate:null;
+}
+function ensureDifferentComparison(){if(state.reportCompare&&reportPeriodValue(true)===reportPeriodValue(false))resetReportComparison()}
 async function loadReport({background=false}={}){
  if(background&&state.reportLoading)return;
  const [start,end]=reportRange(),mode=state.reportMode;
+ const compareRange=state.reportCompare?reportRange(true):null;
  const request=++reportSeq;
  const insightFetch=clubInsights.loadReport(start,end,true);
+ const compareInsightFetch=compareRange?compareClubInsights.loadReport(compareRange[0],compareRange[1],true):Promise.resolve();
  state.reportLoading=true;
- if(!background)state.reportData=null;
+ if(!background){state.reportData=null;state.reportCompareData=null}
  state.reportKey=`${mode}:${start}`;
+ state.reportCompareKey=compareRange?`${mode}:${compareRange[0]}`:'';
  if(!background)render();
- try{
-  const data=await fetchPeriod(start,end);
-  if(request===reportSeq)state.reportData=data;
- }catch(e){if(request===reportSeq)toast('Could not load report: '+e.message,true)}
- finally{
-  // Let the background finance report finish before ending auto-refresh, even
-  // when the match report fails. This avoids a delayed repaint over a form.
-  if(background)await insightFetch;
-  if(request===reportSeq){state.reportLoading=false;if(!background)render()}
+ const results=await Promise.allSettled([fetchPeriod(start,end),compareRange?fetchPeriod(compareRange[0],compareRange[1]):Promise.resolve(null)]);
+ if(request===reportSeq){
+  if(results[0].status==='fulfilled')state.reportData=results[0].value;
+  else toast('Could not load report: '+results[0].reason.message,true);
+  if(compareRange){
+   if(results[1].status==='fulfilled')state.reportCompareData=results[1].value;
+   else toast('Could not load comparison: '+results[1].reason.message,true);
+  }
  }
+ // Let the background finance reports finish before ending auto-refresh, even
+ // when a match report fails. This avoids a delayed repaint over a form.
+ if(background)await Promise.allSettled([insightFetch,compareInsightFetch]);
+ if(request===reportSeq){state.reportLoading=false;if(!background)render()}
 }
-function reportMetrics(){
- const data=state.reportData;
+function buildReportMetrics(data,mode,period){
  if(!data)return null;
  const validMatches=data.matches.filter(m=>!m.voided_at);
  const matchIDs=new Set(validMatches.map(m=>m.id));
@@ -411,15 +436,18 @@ function reportMetrics(){
  const special=data.specialGames.length;
  const rows=state.members.map(m=>{
   const personal=games.filter(g=>g.member_id===m.id);
-  const opening=state.reportMode==='week'?(Number(state.balances.find(b=>b.member_id===m.id&&b.week_start===state.reportWeek)?.used||0)):0;
-  const st=state.reportMode==='week'?getWeeklyStatus(m,state.reportWeek,state.balances,games,data.resets):null;
+  const opening=mode==='week'?(Number(state.balances.find(b=>b.member_id===m.id&&b.week_start===period)?.used||0)):0;
+  const st=mode==='week'?getWeeklyStatus(m,period,state.balances,games,data.resets):null;
   return {member:m,played:personal.length,free:personal.filter(g=>g.benefit_type==='free').length,half:personal.filter(g=>g.benefit_type==='half').length,used:st?.used??personal.length,remaining:st?.remain,opening};
  }).filter(r=>r.played||r.used).sort((a,b)=>b.used-a.used||a.member.name.localeCompare(b.member.name));
- const weekUsed=state.reportMode==='week'?state.members.filter(m=>!m.unlimited).reduce((n,m)=>n+getWeeklyStatus(m,state.reportWeek,state.balances,games,data.resets).used,0):null;
- const breakdown=state.matchmakers.length?state.matchmakers.map(person=>({...personFinancials(state.reportMonth,person),person})): [{...getMonthFinance(state.finance,state.reportMonth),person:{name:'Nazih Sonbol',commission_bps:1500}}];
+ const weekUsed=mode==='week'?state.members.filter(m=>!m.unlimited).reduce((n,m)=>n+getWeeklyStatus(m,period,state.balances,games,data.resets).used,0):null;
+ const financeMonth=mode==='month'?period:state.reportMonth;
+ const breakdown=state.matchmakers.length?state.matchmakers.map(person=>({...personFinancials(financeMonth,person),person})): [{...getMonthFinance(state.finance,financeMonth),person:{name:'Nazih Sonbol',commission_bps:1500}}];
  const monthFinance={total:breakdown.reduce((sum,r)=>sum+r.total,0),fee:breakdown.reduce((sum,r)=>sum+r.fee,0),games:breakdown.reduce((sum,r)=>sum+r.games,0)};
  return {validMatches,games,rows,free,half,special,weekUsed,monthFinance,breakdown};
 }
+function reportMetrics(){return buildReportMetrics(state.reportData,state.reportMode,reportPeriodValue(false))}
+function reportCompareMetrics(){return state.reportCompare?buildReportMetrics(state.reportCompareData,state.reportMode,reportPeriodValue(true)):null}
 function matchmakingBreakdownHTML(rows){
  return `<article class="panel matchmaking-breakdown"><div class="panel-head"><div><h2>Matchmaking by person</h2><p>Independent monthly revenue, commissions, and payments</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Matchmaker</th><th>Games</th><th>Revenue</th><th>Rate</th><th>Commission</th><th>Settlement</th></tr></thead><tbody>${rows.map(r=>{
  const settlement=state.settlements.find(x=>(x.matchmaker_id||LEGACY_MATCHMAKER_ID)===(r.person.id||LEGACY_MATCHMAKER_ID)&&x.month_key===state.reportMonth+'-01');
@@ -455,13 +483,34 @@ function consolidatedFinancePanel(ym){
  <p class="management-note consolidated-note">Balances show what clients owe or have prepaid today. Payments and deposits are separate from new sales.</p>
  </article>`;
 }
+function reportComparisonRows(){
+ const primary=reportMetrics(),comparison=reportCompareMetrics();
+ if(!primary||!comparison)return [];
+ const [start,end]=reportRange(),[compareStart,compareEnd]=reportRange(true);
+ return reportComparison.reportComparisonMetrics(state.reportMode,primary,comparison,
+  clubInsights.reportTotals(start,end),compareClubInsights.reportTotals(compareStart,compareEnd));
+}
+function reportComparisonHTML(){
+ if(!state.reportCompare)return '';
+ const rows=reportComparisonRows(),selected=reportPeriodTitle(false),compared=reportPeriodTitle(true);
+ if(!rows.length)return `<article class="panel report-comparison-panel"><div class="panel-empty">${state.reportLoading?'Loading both periods…':'Comparison data is unavailable.'}</div></article>`;
+ const shown=(value,kind)=>kind==='money'?(value<0?'−'+amount(-value):amount(value)):String(value);
+ const difference=(row)=>{const value=row.primary-row.comparison;if(value===0)return '—';return (value>0?'+':'−')+shown(Math.abs(value),row.kind)};
+ return `<article class="panel report-comparison-panel"><div class="panel-head"><div><h2>Period comparison</h2><p>Difference = selected period minus comparison period</p></div></div><div class="data-table-wrap"><table class="data-table report-comparison-table"><thead><tr><th>Metric</th><th>${esc(selected)}</th><th>${esc(compared)}</th><th>Difference</th></tr></thead><tbody>${rows.map(row=>`<tr><td><strong>${esc(row.label)}</strong></td><td class="num">${shown(row.primary,row.kind)}</td><td class="num">${shown(row.comparison,row.kind)}</td><td class="num report-difference">${difference(row)}</td></tr>`).join('')}</tbody></table></div>${clubInsights.reportTotals(...reportRange())&&compareClubInsights.reportTotals(...reportRange(true))?'':'<p class="report-comparison-loading">Financial comparison is still loading; activity totals are already shown.</p>'}</article>`;
+}
 function reportsPage(){
  const [start,end]=reportRange();
- const weekly=state.reportMode==='week',daily=state.reportMode==='day',m=reportMetrics();
- const title=daily?state.reportDay:weekly?weekLabel(state.reportWeek):monthLabel(state.reportMonth);
- return `${heading('Operations overview','Operations & Financial Reports','',btn(`${icon('download')} Export CSV`,'export-report','btn-primary',!m?'disabled':'')+btn('Print / Save PDF','print-report','btn-light',!m?'disabled':''))}
-<div class="report-mode"><button class="btn ${daily?'btn-primary':'btn-light'}" data-action="report-mode-day">Daily report</button><button class="btn ${weekly?'btn-primary':'btn-light'}" data-action="report-mode-week">Weekly report</button><button class="btn ${!weekly?'btn-primary':'btn-light'}" data-action="report-mode-month">Monthly report</button></div>
+ const weekly=state.reportMode==='week',daily=state.reportMode==='day',m=reportMetrics(),cm=reportCompareMetrics();
+ const title=reportPeriodTitle(false),comparisonTitle=reportPeriodTitle(true);
+ const exportDisabled=!m||(state.reportCompare&&!cm);
+ const compareInputType=state.reportMode==='month'?'month':'date';
+ const compareMax=state.reportMode==='month'?monthKey(today()):today();
+ return `${heading('Operations overview','Operations & Financial Reports','',btn(`${icon('download')} Export CSV`,'export-report','btn-primary',exportDisabled?'disabled':'')+btn('Print / Save PDF','print-report','btn-light',exportDisabled?'disabled':''))}
+<div class="report-mode"><button class="btn ${daily?'btn-primary':'btn-light'}" data-action="report-mode-day">Daily report</button><button class="btn ${weekly?'btn-primary':'btn-light'}" data-action="report-mode-week">Weekly report</button><button class="btn ${!weekly&&!daily?'btn-primary':'btn-light'}" data-action="report-mode-month">Monthly report</button></div>
 <div class="period-control"><div><strong>${icon('calendar')} ${title}</strong><small>${daily?'Daily activity and cash count':weekly?'Weekly benefits and records':'Monthly games and matchmaking revenue'} · Asia/Beirut dates</small></div><div class="period-buttons"><button class="btn btn-light" data-action="report-prev" aria-label="Previous ${daily?'day':weekly?'week':'month'}">${icon('chevronLeft')}</button><button class="btn btn-light" data-action="report-next" ${(daily?state.reportDay>=today():weekly?state.reportWeek>=weekStart(today()):state.reportMonth>=monthKey(today()))?'disabled':''} aria-label="Next ${daily?'day':weekly?'week':'month'}">${icon('chevronRight')}</button></div></div>
+<div class="report-compare-toolbar"><button class="btn ${state.reportCompare?'btn-soft':'btn-light'}" data-action="report-compare-toggle">${state.reportCompare?'Hide comparison':'Compare with another '+(daily?'day':weekly?'week':'month')}</button>${state.reportCompare?'<span>Selected: '+esc(title)+' · Compared with: '+esc(comparisonTitle)+'</span>':''}</div>
+${state.reportCompare?`<div class="period-control report-compare-control"><div><strong>${icon('calendar')} Compare with ${esc(comparisonTitle)}</strong><small>${weekly?'Choose the Monday of another week':'Choose any other '+(daily?'day':'month')} · Asia/Beirut dates</small></div><div class="report-compare-picker"><button class="btn btn-light" data-action="report-compare-prev" aria-label="Earlier comparison period">${icon('chevronLeft')}</button><input id="report-compare-period" type="${compareInputType}" value="${esc(reportPeriodValue(true))}" max="${compareMax}" aria-label="Comparison period"/><button class="btn btn-light" data-action="report-compare-next" aria-label="Later comparison period" ${shiftedComparison(1)?'':'disabled'}>${icon('chevronRight')}</button></div></div>`:''}
+${reportComparisonHTML()}
 ${!m?`<div class="panel-empty">${state.reportLoading?'Loading report…':'No report loaded. Use the period arrows to retry.'}</div>`:`
 <section class="finance-grid">${summaryCard('Team matches',m.validMatches.length,'Matches recorded in selected period','calendar',true)}${summaryCard('Benefit uses',weekly?m.weekUsed:m.games.length,weekly?'Includes starting balances':'For selected dates','gift')}${summaryCard('Free / Half-price',`${m.free} / ${m.half}`,'Per-member benefit entries','activity')}</section>
 ${daily?'':weekly?`<div class="notice">Past weeks use current member allowances and include recorded resets.</div>`:`<section class="finance-grid">${summaryCard('Matchmaking revenue',amount(m.monthFinance.total),'All matchmaking personnel','wallet',true)}${summaryCard('Total commissions',amount(m.monthFinance.fee),'Sum of independent monthly commissions','coins')}${summaryCard('Other benefit games',m.special,'Special-player entries this month','users')}</section>${matchmakingBreakdownHTML(m.breakdown)}${consolidatedFinancePanel(state.reportMonth)}`}
@@ -476,6 +525,15 @@ function exportReport(){
  const rows=[['PADEL ON',state.reportMode==='day'?'Daily Operations Report':weekly?'Weekly Game Report':'Monthly Game Report',period],
   ['Team matches',m.validMatches.length],['Logged benefit uses',m.games.length],
   ['Free entries',m.free],['Half-price entries',m.half],['Other-player games',m.special]];
+ if(state.reportCompare){
+  const selected=reportPeriodTitle(false),compared=reportPeriodTitle(true),comparisonRows=reportComparisonRows();
+  if(!comparisonRows.length)throw Error('Load both periods before exporting the comparison.');
+  rows.push([],['PERIOD COMPARISON'],['Metric',selected,compared,'Difference (selected - comparison)']);
+  for(const row of comparisonRows){
+   const format=value=>row.kind==='money'?(value/100).toFixed(2):value;
+   rows.push([row.label,format(row.primary),format(row.comparison),format(row.primary-row.comparison)]);
+  }
+ }
  if(weekly)rows.push(['Weekly used (including opening balances)',m.weekUsed]);
  else if(!daily) {const finance=clubFinancialSnapshot(state.reportMonth,'month');rows.push([],['CLUB FINANCIAL OVERVIEW',state.reportMonth],['Cash received across tracked operations USD',finance.collected===null?'Not loaded':(finance.collected/100).toFixed(2)],['Private session fees (charges) USD',finance.privateCharges===null?'Not loaded':(finance.privateCharges/100).toFixed(2)],['Private payments at sessions USD',finance.privatePaid===null?'Not loaded':(finance.privatePaid/100).toFixed(2)],['Private balance top-ups USD',finance.privateTopups===null?'Not loaded':(finance.privateTopups/100).toFixed(2)],['Cafeteria purchases charged USD',finance.cafeteriaCharges===null?'Not loaded':(finance.cafeteriaCharges/100).toFixed(2)],['Cafeteria payments received USD',finance.cafeteriaPaid===null?'Not loaded':(finance.cafeteriaPaid/100).toFixed(2)],['Matchmaking collections USD',(finance.matchmakingCollected/100).toFixed(2)],['Matchmaking commissions USD',(finance.commissionTotal/100).toFixed(2)]);
 const currentBalances=clubBalanceSnapshot();
@@ -492,7 +550,7 @@ rows.push(['Total matchmaking revenue USD',(m.monthFinance.total/100).toFixed(2)
   rows.push([match.played_on,m.games.filter(g=>g.match_id===match.id).map(g=>state.members.find(x=>x.id===g.member_id)?.name||'Unknown').join('; '),match.benefit_type,match.non_team_count??'Not recorded']);
  }
  const [financeStart,financeEnd]=reportRange();rows.push(...clubInsights.csvRows(financeStart,financeEnd));
- downloadCSV(rows,`padel-on-${state.reportMode}-${period}.csv`);
+ downloadCSV(rows,`padel-on-${state.reportMode}-${period}${state.reportCompare?'-comparison':''}.csv`);
 }
 function downloadCSV(rows,filename){
  // Avoid formula execution when exports are opened in spreadsheet programs.
@@ -1539,19 +1597,34 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'team-prev-week':await loadHistoryWeek(addDays(state.historyWeek,-7));break;
  case 'team-next-week':await loadHistoryWeek(addDays(state.historyWeek,7));break;
  case 'team-current-week':await loadHistoryWeek(weekStart(today()));break;
- case 'report-mode-day':state.reportMode='day';await loadReport();break;
- case 'report-mode-week':state.reportMode='week';await loadReport();break;
- case 'report-mode-month':state.reportMode='month';await loadReport();break;
+ case 'report-mode-day':state.reportMode='day';if(state.reportCompare)resetReportComparison();await loadReport();break;
+ case 'report-mode-week':state.reportMode='week';if(state.reportCompare)resetReportComparison();await loadReport();break;
+ case 'report-mode-month':state.reportMode='month';if(state.reportCompare)resetReportComparison();await loadReport();break;
  case 'report-prev':
   if(state.reportMode==='day')state.reportDay=addDays(state.reportDay,-1);
   else if(state.reportMode==='week')state.reportWeek=addDays(state.reportWeek,-7);
   else state.reportMonth=shiftMonth(state.reportMonth,-1);
+  ensureDifferentComparison();
   await loadReport();break;
  case 'report-next':
   if(state.reportMode==='day'&&state.reportDay<today())state.reportDay=addDays(state.reportDay,1);
   else if(state.reportMode==='week'&&state.reportWeek<weekStart(today()))state.reportWeek=addDays(state.reportWeek,7);
   else if(state.reportMode==='month'&&state.reportMonth<monthKey(today()))state.reportMonth=shiftMonth(state.reportMonth,1);
+  ensureDifferentComparison();
   await loadReport();break;
+ case 'report-compare-toggle':
+  state.reportCompare=!state.reportCompare;
+  if(state.reportCompare)resetReportComparison();
+  else{state.reportCompareData=null;state.reportCompareKey='';compareClubInsights.reset()}
+  await loadReport();break;
+ case 'report-compare-prev':{
+  const value=shiftedComparison(-1);if(value)setReportPeriodValue(true,value);
+  await loadReport();break;
+ }
+ case 'report-compare-next':{
+  const value=shiftedComparison(1);if(value)setReportPeriodValue(true,value);
+  await loadReport();break;
+ }
  case 'export-report':exportReport();break;
  case 'print-report':window.print();break;
  case 'record-team':openModal('team',id);break;
@@ -1575,7 +1648,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'prev-month':state.month=shiftMonth(state.month,-1);render();break;
  case 'next-month':if(state.month<monthKey(today())){state.month=shiftMonth(state.month,1);render()}break;
  case 'export-finance':exportFinance();break;
- case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;cafeteriaFinances.reset();tournamentManagement.reset();clubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
+ case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;cafeteriaFinances.reset();tournamentManagement.reset();clubInsights.reset();compareClubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
  }}
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
@@ -1727,6 +1800,16 @@ document.addEventListener('change',e=>{
  if(e.target.dataset?.orderInput==='quantity' && state.tab==='order-counter' && canUseOrderLists()){render();return;}
  if(e.target.id==='settings-private-account'){state.settingsPrivateAccountId=e.target.value;render();return}
  if(e.target.id==='settings-cafeteria-account'){state.settingsCafeteriaAccountId=e.target.value;render();return}
+
+ if(e.target.id==='report-compare-period'&&state.tab==='reports'&&state.reportCompare){
+  let value=e.target.value;
+  const valid=state.reportMode==='month'?/^\d{4}-\d{2}$/.test(value):/^\d{4}-\d{2}-\d{2}$/.test(value);
+  if(valid&&state.reportMode==='week')value=weekStart(value);
+  const maximum=state.reportMode==='day'?today():state.reportMode==='week'?weekStart(today()):monthKey(today());
+  if(!valid||value>maximum){toast('Choose a valid past or current comparison period.',true);render();return}
+  if(value===reportPeriodValue(false)){toast('Choose a different period to compare.',true);render();return}
+  setReportPeriodValue(true,value);void loadReport();return;
+ }
 
  if(e.target.id==='private-client-filter'){state.privateListFilter=e.target.value==='owing'?'owing':'all';render();return}
  if(e.target.id==='private-client-sort'){state.privateSort=e.target.value==='id'?'id':'name';render();return}
