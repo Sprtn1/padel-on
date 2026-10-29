@@ -829,7 +829,7 @@ test('Only the ordinary one-page Arabic PDF export button is visible, with no Wh
   await widget.load();
   const html=widget.page();
   assert.match(html,/data-action="cafe-export-arabic-pdf"/);
-  assert.match(html,/Export Arabic Daily Sheet \(PDF\)/);
+  assert.match(html,/View Arabic Daily Sheet \(PDF\)/);
   assert.doesNotMatch(html,/WhatsApp|cafe-send-arabic-whatsapp|WhatsApp setup required/);
   assert.equal(await widget.action({dataset:{action:'cafe-send-arabic-whatsapp'}}),false);
   await widget.action({dataset:{action:'cafe-export-arabic-pdf'}});
@@ -838,7 +838,7 @@ test('Only the ordinary one-page Arabic PDF export button is visible, with no Wh
  assert.equal(pdfCalls.length,2);
  assert.equal(pdfCalls[0].date,day);
  assert.equal(toasts.length,2);
- assert.ok(toasts.every(x=>/downloaded/.test(x)));
+ assert.ok(toasts.every(x=>/opened in a new tab/.test(x)));
 });
 
 test('All three court categories show staff Edit controls without enabling edits elsewhere',async()=>{
@@ -972,7 +972,7 @@ test('Cashbook date header contains no NaN after removing WhatsApp button',async
  assert.match(html,/data-action="cafe-export-arabic-pdf"/);
  assert.doesNotMatch(html,/WhatsApp/);
  await widget.action({dataset:{action:'cafe-export-arabic-pdf'}});
- assert.match(notifications[0],/downloaded/);
+ assert.match(notifications[0],/opened in a new tab/);
 });
 
 test('Whish card shows only the useful balance and transaction controls',async()=>{

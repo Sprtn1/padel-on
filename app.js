@@ -63,7 +63,7 @@ const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
  api,heading,icon,amount,today,addDays,
  rerender:()=>{if(state.tab==='cafeteria-finances'&&api.getSession()?.access_token)render()},
  toast,isAdmin:()=>state.staff?.role==='admin',
- exportArabicPdf:data=>arabicDailyPdf.downloadArabicDailySheet(data),
+ exportArabicPdf:data=>arabicDailyPdf.previewArabicDailySheet(data),
  sendArabicPdf:async data=>{
   // The same PDF bytes are downloaded and uploaded once; no Supabase Storage.
   const {pdf,pages}=arabicDailyPdf.makeArabicDailySheetPdf(data);

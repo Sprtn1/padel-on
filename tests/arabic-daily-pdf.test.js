@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {prepareArabicDailySheet,makeArabicDailySheetPdf,downloadArabicDailySheet,downloadArabicPdfBlob,formatArabicPdfAmount,arabicDailyEntryNumber} from '../lib/arabic-daily-pdf.js';
+import {prepareArabicDailySheet,makeArabicDailySheetPdf,downloadArabicDailySheet,downloadArabicPdfBlob,previewArabicDailySheet,formatArabicPdfAmount,arabicDailyEntryNumber} from '../lib/arabic-daily-pdf.js';
 
 const DAY='2026-10-21';
 const sample=()=>({
@@ -201,6 +201,36 @@ test('Download uses a browser-only Blob URL and never invokes an HTTP upload',()
   globalThis.URL=saved.URL;
   globalThis.setTimeout=saved.setTimeout;
  }
+});
+
+test('Arabic daily sheet opens in a browser PDF tab instead of forcing a download',()=>{
+ const saved={document:globalThis.document,URL:globalThis.URL,open:globalThis.open,setTimeout:globalThis.setTimeout};
+ const opened=[],revoked=[];
+ const ctx={save(){},restore(){},scale(){},fillRect(){},strokeRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},fillText(){}};
+ try{
+  globalThis.document={createElement:()=>({getContext:()=>ctx,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q==',width:1346,height:1742})};
+  globalThis.URL={createObjectURL:()=> 'blob:arabic-daily-sheet',revokeObjectURL:url=>revoked.push(url)};
+  globalThis.open=(url,target)=>{opened.push([url,target]);return {opener:{}}};
+  globalThis.setTimeout=fn=>fn();
+  assert.equal(previewArabicDailySheet(sample()),1);
+  assert.deepEqual(opened,[['blob:arabic-daily-sheet','_blank']]);
+  assert.deepEqual(revoked,['blob:arabic-daily-sheet']);
+ }finally{
+  globalThis.document=saved.document;globalThis.URL=saved.URL;globalThis.open=saved.open;globalThis.setTimeout=saved.setTimeout;
+ }
+});
+
+test('Arabic PDF preview explains when the browser blocks the new tab',()=>{
+ const saved={document:globalThis.document,URL:globalThis.URL,open:globalThis.open};
+ const ctx={save(){},restore(){},scale(){},fillRect(){},strokeRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},fillText(){}};
+ let revoked=0;
+ try{
+  globalThis.document={createElement:()=>({getContext:()=>ctx,toDataURL:()=>'data:image/jpeg;base64,/9j/2Q==',width:1346,height:1742})};
+  globalThis.URL={createObjectURL:()=> 'blob:blocked',revokeObjectURL:()=>revoked++};
+  globalThis.open=()=>null;
+  assert.throws(()=>previewArabicDailySheet(sample()),/Allow pop-ups/);
+  assert.equal(revoked,1);
+ }finally{globalThis.document=saved.document;globalThis.URL=saved.URL;globalThis.open=saved.open}
 });
 
 test('special named income and expense categories map only to their own lines',()=>{
