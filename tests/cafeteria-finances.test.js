@@ -1020,6 +1020,8 @@ test('Court booking form has a notes box and validates notes separately from amo
  assert.equal((page.match(/name="court_notes" maxlength="1000"/g)||[]).length,3);
  assert.equal((page.match(/name="court_number"/g)||[]).length,1,'Only padel asks for C1/C2/C3');
  assert.equal((page.match(/name="booking_start_time"/g)||[]).length,3,'All booking types keep time selection');
+ assert.equal((page.match(/name="booking_duration_minutes"/g)||[]).length,3,'All booking types use a simple duration picker');
+ assert.doesNotMatch(page,/name="booking_end_time"/);
  assert.match(page,/Cafeteria items, drinks, or booking details/);
 });
 
@@ -1047,7 +1049,7 @@ test('Saving a court booking includes notes in the same entry RPC; noncourt RPC 
  try{
   globalThis.FormData=class{constructor(form){this._values=form.__values;}entries(){return this._values[Symbol.iterator]();}};
   await widget.submit({dataset:{cafeSave:'entry',category:'padel_courts'},querySelector:()=>null,
-   __values:[['name','Fajr'],['court_number','C1'],['booking_start_time','18:00'],['booking_end_time','19:00'],
+   __values:[['name','Fajr'],['court_number','C1'],['booking_start_time','22:30'],['booking_duration_minutes','90'],
     ['amount','16.00'],['check0','on'],['court_notes','Nescafe x2 / Water x1']]});
   await widget.submit({dataset:{cafeSave:'entry',category:'shoes'},querySelector:()=>null,
    __values:[['name','Court shoes'],['amount','30.00']]});
@@ -1055,6 +1057,8 @@ test('Saving a court booking includes notes in the same entry RPC; noncourt RPC 
  assert.equal(calls.length,2);
  assert.equal(calls[0].name,'cafeteria_finance_record_court_booking');
  assert.equal(calls[0].args.p_court_notes,'Nescafe x2 / Water x1');
+ assert.equal(calls[0].args.p_start,'22:30');
+ assert.equal(calls[0].args.p_end,'00:00');
  assert.equal(calls[1].args.p_court_notes,undefined);
  assert.equal(rows[0].amount_cents,1600);
  assert.match(widget.page(),/Nescafe x2 \/ Water x1/);
@@ -1235,14 +1239,14 @@ test('Starting a note edit reveals only that booking notes, without changing the
 
 test('Court bookings save court/time with manual price override',()=>{
  const booking=cafeEntryFromForm('padel_courts',{
-  name:'Players',court_number:'C2',booking_start_time:'18:00',
-  booking_end_time:'19:30',amount:'36.75',check0:'on'
+  name:'Players',court_number:'C2',booking_start_time:'22:30',
+  booking_duration_minutes:'90',amount:'36.75',check0:'on'
  });
  assert.equal(booking.court_number,'C2');
- assert.equal(booking.booking_end_time,'19:30');
+ assert.equal(booking.booking_end_time,'00:00');
  assert.equal(booking.amount_cents,3675);
  assert.throws(()=>cafeEntryFromForm('padel_courts',{
   name:'Players',court_number:'C1',booking_start_time:'20:00',
   booking_end_time:'18:00',amount:'25'
- }),/later than start/);
+ }),/12 hours/);
 });
