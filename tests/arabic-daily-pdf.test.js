@@ -238,6 +238,7 @@ test('special named income and expense categories map only to their own lines',(
  x.rows.push(
   {entry_date:DAY,category:'classes',amount_cents:2200},
   {entry_date:DAY,category:'pt_gym',amount_cents:1700},
+  {entry_date:DAY,category:'gym_membership',amount_cents:2100},
   {entry_date:DAY,category:'pickleball_courts',amount_cents:1200},
   {entry_date:DAY,category:'other_income',name:'Basketball Academy',amount_cents:2900},
   {entry_date:DAY,category:'other_income',name:'Summer Course',amount_cents:3200},
@@ -254,6 +255,7 @@ test('special named income and expense categories map only to their own lines',(
  assert.equal(row('ملعب بيكل بول')[1],1200);
  assert.equal(row('صف تدريب طابق أول')[1],2200);
  assert.equal(row('صف جم')[1],1700);
+ assert.equal(row('اشتراك جم')[1],2100);
  assert.equal(row('أكاديمية باسكت')[1],2900);
  assert.equal(row('دورة الصيف')[1],3200);
  assert.equal(row('أحذية')[1],1800);
@@ -264,7 +266,7 @@ test('special named income and expense categories map only to their own lines',(
  assert.equal(paid('Stationery')[1],320);
  assert.ok(sheet.details.some(r=>r.section==='إيرادات أخرى'&&r.name==='Unlisted Income'));
  assert.ok(sheet.details.some(r=>r.section==='بيع راكات'&&r.name==='New racket'));
- assert.equal(sheet.receipts,31500+2200+1700+1200+2900+3200+1800+400+7000);
+ assert.equal(sheet.receipts,31500+2200+1700+2100+1200+2900+3200+1800+400+7000);
  assert.equal(sheet.expenses,27500+1400+320+500);
 });
 test('extra client payments and miscellaneous entries survive overflow into details',()=>{

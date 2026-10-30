@@ -9,9 +9,11 @@ import {
 } from '../lib/cafeteria-finances.js';
 
 test('all cashbook categories exist and fixed rental price is $2',()=>{
- assert.equal(CAFE_CATEGORIES.length,20);
+ assert.equal(CAFE_CATEGORIES.length,21);
  const rental=CAFE_CATEGORIES.findIndex(c=>c.id==='racket_rental');
  assert.deepEqual(CAFE_CATEGORIES.slice(rental+1,rental+3).map(c=>c.id),['clothes','racket_sold']);
+ const ptGym=CAFE_CATEGORIES.findIndex(c=>c.id==='pt_gym');
+ assert.deepEqual(CAFE_CATEGORIES.slice(ptGym,ptGym+2).map(c=>c.id),['pt_gym','gym_membership']);
  assert.equal(CAFE_RENTAL_PRICE_CENTS,200);
  assert.deepEqual(CAFE_CATEGORIES.filter(x=>x.kind==='court').map(x=>x.label),['Padel Courts','Pickleball Courts','Basketball Courts']);
 });
