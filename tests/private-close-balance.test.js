@@ -58,6 +58,8 @@ test('Close Balance is admin-only and the database operation is atomic and audit
  assert.match(app,/role==='admin'\?btn\('Close Balance'/);
  assert.match(app,/private_close_balance/);
  assert.match(app,/Only an administrator can close a client balance/);
+ assert.match(app,/case 'private-deposit':case 'private-close-balance':case 'private-void'/);
+ assert.match(app,/title:'Close Client Balance'/);
  assert.match(finance,/entry_type==='balance_close'\?-Number\(e\.session_fee_cents/);
  assert.match(sql,/not public\.is_admin\(\)/i);
  assert.match(sql,/where id=p_client_id for update/i);

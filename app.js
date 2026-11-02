@@ -1084,7 +1084,7 @@ function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',d
   const dialog=debtModal(m.type,m);
   title=dialog.title;subtitle=dialog.subtitle;content=dialog.content;danger=Boolean(dialog.danger);break;
  }
- case 'private-client':case 'private-session':case 'private-deposit':case 'private-void':{
+ case 'private-client':case 'private-session':case 'private-deposit':case 'private-close-balance':case 'private-void':{
   const details=privateClientModal(m.type,m);
   title=details.title;subtitle=details.subtitle;content=details.content;danger=Boolean(details.danger);break;
  }
