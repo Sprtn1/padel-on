@@ -7,6 +7,7 @@ const cafeteriaFinanceModule = await import(`./lib/cafeteria-finances.js?v=${ass
 const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
 const reportComparison = await import(`./lib/report-comparison.js?v=${assetVersion}`);
 const {getDebtDayEntries,summarizeDebtDay} = await import(`./lib/cafeteria-debt-daily.js?v=${assetVersion}`);
+const {visiblePrivateClientSelection} = await import(`./lib/private-client-selection.js?v=${assetVersion}`);
 const refreshPolicy = await import(`./lib/refresh-policy.js?v=${assetVersion}`);
 const scrollPreservation = await import(`./lib/scroll-preservation.js?v=${assetVersion}`);
 const tournamentModule = await import(`./lib/tournament-management.js?v=${assetVersion}`);
@@ -799,7 +800,9 @@ function privateDailySessionsPanel(){
 function privateClientsPage(){
  const ready=state.privateLoaded&&!state.privateError;
  const rows=state.privateClients.filter(c=>!c.deleted_at&&(state.privateShowArchived||c.active)&&(state.privateListFilter!=='owing'||privateClientBalance(c)<0)&&(!state.privateSearch||[c.name,c.client_code,c.contact].some(v=>String(v||'').toLowerCase().includes(state.privateSearch.toLowerCase())))).sort((a,b)=>comparePrivateClients(a,b));
- const selected=rows.find(c=>c.id===state.privateSelected)||rows[0]||null;
+ const selectedId=visiblePrivateClientSelection(rows,state.privateSelected);
+ if(selectedId!==state.privateSelected){state.privateSelected=selectedId;state.privateNotesOpen=false;}
+ const selected=rows.find(c=>c.id===selectedId)||null;
  const active=state.privateClients.filter(c=>c.active&&!c.deleted_at),stats=active.map(c=>({client:c,balance:privateClientBalance(c)}));
  const credit=stats.filter(x=>x.balance>0).reduce((sum,x)=>sum+x.balance,0);
  const owed=stats.filter(x=>x.balance<0).reduce((sum,x)=>sum-x.balance,0);

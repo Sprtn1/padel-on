@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {visiblePrivateClientSelection} from '../lib/private-client-selection.js';
 
 const css=readFileSync(new URL('../styles.css',import.meta.url),'utf8');
 const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
@@ -22,4 +23,12 @@ test('New private clients start at zero without exposing an opening balance fiel
  assert.doesNotMatch(app,/field\('opening_balance'/);
  assert.match(app,/p_opening_balance_cents:0/);
  assert.match(app,/client\.opening_balance_cents/,'Existing stored opening balances remain supported');
+});
+
+test('Filtering private clients synchronizes the detail and action selection',()=>{
+ const clients=[{id:'aboudi',name:'Aboudi Assi'}];
+ assert.equal(visiblePrivateClientSelection(clients,'previous-client'),'aboudi');
+ assert.equal(visiblePrivateClientSelection(clients,'aboudi'),'aboudi');
+ assert.equal(visiblePrivateClientSelection([],'previous-client'),null);
+ assert.match(app,/state\.privateSelected=selectedId;state\.privateNotesOpen=false/);
 });
