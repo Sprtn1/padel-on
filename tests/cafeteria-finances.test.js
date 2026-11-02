@@ -9,11 +9,13 @@ import {
 } from '../lib/cafeteria-finances.js';
 
 test('all cashbook categories exist and fixed rental price is $2',()=>{
- assert.equal(CAFE_CATEGORIES.length,21);
+ assert.equal(CAFE_CATEGORIES.length,22);
  const rental=CAFE_CATEGORIES.findIndex(c=>c.id==='racket_rental');
  assert.deepEqual(CAFE_CATEGORIES.slice(rental+1,rental+3).map(c=>c.id),['clothes','racket_sold']);
  const ptGym=CAFE_CATEGORIES.findIndex(c=>c.id==='pt_gym');
  assert.deepEqual(CAFE_CATEGORIES.slice(ptGym,ptGym+2).map(c=>c.id),['pt_gym','gym_membership']);
+ const basketballAcademy=CAFE_CATEGORIES.findIndex(c=>c.id==='basketball_academy');
+ assert.deepEqual(CAFE_CATEGORIES.slice(basketballAcademy,basketballAcademy+2).map(c=>c.id),['basketball_academy','padel_academy']);
  assert.equal(CAFE_RENTAL_PRICE_CENTS,200);
  assert.deepEqual(CAFE_CATEGORIES.filter(x=>x.kind==='court').map(x=>x.label),['Padel Courts','Pickleball Courts','Basketball Courts']);
 });
@@ -646,14 +648,15 @@ test('dedicated summer camp shoes academy and family debt accept repeated entrie
   cafeEntryFromForm('summer_camp',{amount:'7.75',name:'Morning'}),
   cafeEntryFromForm('shoes',{amount:'24.50'}),
   cafeEntryFromForm('basketball_academy',{amount:'35.00'}),
+  cafeEntryFromForm('padel_academy',{amount:'12.50'}),
   cafeEntryFromForm('family_debt',{amount:'6.99'}),
   cafeEntryFromForm('family_debt',{amount:'1.01',name:'Family'})
  ];
- assert.deepEqual(entries.map(e=>e.amount_cents),[1025,775,2450,3500,699,101]);
+ assert.deepEqual(entries.map(e=>e.amount_cents),[1025,775,2450,3500,1250,699,101]);
  assert.ok(entries.every(e=>e.unit_price_cents===0&&e.quantity===1));
  const totals=cafeTotals(entries);
- assert.equal(totals.income,7750);assert.equal(totals.expenses,800);
- assert.equal(totals.net,6950);assert.equal(totals.count,6);
+ assert.equal(totals.income,9000);assert.equal(totals.expenses,800);
+ assert.equal(totals.net,8200);assert.equal(totals.count,7);
  assert.throws(()=>cafeEntryFromForm('shoes',{amount:'0'}));
  assert.throws(()=>cafeEntryFromForm('family_debt',{amount:'-2'}));
 });
@@ -664,6 +667,7 @@ test('new income and expense cards render individual records without modifying c
   {entry_date:day,category:'summer_camp',name:'Second',amount_cents:1900},
   {entry_date:day,category:'shoes',name:'Pair',amount_cents:2300},
   {entry_date:day,category:'basketball_academy',name:'Academy',amount_cents:8000},
+  {entry_date:day,category:'padel_academy',name:'Padel Academy',amount_cents:1500},
   {entry_date:day,category:'family_debt',name:'Family',amount_cents:1000}
  ];
  const widget=createCafeteriaFinances({
@@ -676,11 +680,11 @@ test('new income and expense cards render individual records without modifying c
  });
  await widget.load();
  const html=widget.page();
- for(const id of ['summer_camp','shoes','basketball_academy','family_debt'])
+ for(const id of ['summer_camp','shoes','basketball_academy','padel_academy','family_debt'])
   assert.match(html,new RegExp('data-category="'+id+'"'));
- for(const name of ['Summer Camp','Shoes','Basketball Academy','Family Debt','First','Second'])
+ for(const name of ['Summer Camp','Shoes','Basketball Academy','Padel Academy','Family Debt','First','Second'])
   assert.match(html,new RegExp(name));
- assert.match(html,/\$77\.00/); // ($200 + $10) - $133 = $77 Goods Sold.
+ assert.match(html,/\$62\.00/); // ($200 + $10) - $148 = $62 Goods Sold.
 });
 
 test('Private Sessions exports preferred Arabic name independently of the English name and financial values',()=>{
@@ -1252,3 +1256,4 @@ test('Court bookings save court/time with manual price override',()=>{
   booking_end_time:'18:00',amount:'25'
  }),/12 hours/);
 });
+
