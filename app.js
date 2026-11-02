@@ -833,11 +833,11 @@ function privateClientsPage(){
  const history=entries.map(e=>{running+=privateEntryDelta(e);return {entry:e,remaining:running}}).reverse();
  const details=`<div class="private-detail">
  <div class="private-detail-header"><div><div class="eyebrow">${esc(selected.client_code||'ID NOT ASSIGNED')}</div><h2>${esc(selected.name)}</h2><details class="private-client-notes" data-private-client-notes ${state.privateNotesOpen?'open':''}><summary>Internal notes</summary><p>${selected.notes?esc(selected.notes):'No internal notes saved.'}</p></details><p>${selected.contact?esc(selected.contact):'Client account'} · ${sessions.length} session${sessions.length===1?'':'s'}</p></div><div class="private-balance-box ${balance<0?'negative':''}"><small>${balance<0?'Outstanding':'Account credit'}</small><strong>${amount(Math.abs(balance))}</strong></div></div>
- <div class="private-client-actions">${btn(`${icon('plus')} Record Session`,'private-record-session','btn-primary',selected.active?'':'disabled')}${btn('Add Balance','private-add-balance','btn-light',selected.active?'':'disabled')}${btn('Edit Client','private-edit-client','btn-light')}</div>
+ <div class="private-client-actions">${btn(`${icon('plus')} Record Session`,'private-record-session','btn-primary',selected.active?'':'disabled')}${btn('Add Balance','private-add-balance','btn-light',selected.active?'':'disabled')}${btn('Edit Client','private-edit-client','btn-light')}${state.staff?.role==='admin'?btn('Close Balance','private-close-balance','btn-danger',balance>0?'':`disabled title="This account has no credit to return"`):''}</div>
  <div class="private-account-note">Balance = opening balance + top-ups + paid amounts − session fees. A negative balance is money owed by the client.</div>
  <div class="panel-head private-ledger-head"><div><h2>Session & payment history</h2><p>${entries.length} session and payment entries</p></div></div>
  <div class="data-table-wrap"><table class="data-table private-ledger-table"><thead><tr><th>Date</th><th>Type / coach</th><th>Charge</th><th>Paid / top-up</th><th>Balance</th><th>Action</th></tr></thead><tbody>
- ${history.length?history.map(({entry:e,remaining:v})=>`<tr><td>${niceDay(e.entry_date)}</td><td><strong>${e.entry_type==='session'?'Private session':'Balance top-up'}</strong><br/><small>${e.entry_type==='session'?esc(privateCoachName(e.coach_id)):esc(e.notes||'Deposit')}</small>${e.entry_type==='session'&&e.notes?`<br/><small>${esc(e.notes)}</small>`:''}</td><td>${e.entry_type==='session'?amount(e.session_fee_cents):'—'}</td><td>${amount(e.entry_type==='deposit'?e.deposit_cents:e.paid_cents)}</td><td class="${v<0?'private-negative':''}">${privateBalanceLabel(v)}</td><td>${state.staff?.role==='admin'?btn('Void','private-void-entry','btn-danger btn-xs',`data-id="${e.id}"`):'<span class="tiny">Recorded</span>'}</td></tr>`).join(''):'<tr><td colspan="6" class="panel-empty">No sessions or deposits recorded yet.</td></tr>'}
+ ${history.length?history.map(({entry:e,remaining:v})=>`<tr><td>${niceDay(e.entry_date)}</td><td><strong>${e.entry_type==='session'?'Private session':e.entry_type==='deposit'?'Balance top-up':'Balance closed'}</strong><br/><small>${e.entry_type==='session'?esc(privateCoachName(e.coach_id)):esc(e.notes||(e.entry_type==='deposit'?'Deposit':'Credit returned to client'))}</small>${e.entry_type==='session'&&e.notes?`<br/><small>${esc(e.notes)}</small>`:''}</td><td>${e.entry_type==='session'||e.entry_type==='balance_close'?amount(e.session_fee_cents):'—'}</td><td>${e.entry_type==='deposit'?amount(e.deposit_cents):e.entry_type==='session'?amount(e.paid_cents):'—'}</td><td class="${v<0?'private-negative':''}">${privateBalanceLabel(v)}</td><td>${state.staff?.role==='admin'?btn('Void','private-void-entry','btn-danger btn-xs',`data-id="${e.id}"`):'<span class="tiny">Recorded</span>'}</td></tr>`).join(''):'<tr><td colspan="6" class="panel-empty">No sessions or payments recorded yet.</td></tr>'}
  </tbody></table></div>
  </div>`;
  return `${headline}${intro}${privateDailySessionsPanel()}<div class="private-layout">${panel}<article class="panel">${details}</article></div>`;
@@ -1047,6 +1047,16 @@ function privateClientModal(type,m){
   ${formActions('Add Balance')}</form>`;
   return {title:'Add Client Balance',subtitle:client?.name||'',content};
  }
+ if(type==='private-close-balance'){
+  const credit=client?privateClientBalance(client):0;
+  if(!client||credit<=0)throw Error('This client has no credit to close.');
+  const content=`<div class="notice warn">This will return ${amount(credit)} to the client and set the account balance to zero. It will be recorded as a negative payment and shown under شراء من الصندوق in the Arabic daily PDF.</div>
+  <form id="modal-form" data-save="close-private-balance">
+  ${field('entry_date','Closing date',today(),'date',`required max="${today()}"`)}
+  ${textareaField('notes','Closing note (optional)','Account balance closed')}
+  ${formActions('Close Balance',true)}</form>`;
+  return {title:'Close Client Balance',subtitle:(client.name||'')+' · '+amount(credit),content,danger:true};
+ }
  const entry=state.privateEntries.find(e=>e.id===m.id);
  const content=`<div class="notice warn">Voiding this entry removes its effect on the client balance. The original entry will stay in history.</div>
  <form id="modal-form" data-save="void-private-entry">${textareaField('reason','Correction reason')}${formActions('Void Entry',true)}</form>`;
@@ -1124,7 +1134,7 @@ function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',d
  return `<div class="modal-backdrop" id="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-head"><div><h2>${esc(title)}</h2><p>${esc(subtitle)}</p></div><button class="modal-close" data-action="close-modal" aria-label="Close">${icon('close')}</button></div><div class="modal-body">${content}</div></div></div>`
 }
 function formActions(text,danger=false){return `<div class="modal-actions">${btn('Cancel','close-modal','btn-light')}<button type="submit" class="btn ${danger?'btn-danger':'btn-primary'}" id="save-button">${esc(text)}</button></div>`}
-function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance','training','private-session','private-deposit','debt-person','debt-charge','debt-payment'].includes(type)?{requestId:crypto.randomUUID()}:{}),...(['finance','settlement'].includes(type)?{personId:selectedMatchmaker()?.id||null}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();validatePrivateClientIdInput();},0)}
+function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance','training','private-session','private-deposit','private-close-balance','debt-person','debt-charge','debt-payment'].includes(type)?{requestId:crypto.randomUUID()}:{}),...(['finance','settlement'].includes(type)?{personId:selectedMatchmaker()?.id||null}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();validatePrivateClientIdInput();},0)}
 function closeModal(){state.modal=null;document.getElementById('modal-root').innerHTML=''}
 function renderAuth(message=''){
  lastRenderedMarkup=null;lastRenderedTab=null;
@@ -1342,6 +1352,13 @@ async function saveForm(form){const f=new FormData(form),data=Object.fromEntries
    const deposit=session?0:parseUSD(data.deposit);
    if(!session&&deposit===0)throw Error('Enter a positive top-up amount.');
    await api.rpc('private_log_entry',{p_entry_id:m.requestId,p_client_id:m.clientId,p_entry_type:session?'session':'deposit',p_entry_date:data.entry_date,p_coach_id:session?data.coach_id:null,p_session_fee_cents:charge,p_paid_cents:paid,p_deposit_cents:deposit,p_notes:data.notes?.trim()||''});
+   break;
+ }
+ case 'close-private-balance':{
+   if(state.staff?.role!=='admin')throw Error('Only an administrator can close a client balance.');
+   const client=state.privateClients.find(c=>c.id===m.clientId&&!c.deleted_at);
+   if(!client||privateClientBalance(client)<=0)throw Error('This client has no credit to close.');
+   await api.rpc('private_close_balance',{p_entry_id:m.requestId,p_client_id:m.clientId,p_entry_date:data.entry_date,p_notes:data.notes?.trim()||'Account balance closed'});
    break;
  }
  case 'void-private-entry':{
@@ -1574,6 +1591,12 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'private-edit-client':if(!state.privateSelected)throw Error('Select a client.');openModal('private-client',null,{clientId:state.privateSelected});break;
  case 'private-record-session':if(!state.privateSelected)throw Error('Select a client.');if(!state.privateCoaches.some(c=>c.active))throw Error('Coaches are not set up. Run the private coach setup script.');openModal('private-session',null,{clientId:state.privateSelected});break;
  case 'private-add-balance':if(!state.privateSelected)throw Error('Select a client.');openModal('private-deposit',null,{clientId:state.privateSelected});break;
+ case 'private-close-balance':{
+  if(state.staff?.role!=='admin')throw Error('Only an administrator can close a client balance.');
+  const client=state.privateClients.find(c=>c.id===state.privateSelected&&!c.deleted_at);
+  if(!client||privateClientBalance(client)<=0)throw Error('This client has no credit to close.');
+  openModal('private-close-balance',null,{clientId:client.id});break;
+ }
  case 'private-void-entry':if(state.staff?.role!=='admin')throw Error('Only admins can correct financial entries.');if(!state.privateEntries.some(e=>e.id===id))throw Error('Entry not found.');openModal('private-void',id);break;
  case 'private-export':exportPrivateClientCSV();break;
  case 'refresh':if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
@@ -1915,3 +1938,4 @@ document.addEventListener('visibilitychange',()=>{
  // Returning after a missed refresh window updates all page feeds immediately.
  void refreshAllPagesWhenDue().catch(err=>console.warn('Visible data refresh failed',err));
 });
+
