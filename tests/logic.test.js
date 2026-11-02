@@ -46,38 +46,47 @@ test('Other Benefits weekly free game is limited to one free game per Monday-Sun
  assert.deepEqual(getWeeklyFreeGameStatus(player,'2026-10-15',[{player_id:'p2',played_on:'2026-10-14',game_type:'free'}]).available,true);
 });
 
-test('matchmaking daily streak follows 15 15 20 20 25 25 30 without counting matches twice',()=>{
+test('matchmaking rolling streak follows 15 15 20 20 25 25 30 from Wednesday without counting matches twice',()=>{
  const games=[
-  {id:'a1',matchmaker_id:'a',played_on:'2026-11-02',amount_cents:10000,created_at:'1'},
-  {id:'a2',matchmaker_id:'a',played_on:'2026-11-02',amount_cents:10000,created_at:'2'},
-  {id:'a3',matchmaker_id:'a',played_on:'2026-11-03',amount_cents:10000,created_at:'3'},
-  {id:'a4',matchmaker_id:'a',played_on:'2026-11-04',amount_cents:10000,created_at:'4'},
-  {id:'a5',matchmaker_id:'a',played_on:'2026-11-05',amount_cents:10000,created_at:'5'},
-  {id:'a6',matchmaker_id:'a',played_on:'2026-11-06',amount_cents:10000,created_at:'6'},
-  {id:'a7',matchmaker_id:'a',played_on:'2026-11-07',amount_cents:10000,created_at:'7'},
-  {id:'a8',matchmaker_id:'a',played_on:'2026-11-08',amount_cents:10000,created_at:'8'},
-  {id:'b1',matchmaker_id:'b',played_on:'2026-11-04',amount_cents:10000,created_at:'9'}
+  {id:'a1',matchmaker_id:'a',played_on:'2026-11-04',amount_cents:10000,created_at:'1'},
+  {id:'a2',matchmaker_id:'a',played_on:'2026-11-04',amount_cents:10000,created_at:'2'},
+  {id:'a3',matchmaker_id:'a',played_on:'2026-11-05',amount_cents:10000,created_at:'3'},
+  {id:'a4',matchmaker_id:'a',played_on:'2026-11-06',amount_cents:10000,created_at:'4'},
+  {id:'a5',matchmaker_id:'a',played_on:'2026-11-07',amount_cents:10000,created_at:'5'},
+  {id:'a6',matchmaker_id:'a',played_on:'2026-11-08',amount_cents:10000,created_at:'6'},
+  {id:'a7',matchmaker_id:'a',played_on:'2026-11-09',amount_cents:10000,created_at:'7'},
+  {id:'a8',matchmaker_id:'a',played_on:'2026-11-10',amount_cents:10000,created_at:'8'},
+  {id:'a9',matchmaker_id:'a',played_on:'2026-11-11',amount_cents:10000,created_at:'9'},
+  {id:'b1',matchmaker_id:'b',played_on:'2026-11-09',amount_cents:10000,created_at:'10'}
  ];
  const ledger=getMatchmakingStreakLedger(games);
  const a=ledger.filter(row=>row.matchmaker_id==='a').sort((x,y)=>x.created_at.localeCompare(y.created_at));
- assert.deepEqual(a.map(row=>[row.streakDay,row.commissionBps]),[[1,1500],[1,1500],[2,1500],[3,2000],[4,2000],[5,2500],[6,2500],[7,3000]]);
+ assert.deepEqual(a.map(row=>[row.streakDay,row.commissionBps]),[[1,1500],[1,1500],[2,1500],[3,2000],[4,2000],[5,2500],[6,2500],[7,3000],[1,1500]]);
  const b=ledger.find(row=>row.id==='b1');assert.deepEqual([b.streakDay,b.commissionBps],[1,1500]);
  const finance=getMatchmakingFinance(games.filter(row=>row.matchmaker_id==='a'),'2026-11');
- assert.equal(finance.total,80000);assert.equal(finance.fee,16500);assert.equal(finance.games,8);
+ assert.equal(finance.total,90000);assert.equal(finance.fee,18000);assert.equal(finance.games,9);
 });
 
-test('matchmaking streak resets after a missed day and at a new Monday',()=>{
+test('matchmaking streak crosses Monday, resets after a missed day, and restarts after Day 7',()=>{
  const games=[
-  {matchmaker_id:'a',played_on:'2026-11-02',amount_cents:10000},
-  {matchmaker_id:'a',played_on:'2026-11-03',amount_cents:10000},
+  {matchmaker_id:'a',played_on:'2026-11-04',amount_cents:10000},
   {matchmaker_id:'a',played_on:'2026-11-05',amount_cents:10000},
   {matchmaker_id:'a',played_on:'2026-11-06',amount_cents:10000},
+  {matchmaker_id:'a',played_on:'2026-11-07',amount_cents:10000},
   {matchmaker_id:'a',played_on:'2026-11-08',amount_cents:10000},
-  {matchmaker_id:'a',played_on:'2026-11-09',amount_cents:10000}
+  {matchmaker_id:'a',played_on:'2026-11-09',amount_cents:10000},
+  {matchmaker_id:'a',played_on:'2026-11-10',amount_cents:10000},
+  {matchmaker_id:'a',played_on:'2026-11-11',amount_cents:10000},
+  {matchmaker_id:'b',played_on:'2026-11-04',amount_cents:10000},
+  {matchmaker_id:'b',played_on:'2026-11-05',amount_cents:10000},
+  {matchmaker_id:'b',played_on:'2026-11-07',amount_cents:10000}
  ];
- const byDate=new Map(getMatchmakingStreakLedger(games).map(row=>[row.played_on,row]));
- assert.deepEqual(['2026-11-02','2026-11-03','2026-11-05','2026-11-06','2026-11-08','2026-11-09'].map(day=>byDate.get(day).streakDay),[1,2,1,2,1,1]);
- assert.deepEqual(getMatchmakingCurrentStreak(games.slice(0,2),'2026-11-04'),{currentStreak:2,currentCommissionBps:2000,lastActiveDay:'2026-11-03',continuesToday:true});
- assert.deepEqual(getMatchmakingCurrentStreak(games.slice(0,2),'2026-11-05'),{currentStreak:0,currentCommissionBps:1500,lastActiveDay:'2026-11-03',continuesToday:false});
- assert.deepEqual(getMatchmakingCurrentStreak(games.slice(0,5),'2026-11-09'),{currentStreak:0,currentCommissionBps:1500,lastActiveDay:null,continuesToday:false});
+ const ledger=getMatchmakingStreakLedger(games);
+ const a=ledger.filter(row=>row.matchmaker_id==='a').sort((x,y)=>x.played_on.localeCompare(y.played_on));
+ const b=ledger.filter(row=>row.matchmaker_id==='b').sort((x,y)=>x.played_on.localeCompare(y.played_on));
+ assert.deepEqual(a.map(row=>row.streakDay),[1,2,3,4,5,6,7,1]);
+ assert.deepEqual(b.map(row=>row.streakDay),[1,2,1]);
+ assert.deepEqual(getMatchmakingCurrentStreak(games.slice(0,2),'2026-11-06'),{currentStreak:2,currentCommissionBps:2000,lastActiveDay:'2026-11-05',continuesToday:true});
+ assert.deepEqual(getMatchmakingCurrentStreak(games.slice(0,2),'2026-11-07'),{currentStreak:0,currentCommissionBps:1500,lastActiveDay:'2026-11-05',continuesToday:false});
+ assert.deepEqual(getMatchmakingCurrentStreak(games.slice(0,7),'2026-11-11'),{currentStreak:0,currentCommissionBps:1500,lastActiveDay:'2026-11-10',continuesToday:false});
 });
