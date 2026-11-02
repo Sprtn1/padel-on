@@ -12,7 +12,7 @@ const refreshPolicy = await import(`./lib/refresh-policy.js?v=${assetVersion}`);
 const scrollPreservation = await import(`./lib/scroll-preservation.js?v=${assetVersion}`);
 const tournamentModule = await import(`./lib/tournament-management.js?v=${assetVersion}`);
 const arabicDailyPdf = await import(`./lib/arabic-daily-pdf.js?v=${assetVersion}`);
-const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus} = await import(`./lib/logic.js?v=${assetVersion}`);
+const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus,getMatchmakingFinance,getMatchmakingStreakLedger,getMatchmakingCurrentStreak} = await import(`./lib/logic.js?v=${assetVersion}`);
 const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = await import(`./lib/date.js?v=${assetVersion}`);
 const app=document.getElementById('app');
 const icons={
@@ -153,16 +153,17 @@ function today(){return todayBeirut()}
 function normalMembers(){return state.members.filter(m=>m.active&&!m.unlimited)}
 function status(m,date=today()){const past=state.historyWeek!==weekStart(today())&&weekStart(date)===state.historyWeek?state.historyData:null;return getWeeklyStatus(m,date,state.balances,past?.games||state.games,past?.resets||state.resets);}
 function selectedMatchmaker(){return state.matchmakers.find(x=>x.id===state.matchmakerId)||state.matchmakers[0]||null;}
-function matchmakerRate(person){return Number(person?.commission_bps??1500)}
-function matchmakingFee(cents,person){return Math.round(Number(cents||0)*matchmakerRate(person)/10000)}
+function personMatchmakingRows(person){return state.finance.filter(g=>(g.matchmaker_id||LEGACY_MATCHMAKER_ID)===person.id)}
+// Compatibility for installations that have not yet loaded matchmaker accounts.
+function matchmakerRate(){return 1500}
+function matchmakingFee(cents){return Math.round(Number(cents||0)*.15)}
 function personFinancials(ym,person){
- const rows=state.finance.filter(g=>(g.matchmaker_id||LEGACY_MATCHMAKER_ID)===person.id);
- const f=getMonthFinance(rows,ym);
- return {...f,fee:matchmakingFee(f.total,person)};
+ return getMatchmakingFinance(personMatchmakingRows(person),ym);
 }
+function personStreak(person){return getMatchmakingCurrentStreak(personMatchmakingRows(person),today())}
 function financials(ym=state.month){
  const person=selectedMatchmaker();
- return person?personFinancials(ym,person):getMonthFinance(state.finance,ym);
+ return person?personFinancials(ym,person):getMatchmakingFinance(state.finance,ym);
 }
 function navMarkup(mobile=false){const allowed=tabs.filter(t=>mobile?t[0]!=='settings':true);return allowed.map(([key,title,ico])=>`<button class="${mobile?'mobile-nav':'nav-item'} ${state.tab===key?'active':''}" data-tab="${key}" aria-current="${state.tab===key?'page':'false'}">${icon(ico)}<span>${mobile?title.split(' ')[0]:title}</span></button>`).join('')}
 function globalSearchCandidates(){
@@ -227,8 +228,8 @@ function clubFinancialSnapshot(period,scope='month'){
  const cafeteriaCharges=sum(cafeCharges,'amount_cents'),cafeteriaPaid=sum(cafePayments,'amount_cents');
  const matchmakingCollected=sum(matchmaking,'amount_cents');
  const matchmakers=state.matchmakers.length?state.matchmakers:[{id:LEGACY_MATCHMAKER_ID,commission_bps:1500,name:'Legacy'}];
- const commissionTotal=matchmakers.reduce((total,p)=>total+matchmakingFee(
-  sum(matchmaking.filter(e=>(e.matchmaker_id||LEGACY_MATCHMAKER_ID)===p.id),'amount_cents'),p),0);
+ const commissionTotal=matchmakers.reduce((total,p)=>total+getMatchmakingStreakLedger(personMatchmakingRows(p))
+  .filter(e=>inPeriod(e.played_on)).reduce((sum,row)=>sum+Number(row.commission_cents||0),0),0);
  const collected=privatePaid===null||privateTopups===null||cafeteriaPaid===null?null:privatePaid+privateTopups+cafeteriaPaid+matchmakingCollected;
  return {sessions:sessions?.length??null,privateCharges,privatePaid,privateTopups,cafeteriaCharges,cafeteriaPaid,
   matchmakingCollected,commissionTotal,collected,matchmakingGames:matchmaking.length,
@@ -443,7 +444,7 @@ function buildReportMetrics(data,mode,period){
  }).filter(r=>r.played||r.used).sort((a,b)=>b.used-a.used||a.member.name.localeCompare(b.member.name));
  const weekUsed=mode==='week'?state.members.filter(m=>!m.unlimited).reduce((n,m)=>n+getWeeklyStatus(m,period,state.balances,games,data.resets).used,0):null;
  const financeMonth=mode==='month'?period:state.reportMonth;
- const breakdown=state.matchmakers.length?state.matchmakers.map(person=>({...personFinancials(financeMonth,person),person})): [{...getMonthFinance(state.finance,financeMonth),person:{name:'Nazih Sonbol',commission_bps:1500}}];
+ const breakdown=state.matchmakers.length?state.matchmakers.map(person=>({...personFinancials(financeMonth,person),person})): [{...getMatchmakingFinance(state.finance,financeMonth),person:{name:'Nazih Sonbol'}}];
  const monthFinance={total:breakdown.reduce((sum,r)=>sum+r.total,0),fee:breakdown.reduce((sum,r)=>sum+r.fee,0),games:breakdown.reduce((sum,r)=>sum+r.games,0)};
  return {validMatches,games,rows,free,half,special,weekUsed,monthFinance,breakdown};
 }
@@ -452,7 +453,7 @@ function reportCompareMetrics(){return state.reportCompare?buildReportMetrics(st
 function matchmakingBreakdownHTML(rows){
  return `<article class="panel matchmaking-breakdown"><div class="panel-head"><div><h2>Matchmaking by person</h2><p>Independent monthly revenue, commissions, and payments</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Matchmaker</th><th>Games</th><th>Revenue</th><th>Rate</th><th>Commission</th><th>Settlement</th></tr></thead><tbody>${rows.map(r=>{
  const settlement=state.settlements.find(x=>(x.matchmaker_id||LEGACY_MATCHMAKER_ID)===(r.person.id||LEGACY_MATCHMAKER_ID)&&x.month_key===state.reportMonth+'-01');
- return `<tr><td><strong>${esc(r.person.name)}</strong></td><td>${r.games}</td><td>${amount(r.total)}</td><td>${(matchmakerRate(r.person)/100).toLocaleString('en-US',{maximumFractionDigits:2})}%</td><td><strong>${amount(r.fee)}</strong></td><td>${tag(settlement?.status==='paid'?'Paid':'Unpaid',settlement?.status==='paid'?'green':'amber')}</td></tr>`;
+ return `<tr><td><strong>${esc(r.person.name)}</strong></td><td>${r.games}</td><td>${amount(r.total)}</td><td>Daily streak</td><td><strong>${amount(r.fee)}</strong></td><td>${tag(settlement?.status==='paid'?'Paid':'Unpaid',settlement?.status==='paid'?'green':'amber')}</td></tr>`;
  }).join('')}</tbody></table></div></article>`;
 }
 function consolidatedFinancePanel(ym){
@@ -543,7 +544,7 @@ rows.push([],['CURRENT BALANCES (LIVE SNAPSHOT, NOT MONTH-END)'],
  ['Current cafeteria outstanding USD',currentBalances.cafeteriaOwed===null?'Not loaded':(currentBalances.cafeteriaOwed/100).toFixed(2)],
  ['Current prepaid private client credit USD',currentBalances.privateCredit===null?'Not loaded':(currentBalances.privateCredit/100).toFixed(2)],
  ['Current prepaid cafeteria credit USD',currentBalances.cafeteriaCredit===null?'Not loaded':(currentBalances.cafeteriaCredit/100).toFixed(2)]);
-rows.push(['Total matchmaking revenue USD',(m.monthFinance.total/100).toFixed(2)],['Total commissions USD',(m.monthFinance.fee/100).toFixed(2)]);rows.push([],['Matchmaker','Games','Revenue USD','Commission Rate','Commission USD','Payment status']);for(const x of m.breakdown){const settlement=state.settlements.find(t=>(t.matchmaker_id||LEGACY_MATCHMAKER_ID)===(x.person.id||LEGACY_MATCHMAKER_ID)&&t.month_key===state.reportMonth+'-01');rows.push([x.person.name,x.games,(x.total/100).toFixed(2),(matchmakerRate(x.person)/100)+'%',(x.fee/100).toFixed(2),settlement?.status||'unpaid']);}}
+rows.push(['Total matchmaking revenue USD',(m.monthFinance.total/100).toFixed(2)],['Total commissions USD',(m.monthFinance.fee/100).toFixed(2)]);rows.push([],['Matchmaker','Games','Revenue USD','Commission Rule','Commission USD','Payment status']);for(const x of m.breakdown){const settlement=state.settlements.find(t=>(t.matchmaker_id||LEGACY_MATCHMAKER_ID)===(x.person.id||LEGACY_MATCHMAKER_ID)&&t.month_key===state.reportMonth+'-01');rows.push([x.person.name,x.games,(x.total/100).toFixed(2),'15 / 15 / 20 / 20 / 25 / 25 / 30 daily streak',(x.fee/100).toFixed(2),settlement?.status||'unpaid']);}}
  rows.push([],['Member','Team category','Logged games','Free','Half-price',weekly?'Week used':daily?'Daily total':'Monthly total',...(weekly?['Remaining*']:[])]);
  for(const r of m.rows)rows.push([r.member.name,groupLabel(r.member.team_category),r.played,r.free,r.half,r.used,...(weekly?[r.member.unlimited?'Unlimited':r.remaining]:[])]);
  rows.push([],['Date','Team members','Match benefit','Non-team players']);
@@ -861,21 +862,21 @@ function financePage(){
  const person=selectedMatchmaker();if(!person)return '<div class="panel-empty">No matchmaking personnel configured.</div>';
  const f=financials(),sel=state.settlements.find(s=>s.matchmaker_id===person.id&&s.month_key===state.month+'-01');
  const paid=sel?.status==='paid',diff=Number(sel?.amount_paid_cents||0)-f.fee;
- const rate=(matchmakerRate(person)/100).toLocaleString('en-US',{maximumFractionDigits:2});
+ const streak=personStreak(person),currentRate=streak.currentCommissionBps/100;
  const tabs=state.matchmakers.filter(p=>p.active||p.id===person.id).map(p=>`<button type="button" class="matchmaker-tab ${p.id===person.id?'selected':''}" data-action="select-matchmaker" data-id="${esc(p.id)}" aria-pressed="${p.id===person.id}">${esc(p.name)}</button>`).join('');
  const incomplete=person.name.startsWith('Legacy matchmaker')?`<div class="notice warn">${icon('alert')} Ask an administrator to update this matchmaker’s name.</div>`:'';
  return `${heading('Matchmaking / commissions','Revenue & Commission',`Monthly revenue and commissions for ${esc(person.name)}.`,btn(`${icon('plus')} Add Matchmaking Game`,'add-nazih','btn-primary')+btn(`${icon('download')} Export CSV`,'export-finance','btn-light'))}
  <div class="matchmaker-switch"><div class="matchmaker-switch-label">Select matchmaker</div><div class="matchmaker-tabs" role="group" aria-label="Choose matchmaking person">${tabs}</div></div>
  ${incomplete}
  <div class="toolbar"><div class="money-note">Revenue collected from other players · figures in USD · ${esc(person.name)}</div><div class="month-control"><button data-action="prev-month" title="Previous month" aria-label="Previous month">${icon('chevronLeft')}</button><strong>${monthLabel(state.month)}</strong><button data-action="next-month" ${state.month>=monthKey(today())?'disabled':''} title="Next month" aria-label="Next month">${icon('chevronRight')}</button></div></div>
- <section class="finance-grid">${summaryCard('Revenue collected',amount(f.total),esc(person.name)+' · this month','wallet',true)}${summaryCard(`${rate}% commission`,amount(f.fee),'Calculated on monthly revenue','coins')}${summaryCard('Games recorded',f.games,'Selected person · selected month','calendar')}</section>
+ <section class="finance-grid four-up matchmaking-streak-grid">${summaryCard('Revenue collected',amount(f.total),esc(person.name)+' · this month','wallet',true)}${summaryCard('Commission this month',amount(f.fee),'Sum of each game’s daily streak rate','coins')}${summaryCard('Current streak',streak.currentStreak+' day'+(streak.currentStreak===1?'':'s'),streak.continuesToday?(streak.lastActiveDay===today()?'Active today':'Can continue today'):'Starts again on next game','activity')}${summaryCard('Current commission',currentRate+'%','Rate applicable today · per matchmaker','spark')}</section>
  <div class="settlement"><div><strong>Monthly settlement · ${esc(person.name)}</strong><small>${monthLabel(state.month)} · ${paid?`Marked paid on ${niceDay(sel.paid_on||sel.month_key)}`:'Not marked as paid'}${paid&&diff!==0?' · ⚠ Paid amount differs from current commission':''}</small></div><div class="inline-info">${tag(paid?'Paid':'Unpaid',paid?'green':'amber')}${state.staff?.role==='admin'?btn(`${icon('edit')} ${paid?'Edit Settlement':'Record Payment'}`,'settlement','btn-light'):''}</div></div>
- <article class="panel"><div class="panel-head"><div><h2>Matchmaking history</h2><p>${esc(person.name)} · ${monthLabel(state.month)} · ${f.rows.length} records</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Players / Notes</th><th>Revenue collected</th><th>Game's ${rate}% share*</th><th>Actions</th></tr></thead><tbody>${f.rows.length?f.rows.map(row=>`<tr><td>${niceDay(row.played_on)}</td><td><strong>${esc(row.players||'Matchmaking game')}</strong><br/><small>${esc(row.notes||'—')}</small></td><td><strong class="num">${amount(row.amount_cents)}</strong></td><td class="num">${amount(matchmakingFee(row.amount_cents,person))}</td><td>${btn(icon('edit'),'edit-nazih','btn-light btn-icon btn-xs',`data-id="${row.id}" title="Edit"`)} ${btn(icon('trash'),'delete-nazih','btn-danger btn-icon btn-xs',`data-id="${row.id}" title="Remove"`)}</td></tr>`).join(''):'<tr><td colspan="5"><div class="empty-prompt"><strong>No matchmaking records</strong><span>Add a game for this person to track the monthly revenue.</span></div></td></tr>'}</tbody></table></div></article>
- <div class="archive-note">* Monthly commission is ${rate}% of total monthly revenue, rounded once.</div>`;
+ <article class="panel"><div class="panel-head"><div><h2>Matchmaking history</h2><p>${esc(person.name)} · ${monthLabel(state.month)} · ${f.rows.length} records</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Players / Notes</th><th>Revenue</th><th>Streak day</th><th>Rate</th><th>Commission</th><th>Actions</th></tr></thead><tbody>${f.rows.length?f.rows.map(row=>`<tr><td>${niceDay(row.played_on)}</td><td><strong>${esc(row.players||'Matchmaking game')}</strong><br/><small>${esc(row.notes||'—')}</small></td><td><strong class="num">${amount(row.amount_cents)}</strong></td><td class="num">Day ${row.streakDay}</td><td class="num">${row.commissionBps/100}%</td><td class="num">${amount(row.commission_cents)}</td><td>${btn(icon('edit'),'edit-nazih','btn-light btn-icon btn-xs',`data-id="${row.id}" title="Edit"`)} ${btn(icon('trash'),'delete-nazih','btn-danger btn-icon btn-xs',`data-id="${row.id}" title="Remove"`)}</td></tr>`).join(''):'<tr><td colspan="7"><div class="empty-prompt"><strong>No matchmaking records</strong><span>Add a game for this person to track the monthly revenue.</span></div></td></tr>'}</tbody></table></div></article>
+ <div class="archive-note">Daily streak schedule: 15%, 15%, 20%, 20%, 25%, 25%, 30%. Multiple matches on one day share one rate. A missed day or a new Monday resets the next active day to 15%.</div>`;
 }
-function legacyFinancePage(){const person=selectedMatchmaker();const rate=(matchmakerRate(person)/100).toLocaleString('en-US',{maximumFractionDigits:2});const f=financials(),sel=state.settlements.find(s=>s.month_key===state.month+'-01');const paid=sel?.status==='paid';const diff=Number(sel?.amount_paid_cents||0)-f.fee;return `${heading('Matchmaking / Nazih Sonbol','Revenue & Commission','Record and review matchmaking revenue by month.',btn(`${icon('plus')} Add Matchmaking Game`,'add-nazih','btn-primary'))}
+function legacyFinancePage(){const person=selectedMatchmaker(),f=getMatchmakingFinance(state.finance,state.month),streak=getMatchmakingCurrentStreak(state.finance,today()),sel=state.settlements.find(s=>s.month_key===state.month+'-01');const paid=sel?.status==='paid';const diff=Number(sel?.amount_paid_cents||0)-f.fee;return `${heading('Matchmaking / Nazih Sonbol','Revenue & Commission','Record and review matchmaking revenue by month.',btn(`${icon('plus')} Add Matchmaking Game`,'add-nazih','btn-primary'))}
 <div class="toolbar"><div class="money-note">Revenue collected from other players · all figures USD</div><div class="month-control"><button data-action="prev-month" title="Previous month" aria-label="Previous month">${icon('chevronLeft')}</button><strong>${monthLabel(state.month)}</strong><button data-action="next-month" ${state.month>=monthKey(today())?'disabled':''} title="Next month" aria-label="Next month">${icon('chevronRight')}</button></div></div>
-<section class="finance-grid">${summaryCard('Revenue collected',amount(f.total),'From other players','wallet',true)}${summaryCard(`${esc(person?.name||'Matchmaker')}’s ${rate}% commission`,amount(f.fee),'Calculated monthly','coins')}${summaryCard('Games recorded',f.games,'This selected month','calendar')}</section>
+<section class="finance-grid four-up matchmaking-streak-grid">${summaryCard('Revenue collected',amount(f.total),'From other players','wallet',true)}${summaryCard('Commission this month',amount(f.fee),'Daily streak rates','coins')}${summaryCard('Current streak',streak.currentStreak+' day'+(streak.currentStreak===1?'':'s'),'Per active day','activity')}${summaryCard('Current commission',streak.currentCommissionBps/100+'%','Rate applicable today','spark')}</section>
 <div class="settlement"><div><strong>Monthly settlement · ${monthLabel(state.month)}</strong><small>${paid?`Marked paid on ${niceDay(sel.paid_on||sel.month_key)}`:'Not marked as paid'}${paid&&diff!==0?' · ⚠ Paid amount differs from current commission':''}</small></div><div class="inline-info">${tag(paid?'Paid':'Unpaid',paid?'green':'amber')}${state.staff?.role==='admin'?btn(`${icon('edit')} ${paid?'Edit Settlement':'Record Payment'}`,'settlement','btn-light'):''}</div></div>
 <article class="panel"><div class="panel-head"><div><h2>Matchmaking history</h2><p>${monthLabel(state.month)} · ${f.rows.length} records</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Players / Notes</th><th>Revenue collected</th><th>Game's ${rate}% share*</th><th>Actions</th></tr></thead><tbody>${f.rows.length?f.rows.map(r=>`<tr><td>${niceDay(r.played_on)}</td><td><strong>${esc(r.players||'Matchmaking game')}</strong><br/><small>${esc(r.notes||'—')}</small></td><td><strong class="num">${amount(r.amount_cents)}</strong></td><td class="num">${amount(matchmakingFee(r.amount_cents,person))}</td><td>${btn(icon('edit'),'edit-nazih','btn-light btn-icon btn-xs',`data-id="${r.id}" title="Edit"`)} ${btn(icon('trash'),'delete-nazih','btn-danger btn-icon btn-xs',`data-id="${r.id}" title="Delete"`)}</td></tr>`).join(''):`<tr><td colspan="5"><div class="empty-prompt">${icon('wallet')}<strong>No matchmaking records</strong><span>Add a game to start tracking revenue for this month.</span></div></td></tr>`}</tbody></table></div></article><div class="archive-note">* Monthly commission is based on total revenue and rounded once.</div>`}
 function activityPage(){const recent=recentActivity(10000,state.activitySearch),showReference=state.staff?.role==='admin';return `${heading('History','Game Activity','Review recent games and benefit usage.',btn(`${icon('refresh')} Refresh`,'refresh','btn-light'))}<div class="toolbar"><label class="search">${icon('search')}<input id="activity-search" placeholder="Search player…" value="${esc(state.activitySearch)}"/></label><span class="tiny">${recent.length} entries</span></div><article class="panel"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Player(s)</th><th>Benefit type</th>${showReference?'<th>Reference</th>':''}<th>Action</th></tr></thead><tbody>${recent.length?recent.map(r=>`<tr><td>${niceDay(r.date)}</td><td><strong>${esc(r.names)}</strong></td><td>${tag(r.type,r.type==='Paid Game'?'gray':'green')}</td>${showReference?`<td><small>${esc(r.ref.slice(0,8))}…</small></td>`:''}<td>${r.kind==='team'?btn('Void match','void-match','btn-danger btn-xs',`data-id="${r.key}"`):'<span class="tiny">Recorded</span>'}</td></tr>`).join(''):`<tr><td colspan="${showReference?5:4}" class="panel-empty">No activity found.</td></tr>`}</tbody></table></div></article>`}
@@ -914,17 +915,7 @@ function adminAccountManagementCards(section='all'){
 function canUseOrderLists(){return Boolean(api.getSession()?.access_token&&['admin','staff'].includes(state.staff?.role));}
 function matchmakerCommissionSettings(){
  if(state.staff?.role!=='admin')return '';
- const people=state.matchmakers.slice().sort((a,b)=>a.name.localeCompare(b.name));
- const rows=people.map(person=>{
-  const rate=(matchmakerRate(person)/100).toLocaleString('en-US',{maximumFractionDigits:2});
-  const value=String(matchmakerRate(person)/100);
-  return '<form id="commission-rate-'+esc(person.id)+'" data-save="save-matchmaker-rate" data-matchmaker-id="'+esc(person.id)+'" style="display:flex;align-items:end;gap:12px;flex-wrap:wrap;border-top:1px solid var(--border);padding:12px 0 0;margin-top:12px">'+
-   '<div style="flex:1;min-width:160px"><strong>'+esc(person.name)+'</strong><small style="display:block;color:var(--muted)">Current rate: '+rate+'%</small></div>'+
-   '<div style="width:150px;max-width:100%">'+field('commission_percent','Commission (%)',value,'number','required min="0" max="100" step="0.01"')+'</div>'+
-   '<button type="submit" class="btn btn-primary">Save Rate</button></form>';
- }).join('');
- return '<article class="panel settings-box"><h3>Matchmaking commissions</h3><p>Set each matchmaker’s commission percentage. Updated rates apply to the monthly totals.</p>'+
-  (rows||'<div class="notice">No matchmakers are configured yet.</div>')+'</article>';
+ return '<article class="panel settings-box"><h3>Matchmaking commissions</h3><p>Commission is automatic and tracked separately for every matchmaker by consecutive active day.</p><div class="notice">Weekly daily-streak schedule: <strong>15% · 15% · 20% · 20% · 25% · 25% · 30%</strong><br/>Multiple matches on the same day do not advance the streak. A missed day or a new Monday resets the next active day to 15%.</div></article>';
 }
 function settingsPage(){
  const admin=state.staff?.role==='admin';
@@ -1243,19 +1234,6 @@ async function runMutation(task,success='Saved successfully'){if(working)return;
 function slugify(x){return x.trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Math.random().toString(36).slice(2,6)}
 async function saveForm(form){const f=new FormData(form),data=Object.fromEntries(f.entries()),m=state.modal;
  switch(form.dataset.save){
- case 'save-matchmaker-rate':{
-  if(state.staff?.role!=='admin')throw Error('Only administrators can change matchmaking commission rates.');
-  const personId=form.dataset.matchmakerId;
-  const person=state.matchmakers.find(p=>p.id===personId);
-  if(!person)throw Error('Matchmaker not found. Refresh Settings and try again.');
-  const raw=String(data.commission_percent??'').trim();
-  const percent=Number(raw);
-  if(raw===''||!Number.isFinite(percent)||percent<0||percent>100)throw Error('Enter a commission between 0% and 100%.');
-  const scaled=percent*100;
-  if(Math.abs(scaled-Math.round(scaled))>0.000001)throw Error('Use no more than two decimal places.');
-  await api.patch('matchmakers',personId,{commission_bps:Math.round(scaled)});
-  break;
- }
  case 'save-admin-account-manage':{
   if(state.staff?.role!=='admin')throw Error('Only administrators can remove or restore accounts.');
   if(m.accountKind!=='private'&&m.accountKind!=='cafeteria')throw Error('Invalid account type.');
@@ -1438,11 +1416,10 @@ async function saveForm(form){const f=new FormData(form),data=Object.fromEntries
 }
 function exportFinance(){
  const f=financials(),person=selectedMatchmaker();
- const rate=matchmakerRate(person)/100;
  const name=person?.name||'Nazih Sonbol';
- const rows=[['PADEL ON','Monthly Matchmaking Ledger'],['Matchmaker',name],['Month',monthLabel(state.month)],['Commission rate',rate+'%'],[],['Date','Other players','Notes','Collected USD','Illustrative share USD']];
- for(const entry of f.rows)rows.push([entry.played_on,entry.players||'',entry.notes||'',(Number(entry.amount_cents)/100).toFixed(2),(matchmakingFee(entry.amount_cents,person)/100).toFixed(2)]);
- rows.push([],['TOTAL','','',(f.total/100).toFixed(2),(f.fee/100).toFixed(2)]);
+ const rows=[['PADEL ON','Monthly Matchmaking Ledger'],['Matchmaker',name],['Month',monthLabel(state.month)],['Commission rule','15 / 15 / 20 / 20 / 25 / 25 / 30 daily streak'],[],['Date','Other players','Notes','Collected USD','Streak day','Rate','Commission USD']];
+ for(const entry of f.rows)rows.push([entry.played_on,entry.players||'',entry.notes||'',(Number(entry.amount_cents)/100).toFixed(2),entry.streakDay,(entry.commissionBps/100)+'%',(entry.commission_cents/100).toFixed(2)]);
+ rows.push([],['TOTAL','','',(f.total/100).toFixed(2),'','',(f.fee/100).toFixed(2)]);
  const slug=person?.name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'nazih';
  downloadCSV(rows,`padel-on-matchmaking-${slug}-${state.month}.csv`);
 }
@@ -1711,12 +1688,12 @@ document.addEventListener('submit',async e=>{
  e.preventDefault();if(working)return;working=true;const f=new FormData(e.target);const button=e.target.querySelector('[type=submit]');button.disabled=true;button.textContent='Signing in…';
  try{await api.login(f.get('email'),f.get('password'));beginStaffSession();await loadData(true)}catch(err){renderAuth(err.message)}finally{working=false}return;
  }
- if(e.target.id==='modal-form'||e.target.dataset?.save==='save-matchmaker-rate'){
+ if(e.target.id==='modal-form'){
  e.preventDefault();
  const form=e.target;
  if(form.dataset.save==='choose-member'){const sel=new FormData(form).get('member_id');openModal('edit-member',sel);return;}
  if(form.dataset.save==='submit-reset'&&state.modal?.id){const chosen=document.getElementById('reset-member')?.value;if(chosen)state.modal.id=chosen;}
- await runMutation(()=>saveForm(form),form.dataset.save==='submit-reset'?'Weekly counter reset recorded':form.dataset.save==='save-matchmaker-rate'?'Matchmaking commission updated.':'Saved successfully');
+ await runMutation(()=>saveForm(form),form.dataset.save==='submit-reset'?'Weekly counter reset recorded':'Saved successfully');
  }
 });
 document.addEventListener('input',e=>{

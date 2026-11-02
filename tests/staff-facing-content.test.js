@@ -47,7 +47,9 @@ test('Reports and account help text avoid backend and migration jargon',()=>{
  assert.doesNotMatch(app,/and audit history<\/p>/);
  assert.doesNotMatch(app,/Financial totals use permanent saved matchmaking records/);
  assert.doesNotMatch(app,/Historical financial records are not cleared by weekly resets/);
- assert.match(app,/Monthly commission is based on total revenue and rounded once/);
+ assert.match(app,/Daily streak schedule: 15%, 15%, 20%, 20%, 25%, 25%, 30%/);
+ assert.match(app,/Current streak/);
+ assert.match(app,/Current commission/);
 });
 test('Operational warnings remain meaningful after shortening visible content',()=>{
  assert.match(tournament,/permanently removes its teams, payments, and match results/);
