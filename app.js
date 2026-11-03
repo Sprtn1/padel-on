@@ -8,6 +8,7 @@ const reemItems = await import(`./lib/reem-items-ui.js?v=${assetVersion}`);
 const cafeteriaFinanceModule = await import(`./lib/cafeteria-finances.js?v=${assetVersion}`);
 const cafeteriaPaymentsModule = await import(`./lib/cafeteria-payments.js?v=${assetVersion}`);
 const cafeteriaTodoModule = await import(`./lib/cafeteria-todo.js?v=${assetVersion}`);
+const consignmentModule = await import(`./lib/consignment-inventory.js?v=${assetVersion}`);
 const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
 const reportComparison = await import(`./lib/report-comparison.js?v=${assetVersion}`);
 const {getDebtDayEntries,summarizeDebtDay} = await import(`./lib/cafeteria-debt-daily.js?v=${assetVersion}`);
@@ -42,6 +43,11 @@ function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Te
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
 const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,reportCompare:false,reportCompareDay:addDays(todayBeirut(),-1),reportCompareWeek:addDays(weekStart(todayBeirut()),-7),reportCompareMonth:shiftMonth(monthKey(todayBeirut()),-1),reportCompareData:null,reportCompareKey:'',trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateNotesOpen:false,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',debtDay:todayBeirut(),settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
 // The daily cashbook owns its own dated Supabase query and does not mix with other ledgers.
+const consignmentInventory=consignmentModule.createConsignmentInventory({
+ api,heading,icon,toast,
+ isAdmin:()=>state.staff?.role==='admin',
+ rerender:()=>{if(state.tab==='consignment'&&api.getSession()?.access_token&&!autoRefreshRunning)render()}
+});
 const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
  api,heading,icon,amount,today,addDays,
  rerender:()=>{if(state.tab==='cafeteria-finances'&&api.getSession()?.access_token)render()},
@@ -111,7 +117,7 @@ async function autoSignOut(){
  idleLogoutStarted=true;
  clearStaffActivity();
  state.staff=null;
- cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();clubInsights.reset();compareClubInsights.reset();
+ cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();consignmentInventory.reset();clubInsights.reset();compareClubInsights.reset();
  state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';
  // api.signOut clears the local authentication token before contacting Supabase.
  const remoteLogout=api.signOut();
@@ -192,7 +198,7 @@ function globalSearchOverlay(){
 }
 function shell(){
  const name=state.staff?.email?.split('@')[0]||'Staff';
- return `<div class="app-layout"><aside class="sidebar"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><div class="brand-sub">Club management</div><nav class="menu">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></aside><main class="main"><header class="topbar"><div><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='tournament'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><nav class="mobile-bar" aria-label="Mobile navigation"><div class="mobile-nav-scroll">${navMarkup(true)}</div><button type="button" class="mobile-nav mobile-settings-nav ${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'active':''}" data-tab="settings" aria-current="${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'page':'false'}" aria-label="Settings">${icon('settings')}<span>Settings</span></button></nav></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
+ return `<div class="app-layout"><aside class="sidebar"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><div class="brand-sub">Club management</div><nav class="menu">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></aside><main class="main"><header class="topbar"><div><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='consignment'||state.tab==='tournament'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><nav class="mobile-bar" aria-label="Mobile navigation"><div class="mobile-nav-scroll">${navMarkup(true)}</div><button type="button" class="mobile-nav mobile-settings-nav ${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'active':''}" data-tab="settings" aria-current="${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'page':'false'}" aria-label="Settings">${icon('settings')}<span>Settings</span></button></nav></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
 }
 function heading(eyebrow,title,desc,actions=''){return `<div class="heading-row"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${desc}</p></div>${actions?`<div class="heading-actions">${actions}</div>`:''}</div>`}
 function summaryCard(label,num,sub,ico,feature=false){return `<article class="summary-card ${feature?'feature':''}"><div class="card-top"><span class="label">${label}</span><span class="metric-icon">${icon(ico)}</span></div><div class="metric num">${num}</div><div class="submetric">${sub}</div></article>`}
@@ -916,7 +922,7 @@ function settingsPage(){
  const orderListsCard=listsEnabled?'<article class="panel settings-box order-lists-box"><h3>Order Lists</h3><div class="order-list-options"><section class="order-list-option"><h4>Order Counter</h4><p>Count stock items, prepare a complete restocking message, and copy it for WhatsApp.</p>'+btn(icon('list')+' Open Order Counter','open-order-counter','btn-primary')+'</section><section class="order-list-option"><h4>Reem’s Items List</h4><p>Prepare Reem’s delivery order separately from the original supplier list. Copy the complete message for WhatsApp.</p>'+btn(icon('list')+' Open Reem’s Items List','open-reem-items','btn-light')+'</section></div></article>':'';
  return `${heading('Club tools','Settings',admin?'Manage club settings and member accounts.':'Ordering tools.',btn(`${icon('logout')} Sign out`,'signout','btn-light'))}${admin?`<div class="settings-grid">${adminTools}</div>`:''}${admin||listsEnabled?`<div class="settings-followup-grid ${admin?'':'single-column'}">${admin?'<div class="settings-followup-column">'+matchmakerCommissionSettings()+adminAccountManagementCards('private')+'</div>':''}<div class="settings-followup-column">${orderListsCard}${admin?adminAccountManagementCards('cafeteria'):''}</div></div>`:''}`;
 }
-function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'cafeteria-finances':return cafeteriaFinances.page();case'cafeteria-payments':return state.staff?.role==='admin'?cafeteriaPayments.page()+cafeteriaTodo.page():dashboard();case'debts':return debtPage();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
+function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'cafeteria-finances':return cafeteriaFinances.page();case'cafeteria-payments':return state.staff?.role==='admin'?cafeteriaPayments.page()+cafeteriaTodo.page():dashboard();case'debts':return debtPage();case'consignment':return consignmentInventory.page();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
 let lastRenderedMarkup=null,lastRenderedTab=null;
 function render(){
  if(['order-counter','reem-items'].includes(state.tab)&&!canUseOrderLists())state.tab='settings';
@@ -1216,6 +1222,7 @@ async function loadData(resetTab=false,{background=false}={}){if(state.loading)r
   if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth();
   if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients();
   if(state.tab==='debts'&&!state.debtLoading)void loadDebtData();
+   if(state.tab==='consignment')void consignmentInventory.load();
   if(state.tab==='cafeteria-finances')void cafeteriaFinances.load(true);
   if(state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){void cafeteriaPayments.load();void cafeteriaTodo.load();}
   if(state.tab==='tournament')void tournamentManagement.load(true);
@@ -1422,7 +1429,11 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
   if(state.tab!=='tournament'||!state.staff)throw Error('Authorized staff only.');
   if(await tournamentManagement.action(target))return;
  }
- if(act?.startsWith('ctodo-')){
+ if(act?.startsWith('consign-')){
+   if(state.tab!=='consignment'||!state.staff)throw Error('Authorized staff only.');
+   if(await consignmentInventory.action({dataset:{consignAction:act.slice(8),id}}))return;
+  }
+  if(act?.startsWith('ctodo-')){
    if(state.tab!=='cafeteria-payments'||state.staff?.role!=='admin')throw Error('Administrator access required.');
    if(await cafeteriaTodo.action({dataset:{ctodoAction:act.slice(6),id}}))return;
   }
@@ -1578,7 +1589,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  }
  case 'private-void-entry':if(state.staff?.role!=='admin')throw Error('Only admins can correct financial entries.');if(!state.privateEntries.some(e=>e.id===id))throw Error('Entry not found.');openModal('private-void',id);break;
  case 'private-export':exportPrivateClientCSV();break;
- case 'refresh':if(state.tab==='cafeteria-payments'){if(state.staff?.role!=='admin')throw Error('Administrator access required.');await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);toast('Payments and tasks refreshed');break;}if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
+ case 'refresh':if(state.tab==='consignment'){await consignmentInventory.load();toast('Inventory refreshed');break;}if(state.tab==='cafeteria-payments'){if(state.staff?.role!=='admin')throw Error('Administrator access required.');await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);toast('Payments and tasks refreshed');break;}if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
  case 'training-prev-month':
   state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
  case 'training-next-month':
@@ -1647,12 +1658,12 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'prev-month':state.month=shiftMonth(state.month,-1);render();break;
  case 'next-month':if(state.month<monthKey(today())){state.month=shiftMonth(state.month,1);render()}break;
  case 'export-finance':exportFinance();break;
- case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();tournamentManagement.reset();clubInsights.reset();compareClubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
+ case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();consignmentInventory.reset();tournamentManagement.reset();clubInsights.reset();compareClubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
  }}
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
  if(e.target.id==='modal-backdrop'){closeModal();return;}
- const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab)||(tab.dataset.tab==='cafeteria-payments'&&state.staff?.role!=='admin'))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview(true);}if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);if(state.tab==='cafeteria-payments'&&state.staff?.role==='admin')await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);if(state.tab==='tournament')await tournamentManagement.load(true);
+ const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab)||(tab.dataset.tab==='cafeteria-payments'&&state.staff?.role!=='admin'))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview(true);}if(state.tab==='debts')await loadDebtData();if(state.tab==='consignment')await consignmentInventory.load();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);if(state.tab==='cafeteria-payments'&&state.staff?.role==='admin')await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);if(state.tab==='tournament')await tournamentManagement.load(true);
  if(state.tab==='settings'&&state.staff?.role==='admin'){
   await Promise.all([loadPrivateClients(),loadDebtData()]);
   if(state.tab==='settings'&&api.getSession()?.access_token)render();
@@ -1661,6 +1672,12 @@ document.addEventListener('click',async e=>{
  const action=e.target.closest('[data-action]');if(action){try{await handleAction(action)}catch(err){toast(err.message,true)}}
 });
 document.addEventListener('submit',async e=>{
+  if(e.target.dataset?.consignSave){
+   e.preventDefault();
+   if(state.tab!=='consignment'||!state.staff){toast('Authorized staff only.',true);return;}
+   try{await consignmentInventory.submit(e.target)}catch(err){toast(err.message||'Unable to save inventory entry.',true)}
+   return;
+  }
  if(e.target.dataset?.tmSubmit){
   e.preventDefault();
   if(state.tab!=='tournament'||!state.staff){toast('Authorized staff only.',true);return;}
@@ -1711,6 +1728,14 @@ document.addEventListener('submit',async e=>{
  }
 });
 document.addEventListener('input',e=>{
+  if(e.target.id==='consign-search'&&state.tab==='consignment'&&state.staff){
+   const cursor=e.target.selectionStart;
+   consignmentInventory.setSearch(e.target.value);
+   render();
+   const field=document.getElementById('consign-search');
+   field?.focus();if(cursor!==null)field?.setSelectionRange(cursor,cursor);
+   return;
+  }
   if(e.target.id==='cpay-search'&&state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){
    const cursor=e.target.selectionStart;
    cafeteriaPayments.setSearch(e.target.value);
@@ -1816,7 +1841,8 @@ document.addEventListener('change',e=>{
  }
  if(e.target.dataset?.reemInput==='quantity' && state.tab==='reem-items' && canUseOrderLists()){render();return;}
  if(e.target.dataset?.orderInput==='quantity' && state.tab==='order-counter' && canUseOrderLists()){render();return;}
- if(e.target.id==='ctodo-filter'&&state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){cafeteriaTodo.setFilter(e.target.value);return;}
+ if(e.target.id==='consign-filter'&&state.tab==='consignment'&&state.staff){consignmentInventory.setFilter(e.target.value);return;}
+  if(e.target.id==='ctodo-filter'&&state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){cafeteriaTodo.setFilter(e.target.value);return;}
   if(e.target.id==='cpay-filter'&&state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){cafeteriaPayments.setFilter(e.target.value);return;}
   if(e.target.id==='settings-private-account'){state.settingsPrivateAccountId=e.target.value;render();return}
  if(e.target.id==='settings-cafeteria-account'){state.settingsCafeteriaAccountId=e.target.value;render();return}
@@ -1895,6 +1921,7 @@ async function refreshAllPagesWhenDue(){
    ['Tournament Management',()=>tournamentManagement.load(true,true)],
    ['Private Sessions',()=>loadPrivateClients({background:true})],
    ['Cafeteria Debts',()=>loadDebtData({background:true})],
+    ['Consignment Inventory',()=>consignmentInventory.load(true)],
    ['Monthly Training',()=>loadTrainingMonth({background:true})],
    ['Overview attendance',()=>loadOverviewTraining({background:true})],
    ['Overview financial totals',()=>clubInsights.loadOverview(true)],

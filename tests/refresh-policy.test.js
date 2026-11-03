@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {AUTO_REFRESH_INTERVAL_MS,PAGE_REFRESH_INTERVALS_MS,
  pageRefreshIntervalMs,isPageRefreshDue} from '../lib/refresh-policy.js';
 
-const everyPage=['dashboard','cafeteria-finances','cafeteria-payments','debts','private-clients',
+const everyPage=['dashboard','cafeteria-finances','cafeteria-payments','debts','consignment','private-clients',
  'team','training','other','finance','tournament','activity','reports',
  'settings','order-counter','reem-items'];
 
@@ -51,6 +51,7 @@ function mockAllPageClock(){
   cafeteriaFinances:{load:record('cafeteria')},
   cafeteriaPayments:{load:record('payables')},
   cafeteriaTodo:{load:record('todo')},
+  consignmentInventory:{load:record('consignment')},
   tournamentManagement:{load:record('tournament')},
   loadPrivateClients:record('private'),
   loadDebtData:record('debts'),
@@ -92,7 +93,7 @@ test('Every 30-second sync fetches ALL independent page data, not only the open 
  const names=m.seen.map(x=>x[0]);
  for(const category of ['shared','cafeteria','tournament','private','debts',
   'training','attendance','financial-overview','reports','historical-week',
-  'payables','todo',
+  'payables','todo','consignment',
   'order-counter','reem-items','render'])
   assert.ok(names.includes(category),'Missing background sync: '+category);
  assert.deepEqual(m.seen.find(x=>x[0]==='shared').slice(1),

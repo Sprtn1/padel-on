@@ -24,7 +24,7 @@ test('Bootstrap version-loads both stylesheets and the app from same origin',()=
 test('Mobile labels distinguish cafeteria finances and debts',()=>{
  assert.equal(MOBILE_NAV_LABELS['cafeteria-finances'],'Finances');
  assert.equal(MOBILE_NAV_LABELS.debts,'Debts');
- assert.equal(tabs.length,13);
+ assert.equal(tabs.length,14);
  const html=renderNavigation('debts',()=>'<svg></svg>',true);
  assert.match(html,/aria-label="Cafeteria Finances"[^>]*><svg><\/svg><span>Finances<\/span>/);
  assert.match(html,/aria-label="Cafeteria Debts"[^>]*><svg><\/svg><span>Debts<\/span>/);
@@ -56,4 +56,17 @@ test('Renamed admin destination retains its original tab id and ordering',()=>{
  const entry=tabs.find(([id])=>id==='cafeteria-payments');
  assert.equal(entry?.[1],'Cafeteria Payments & To Do List');
  assert.equal(tabs.filter(([id])=>id==='cafeteria-payments').length,1);
+});
+
+test('Consignment Inventory is immediately below Cafeteria Debts for staff and admins',()=>{
+ const order=tabs.map(([key])=>key);
+ assert.equal(order[order.indexOf('debts')+1],'consignment');
+ assert.equal(MOBILE_NAV_LABELS.consignment,'Consignment');
+ for(const mobile of [true,false]){
+  for(const admin of [true,false]){
+   const html=renderNavigation('consignment',()=>'<svg></svg>',mobile,admin);
+   assert.match(html,/data-tab="consignment"[^>]*aria-label="Consignment Inventory"/);
+   assert.ok(html.indexOf('data-tab="consignment"')>html.indexOf('data-tab="debts"'));
+  }
+ }
 });
