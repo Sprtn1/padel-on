@@ -115,6 +115,7 @@ test('Add, edit, complete, reopen and soft-remove use only the protected to-do e
   assert.match(h.ui.page(),/Completed/);
   await h.act('reopen',id);
   assert.equal(h.rows[0].completed_at,null);
+  h.ui.setFilter('all');
   await h.act('remove',id);
   assert.match(h.ui.page(),/Confirm remove task/);
   await h.act('cancel-remove');
