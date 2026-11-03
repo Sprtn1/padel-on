@@ -7,6 +7,7 @@ const orderCounter = await import(`./lib/order-counter-ui.js?v=${assetVersion}`)
 const reemItems = await import(`./lib/reem-items-ui.js?v=${assetVersion}`);
 const cafeteriaFinanceModule = await import(`./lib/cafeteria-finances.js?v=${assetVersion}`);
 const cafeteriaPaymentsModule = await import(`./lib/cafeteria-payments.js?v=${assetVersion}`);
+const cafeteriaTodoModule = await import(`./lib/cafeteria-todo.js?v=${assetVersion}`);
 const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
 const reportComparison = await import(`./lib/report-comparison.js?v=${assetVersion}`);
 const {getDebtDayEntries,summarizeDebtDay} = await import(`./lib/cafeteria-debt-daily.js?v=${assetVersion}`);
@@ -62,6 +63,11 @@ const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
   }
  }
 });
+const cafeteriaTodo=cafeteriaTodoModule.createCafeteriaTodo({
+ api,today,toast,
+ isAdmin:()=>state.staff?.role==='admin',
+ rerender:()=>{if(state.tab==='cafeteria-payments'&&api.getSession()?.access_token&&!autoRefreshRunning)render()}
+});
 const cafeteriaPayments=cafeteriaPaymentsModule.createCafeteriaPayments({
  api,heading,icon,amount,today,toast,
  isAdmin:()=>state.staff?.role==='admin',
@@ -105,7 +111,7 @@ async function autoSignOut(){
  idleLogoutStarted=true;
  clearStaffActivity();
  state.staff=null;
- cafeteriaFinances.reset();cafeteriaPayments.reset();clubInsights.reset();compareClubInsights.reset();
+ cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();clubInsights.reset();compareClubInsights.reset();
  state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';
  // api.signOut clears the local authentication token before contacting Supabase.
  const remoteLogout=api.signOut();
@@ -910,7 +916,7 @@ function settingsPage(){
  const orderListsCard=listsEnabled?'<article class="panel settings-box order-lists-box"><h3>Order Lists</h3><div class="order-list-options"><section class="order-list-option"><h4>Order Counter</h4><p>Count stock items, prepare a complete restocking message, and copy it for WhatsApp.</p>'+btn(icon('list')+' Open Order Counter','open-order-counter','btn-primary')+'</section><section class="order-list-option"><h4>Reem’s Items List</h4><p>Prepare Reem’s delivery order separately from the original supplier list. Copy the complete message for WhatsApp.</p>'+btn(icon('list')+' Open Reem’s Items List','open-reem-items','btn-light')+'</section></div></article>':'';
  return `${heading('Club tools','Settings',admin?'Manage club settings and member accounts.':'Ordering tools.',btn(`${icon('logout')} Sign out`,'signout','btn-light'))}${admin?`<div class="settings-grid">${adminTools}</div>`:''}${admin||listsEnabled?`<div class="settings-followup-grid ${admin?'':'single-column'}">${admin?'<div class="settings-followup-column">'+matchmakerCommissionSettings()+adminAccountManagementCards('private')+'</div>':''}<div class="settings-followup-column">${orderListsCard}${admin?adminAccountManagementCards('cafeteria'):''}</div></div>`:''}`;
 }
-function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'cafeteria-finances':return cafeteriaFinances.page();case'cafeteria-payments':return state.staff?.role==='admin'?cafeteriaPayments.page():dashboard();case'debts':return debtPage();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
+function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'cafeteria-finances':return cafeteriaFinances.page();case'cafeteria-payments':return state.staff?.role==='admin'?cafeteriaPayments.page()+cafeteriaTodo.page():dashboard();case'debts':return debtPage();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
 let lastRenderedMarkup=null,lastRenderedTab=null;
 function render(){
  if(['order-counter','reem-items'].includes(state.tab)&&!canUseOrderLists())state.tab='settings';
@@ -1211,7 +1217,7 @@ async function loadData(resetTab=false,{background=false}={}){if(state.loading)r
   if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients();
   if(state.tab==='debts'&&!state.debtLoading)void loadDebtData();
   if(state.tab==='cafeteria-finances')void cafeteriaFinances.load(true);
-  if(state.tab==='cafeteria-payments'&&state.staff?.role==='admin')void cafeteriaPayments.load();
+  if(state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){void cafeteriaPayments.load();void cafeteriaTodo.load();}
   if(state.tab==='tournament')void tournamentManagement.load(true);
   if(state.tab==='dashboard'||state.tab==='reports')loadClubSources();
   if(state.tab==='dashboard')void clubInsights.loadOverview(true);
@@ -1416,7 +1422,11 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
   if(state.tab!=='tournament'||!state.staff)throw Error('Authorized staff only.');
   if(await tournamentManagement.action(target))return;
  }
- if(act?.startsWith('cpay-')){
+ if(act?.startsWith('ctodo-')){
+   if(state.tab!=='cafeteria-payments'||state.staff?.role!=='admin')throw Error('Administrator access required.');
+   if(await cafeteriaTodo.action({dataset:{ctodoAction:act.slice(6),id}}))return;
+  }
+  if(act?.startsWith('cpay-')){
    if(state.tab!=='cafeteria-payments'||state.staff?.role!=='admin')throw Error('Administrator access required.');
    if(cafeteriaPayments.action({dataset:{cpayAction:act.slice(5),id}}))return;
   }
@@ -1568,7 +1578,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  }
  case 'private-void-entry':if(state.staff?.role!=='admin')throw Error('Only admins can correct financial entries.');if(!state.privateEntries.some(e=>e.id===id))throw Error('Entry not found.');openModal('private-void',id);break;
  case 'private-export':exportPrivateClientCSV();break;
- case 'refresh':if(state.tab==='cafeteria-payments'){if(state.staff?.role!=='admin')throw Error('Administrator access required.');await cafeteriaPayments.load();toast('Payments refreshed');break;}if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
+ case 'refresh':if(state.tab==='cafeteria-payments'){if(state.staff?.role!=='admin')throw Error('Administrator access required.');await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);toast('Payments and tasks refreshed');break;}if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
  case 'training-prev-month':
   state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
  case 'training-next-month':
@@ -1637,12 +1647,12 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'prev-month':state.month=shiftMonth(state.month,-1);render();break;
  case 'next-month':if(state.month<monthKey(today())){state.month=shiftMonth(state.month,1);render()}break;
  case 'export-finance':exportFinance();break;
- case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;cafeteriaFinances.reset();cafeteriaPayments.reset();tournamentManagement.reset();clubInsights.reset();compareClubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
+ case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();tournamentManagement.reset();clubInsights.reset();compareClubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
  }}
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
  if(e.target.id==='modal-backdrop'){closeModal();return;}
- const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab)||(tab.dataset.tab==='cafeteria-payments'&&state.staff?.role!=='admin'))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview(true);}if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);if(state.tab==='cafeteria-payments'&&state.staff?.role==='admin')await cafeteriaPayments.load();if(state.tab==='tournament')await tournamentManagement.load(true);
+ const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab)||(tab.dataset.tab==='cafeteria-payments'&&state.staff?.role!=='admin'))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview(true);}if(state.tab==='debts')await loadDebtData();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);if(state.tab==='cafeteria-payments'&&state.staff?.role==='admin')await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);if(state.tab==='tournament')await tournamentManagement.load(true);
  if(state.tab==='settings'&&state.staff?.role==='admin'){
   await Promise.all([loadPrivateClients(),loadDebtData()]);
   if(state.tab==='settings'&&api.getSession()?.access_token)render();
@@ -1657,7 +1667,13 @@ document.addEventListener('submit',async e=>{
   try{await tournamentManagement.submit(e.target)}catch(err){toast(err.message||'Tournament could not be saved.',true)}
   return;
  }
- if(e.target.dataset?.cpaySave){
+ if(e.target.dataset?.ctodoSave){
+   e.preventDefault();
+   if(state.tab!=='cafeteria-payments'||state.staff?.role!=='admin'){toast('Administrator access required.',true);return;}
+   try{await cafeteriaTodo.submit(e.target)}catch(err){toast(err.message||'Could not save task.',true)}
+   return;
+  }
+  if(e.target.dataset?.cpaySave){
    e.preventDefault();
    if(state.tab!=='cafeteria-payments'||state.staff?.role!=='admin'){toast('Administrator access required.',true);return;}
    try{await cafeteriaPayments.submit(e.target)}catch(err){toast(err.message||'Could not record payment.',true)}
@@ -1800,7 +1816,8 @@ document.addEventListener('change',e=>{
  }
  if(e.target.dataset?.reemInput==='quantity' && state.tab==='reem-items' && canUseOrderLists()){render();return;}
  if(e.target.dataset?.orderInput==='quantity' && state.tab==='order-counter' && canUseOrderLists()){render();return;}
- if(e.target.id==='cpay-filter'&&state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){cafeteriaPayments.setFilter(e.target.value);return;}
+ if(e.target.id==='ctodo-filter'&&state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){cafeteriaTodo.setFilter(e.target.value);return;}
+  if(e.target.id==='cpay-filter'&&state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){cafeteriaPayments.setFilter(e.target.value);return;}
   if(e.target.id==='settings-private-account'){state.settingsPrivateAccountId=e.target.value;render();return}
  if(e.target.id==='settings-cafeteria-account'){state.settingsCafeteriaAccountId=e.target.value;render();return}
 
@@ -1874,7 +1891,7 @@ async function refreshAllPagesWhenDue(){
   const feeds=[
    ['Shared data',()=>loadData(false,{background:true})],
    ['Cafeteria Finances',()=>cafeteriaFinances.load(true,true)],
-    ['Cafeteria Payments',()=>state.staff?.role==='admin'?cafeteriaPayments.load(true):undefined],
+    ['Cafeteria Payments',()=>state.staff?.role==='admin'?Promise.all([cafeteriaPayments.load(true),cafeteriaTodo.load(true)]):undefined],
    ['Tournament Management',()=>tournamentManagement.load(true,true)],
    ['Private Sessions',()=>loadPrivateClients({background:true})],
    ['Cafeteria Debts',()=>loadDebtData({background:true})],

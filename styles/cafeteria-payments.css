@@ -49,3 +49,40 @@
 .cpay-removal-form label{display:grid;gap:7px;font-size:12px;font-weight:700;color:#82544b;margin-bottom:12px}
 .cpay-removal-form .form-input{width:100%;max-width:500px;min-width:0}
 .cpay-history .btn{white-space:nowrap}
+
+/* Independent checklist below the existing payment obligations. */
+.ctodo-section{margin-top:32px;padding-top:24px;border-top:1px solid #dce7e1}
+.ctodo-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:15px}
+.ctodo-heading h2{font-size:21px;color:#1a4330;margin:0 0 4px;font-weight:800;letter-spacing:-.5px}
+.ctodo-heading p{font-size:12px;color:#718778;margin:0}
+.ctodo-toolbar{display:flex;justify-content:flex-end;margin-bottom:12px}
+.ctodo-toolbar label{display:flex;align-items:center;gap:9px;font-size:12px;color:#526e5b;font-weight:750}
+.ctodo-toolbar select{min-width:140px}
+.ctodo-panel{overflow:hidden}
+.ctodo-table{width:100%}
+.ctodo-table td{vertical-align:middle}
+.ctodo-table td:first-child{min-width:200px}
+.ctodo-table td:first-child strong{display:block;color:#264934;overflow-wrap:anywhere}
+.ctodo-table td:first-child small{display:block;font-size:11px;color:#70847b;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:5px}
+.ctodo-table .ctodo-done strong{text-decoration:line-through;color:#84978c}
+.ctodo-status{border-radius:50px;padding:5px 9px;white-space:nowrap;font-weight:750;font-size:11px}
+.ctodo-completed{background:#e6f6ec;color:#177343}
+.ctodo-pending{background:#fff3e4;color:#975a19}
+.ctodo-overdue{background:#fff0ed;color:#ad4538}
+.ctodo-actions{display:flex;gap:7px;flex-wrap:wrap}
+.ctodo-form{margin:6px 0}
+.ctodo-form h3{font-size:15px}
+.ctodo-fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(160px,1fr);gap:13px;margin:0 0 15px}
+.ctodo-fields label{display:grid;gap:7px;color:#536f5e;font-size:12px;font-weight:700;min-width:0}
+.ctodo-fields .ctodo-notes{grid-column:1/-1}
+.ctodo-fields textarea{resize:vertical}
+.ctodo-remove-confirm{margin:8px 0}
+.ctodo-remove-confirm h3{font-size:14px}
+@media(max-width:650px){
+ .ctodo-heading h2{font-size:18px}
+ .ctodo-fields{grid-template-columns:1fr}
+ .ctodo-toolbar{justify-content:stretch}
+ .ctodo-toolbar label{width:100%;justify-content:space-between}
+ .ctodo-panel .data-table-wrap{overflow-x:auto}
+ .ctodo-table{min-width:630px}
+}

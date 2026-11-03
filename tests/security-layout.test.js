@@ -45,9 +45,15 @@ test('Admin-only Cafeteria Payments nav appears in both layouts and never in sta
  assert.doesNotMatch(markup(true,false),/Cafeteria Payments/);
  for(const mobile of [false,true]){
   const html=markup(mobile,true);
-  assert.match(html,/aria-label="Cafeteria Payments"/);
+  assert.match(html,/aria-label="Cafeteria Payments & To Do List"/);
   const finances=html.indexOf('data-tab="cafeteria-finances"'),payments=html.indexOf('data-tab="cafeteria-payments"'),debts=html.indexOf('data-tab="debts"');
   assert.ok(finances>=0&&payments>finances&&debts>payments);
  }
- assert.equal(MOBILE_NAV_LABELS['cafeteria-payments'],'Payments');
+ assert.equal(MOBILE_NAV_LABELS['cafeteria-payments'],'Payments & To Do');
+});
+
+test('Renamed admin destination retains its original tab id and ordering',()=>{
+ const entry=tabs.find(([id])=>id==='cafeteria-payments');
+ assert.equal(entry?.[1],'Cafeteria Payments & To Do List');
+ assert.equal(tabs.filter(([id])=>id==='cafeteria-payments').length,1);
 });
