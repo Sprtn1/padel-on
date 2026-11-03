@@ -6,7 +6,7 @@ import {tabs} from '../lib/navigation.js';
 
 const email=process.env.PADEL_ON_SMOKE_EMAIL;
 const password=process.env.PADEL_ON_SMOKE_PASSWORD;
-const site=(process.env.PADEL_ON_BASE_URL||'https://padelon.publicvm.com').replace(/\/$/,'');
+const site='https://padelon.publicvm.com';
 if(!email||!password)throw Error('Set PADEL_ON_SMOKE_EMAIL and PADEL_ON_SMOKE_PASSWORD as repository Actions secrets.');
 if(!/^https:\/\//.test(site))throw Error('The smoke-test site must use HTTPS.');
 
@@ -20,6 +20,8 @@ page.on('console',msg=>{
 });
 try{
  await page.goto(site,{waitUntil:'domcontentloaded',timeout:30_000});
+ assert.equal(new URL(page.url()).origin,new URL(site).origin,
+  'Unexpected login origin; refusing to enter test credentials');
  await page.locator('#login-form').waitFor({state:'visible',timeout:30_000});
  await page.locator('#login-form [name=email]').fill(email);
  await page.locator('#login-form [name=password]').fill(password);

@@ -31,3 +31,10 @@ test('Mobile labels distinguish cafeteria finances and debts',()=>{
  assert.match(html,/data-tab="debts"[^>]*aria-current="page"/);
  assert.doesNotMatch(html,/data-tab="settings"/);
 });
+
+test('Authenticated browser test never submits credentials to a user-selected website',()=>{
+ const smoke=read('../scripts/authenticated-browser-smoke.mjs');
+ assert.match(smoke,/const site='https:\/\/padelon\.publicvm\.com';/);
+ assert.match(smoke,/Unexpected login origin; refusing to enter test credentials/);
+ assert.doesNotMatch(smoke,/PADEL_ON_BASE_URL/);
+});
