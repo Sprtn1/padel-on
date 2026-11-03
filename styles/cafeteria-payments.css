@@ -1,0 +1,45 @@
+/* Admin-only outgoing cafeteria payment ledger. */
+.cpay-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin-bottom:17px}
+.cpay-summary .summary-card{min-height:112px}
+.cpay-summary .metric{margin-top:15px;font-size:25px}
+.cpay-notice{margin:0 0 18px;font-size:12px;line-height:1.6;color:#688175}
+.cpay-toolbar{display:grid;grid-template-columns:minmax(0,2fr) minmax(170px,1fr);gap:12px;margin:18px 0}
+.cpay-toolbar label,.cpay-fields label{display:grid;gap:7px;font-size:12px;color:#52675d;font-weight:700}
+.cpay-toolbar .form-input,.cpay-fields .form-input{width:100%;min-width:0}
+.cpay-list{display:grid;gap:14px}
+.cpay-card{padding:19px 21px;min-width:0;overflow:visible}
+.cpay-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.cpay-card-head h3{font-size:17px;font-weight:800;color:#173b29;margin:0 0 7px;overflow-wrap:anywhere}
+.cpay-card-head p{font-size:12px;color:#6b8076;margin:0}
+.cpay-card-head p strong{color:#344e40}
+.cpay-status{display:inline-block;white-space:nowrap;border-radius:99px;padding:6px 10px;font-weight:750;font-size:11px}
+.cpay-paid{background:#e5f6ea;color:#187748}
+.cpay-partial{background:#fff4dc;color:#9b641c}
+.cpay-unpaid{background:#f9ebea;color:#a64539}
+.cpay-amounts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:17px 0}
+.cpay-amounts>div{background:#f6f9f7;border:1px solid #e4ece7;border-radius:10px;padding:11px 13px;min-width:0}
+.cpay-amounts small{display:block;font-size:10px;color:#7c9284;margin-bottom:6px}
+.cpay-amounts strong{display:block;font-size:15px;font-weight:800;color:#174630;overflow-wrap:anywhere}
+.cpay-card-actions,.cpay-form-actions{display:flex;gap:9px;flex-wrap:wrap}
+.cpay-form{background:#fff;border:1px solid #d6e8dc;border-radius:14px;padding:19px 20px;margin:16px 0}
+.cpay-form h3{font-size:16px;font-weight:800;color:#214c34;margin:0 0 12px}
+.cpay-form p{font-size:12px;color:#617469;margin:0 0 13px}
+.cpay-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 15px}
+.cpay-payment-form{background:#f8fbf9;margin-bottom:0}
+.cpay-history{margin-top:16px}
+.cpay-empty{padding:25px;text-align:center;color:#7b9284;font-size:12px}
+.cpay-error{padding:12px;background:#fff1ef;border:1px solid #ffcfc6;border-radius:9px;color:#a12a24}
+@media(max-width:900px){.cpay-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){
+ .cpay-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .cpay-summary .summary-card:last-child{grid-column:1/-1}
+ .cpay-summary .metric{font-size:20px}
+ .cpay-toolbar{grid-template-columns:1fr}
+ .cpay-fields{grid-template-columns:1fr}
+ .cpay-card{padding:15px}
+ .cpay-card-head{flex-wrap:wrap}
+ .cpay-amounts{grid-template-columns:1fr}
+ .cpay-amounts>div{display:flex;align-items:center;justify-content:space-between;gap:10px}
+ .cpay-amounts small{margin:0}
+ .cpay-card-actions .btn{flex:1 1 auto}
+}
