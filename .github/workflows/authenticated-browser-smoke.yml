@@ -1,0 +1,31 @@
+name: Authenticated browser smoke (manual)
+on:
+  workflow_dispatch:
+    inputs:
+      site_url:
+        description: "Public HTTPS address of PADEL ON"
+        required: true
+        default: "https://padelon.publicvm.com"
+permissions:
+  contents: read
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # Install the test runner only for this opt-in job; production has no
+      # dependency on Playwright, and no test account details are committed.
+      - name: Install pinned browser test runner
+        run: npm install --no-save --no-package-lock @playwright/test@1.55.1
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify authenticated desktop and mobile navigation
+        run: node scripts/authenticated-browser-smoke.mjs
+        env:
+          PADEL_ON_SMOKE_EMAIL: ${{ secrets.PADEL_ON_SMOKE_EMAIL }}
+          PADEL_ON_SMOKE_PASSWORD: ${{ secrets.PADEL_ON_SMOKE_PASSWORD }}
+          PADEL_ON_BASE_URL: ${{ inputs.site_url }}
