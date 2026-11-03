@@ -119,7 +119,7 @@ test('Add, edit, complete, reopen and soft-remove use only the protected to-do e
   await h.act('remove',id);
   assert.match(h.ui.page(),/Confirm remove task/);
   await h.act('cancel-remove');
-  assert.equal(h.rows[0].removed_at,undefined);
+  assert.equal(h.rows[0].removed_at,null);
   await h.act('remove',id);
   await h.ui.submit({dataset:{ctodoSave:'remove',id},fields:{}});
   assert.ok(h.rows[0].removed_at,'Removal is soft-delete for audit purposes');
