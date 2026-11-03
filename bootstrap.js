@@ -2,8 +2,8 @@
 const v = Date.now().toString(36);
     const icon = document.getElementById('site-favicon');
     if (icon) icon.href = `./assets/favicon.svg?v=${v}`;
-    // CSS is modular; append both in the same cascade order as the original stylesheet.
-    for (const path of ['./styles.css', './styles/tournament.css']) {
+    // CSS is modular; append stylesheets in cascade order.
+    for (const path of ['./styles.css', './styles/tournament.css', './styles/cafeteria-payments.css']) {
       const stylesheet = document.createElement('link');
       stylesheet.rel = 'stylesheet';
       stylesheet.href = `${path}?v=${v}`;

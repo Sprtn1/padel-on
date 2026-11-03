@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {AUTO_REFRESH_INTERVAL_MS,PAGE_REFRESH_INTERVALS_MS,
  pageRefreshIntervalMs,isPageRefreshDue} from '../lib/refresh-policy.js';
 
-const everyPage=['dashboard','cafeteria-finances','debts','private-clients',
+const everyPage=['dashboard','cafeteria-finances','cafeteria-payments','debts','private-clients',
  'team','training','other','finance','tournament','activity','reports',
  'settings','order-counter','reem-items'];
 
@@ -37,7 +37,7 @@ function mockAllPageClock(){
  assert.ok(from>=0&&to>from,'Find live all-page refresh implementation');
  const snippet=source.slice(from,to);
  const seen=[],warnings=[],clock={value:0};
- const state={staff:{id:'test-staff'},tab:'team',modal:null,loading:false,historyWeek:'2026-10-06'};
+ const state={staff:{id:'test-staff',role:'admin'},tab:'team',modal:null,loading:false,historyWeek:'2026-10-06'};
  const document={hidden:false};
  let canPaint=true,token=true,editing=false,slowLoad=null;
  const record=(name)=>async(...args)=>{seen.push([name,...args]);if(name==='shared'&&slowLoad)await slowLoad;};
@@ -49,6 +49,7 @@ function mockAllPageClock(){
   canAutoRender:()=>canPaint&&!editing,
   loadData:record('shared'),
   cafeteriaFinances:{load:record('cafeteria')},
+  cafeteriaPayments:{load:record('payables')},
   tournamentManagement:{load:record('tournament')},
   loadPrivateClients:record('private'),
   loadDebtData:record('debts'),
@@ -90,6 +91,7 @@ test('Every 30-second sync fetches ALL independent page data, not only the open 
  const names=m.seen.map(x=>x[0]);
  for(const category of ['shared','cafeteria','tournament','private','debts',
   'training','attendance','financial-overview','reports','historical-week',
+  'payables',
   'order-counter','reem-items','render'])
   assert.ok(names.includes(category),'Missing background sync: '+category);
  assert.deepEqual(m.seen.find(x=>x[0]==='shared').slice(1),

@@ -24,7 +24,7 @@ test('Bootstrap version-loads both stylesheets and the app from same origin',()=
 test('Mobile labels distinguish cafeteria finances and debts',()=>{
  assert.equal(MOBILE_NAV_LABELS['cafeteria-finances'],'Finances');
  assert.equal(MOBILE_NAV_LABELS.debts,'Debts');
- assert.equal(tabs.length,12);
+ assert.equal(tabs.length,13);
  const html=renderNavigation('debts',()=>'<svg></svg>',true);
  assert.match(html,/aria-label="Cafeteria Finances"[^>]*><svg><\/svg><span>Finances<\/span>/);
  assert.match(html,/aria-label="Cafeteria Debts"[^>]*><svg><\/svg><span>Debts<\/span>/);
@@ -37,4 +37,17 @@ test('Authenticated browser test never submits credentials to a user-selected we
  assert.match(smoke,/const site='https:\/\/padelon\.publicvm\.com';/);
  assert.match(smoke,/Unexpected login origin; refusing to enter test credentials/);
  assert.doesNotMatch(smoke,/PADEL_ON_BASE_URL/);
+});
+
+test('Admin-only Cafeteria Payments nav appears in both layouts and never in staff navigation',()=>{
+ const markup=(mobile,admin)=>renderNavigation('cafeteria-payments',()=>'<svg></svg>',mobile,admin);
+ assert.doesNotMatch(markup(false,false),/Cafeteria Payments/);
+ assert.doesNotMatch(markup(true,false),/Cafeteria Payments/);
+ for(const mobile of [false,true]){
+  const html=markup(mobile,true);
+  assert.match(html,/aria-label="Cafeteria Payments"/);
+  const finances=html.indexOf('data-tab="cafeteria-finances"'),payments=html.indexOf('data-tab="cafeteria-payments"'),debts=html.indexOf('data-tab="debts"');
+  assert.ok(finances>=0&&payments>finances&&debts>payments);
+ }
+ assert.equal(MOBILE_NAV_LABELS['cafeteria-payments'],'Payments');
 });
