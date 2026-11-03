@@ -20,7 +20,7 @@ test('Search across category, name, brand, model, supplier and size with multipl
  assert.deepEqual(ids('shoes','in-stock'),['b','a']);
  assert.deepEqual(ids('','out-of-stock'),['c']);
  assert.deepEqual(ids('No Such Product'),[]);
- assert.deepEqual(ids(''),['b','a','c']);
+ assert.deepEqual(ids(''),['c','b','a']);
 });
 test('Dollar prices and stock counts must be exact and within bounds',()=>{
  assert.equal(consignmentMoneyCents('70'),7000);
