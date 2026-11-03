@@ -787,3 +787,6 @@
 .cafe-court-notes-actions{display:flex;flex-wrap:wrap;gap:7px}
 
 @media(max-width:560px){.cafe-ledger-row{align-items:flex-start}.cafe-entry-actions{gap:6px}.cafe-edit-amount{padding:6px 8px}}
+
+/* Admin sidebar contains one additional protected destination; keep it scrollable on short screens. */
+.sidebar .menu{min-height:0;overflow-y:auto;scrollbar-width:thin}
