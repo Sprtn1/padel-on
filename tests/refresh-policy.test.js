@@ -141,3 +141,18 @@ test('The 30-second timer does not start overlapping network refreshes',async()=
  assert.equal(m.controller.busy(),false);
  assert.equal(m.seen.filter(x=>x[0]==='shared').length,1);
 });
+
+test('Parallel refresh starts other page reads even when shared data is slow',async()=>{
+ const m=mockAllPageClock();
+ let release;
+ m.setSlowLoad(new Promise(resolve=>{release=resolve}));
+ m.clock.value=30_000;
+ const work=m.controller.run();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.ok(m.seen.some(([name])=>name==='cafeteria'),
+  'Independent pages must not wait for the shared tables to finish');
+ assert.ok(m.seen.some(([name])=>name==='tournament'));
+ release();
+ assert.equal(await work,true);
+ assert.equal(m.seen.filter(([name])=>name==='render').length,1);
+});

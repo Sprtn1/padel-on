@@ -1841,13 +1841,12 @@ async function refreshAllPagesWhenDue(){
  lastAllDataRefreshAt=now;
  allDataRefreshBusy=true;autoRefreshRunning=true;
  try{
-  // Shared data: Overview, Team Members, Other Benefits, Matchmaking,
-  // Game Activity, Settings, and report member/matchmaker totals.
-  await loadData(false,{background:true});
-  if(!api.getSession()?.access_token||idleLogoutStarted)return false;
-  // Date-specific and independently stored data across ALL other pages.
-  // One failing feed does not prevent the remaining pages from updating.
+  // Run the shared tables and each independent page feed concurrently.
+  // listAll's in-flight coalescer merges overlapping reads of the same table.
+  // Retain every page on the same 30-second cadence and paint only once.
+  // A failing feed must not prevent other pages from refreshing.
   const feeds=[
+   ['Shared data',()=>loadData(false,{background:true})],
    ['Cafeteria Finances',()=>cafeteriaFinances.load(true,true)],
    ['Tournament Management',()=>tournamentManagement.load(true,true)],
    ['Private Sessions',()=>loadPrivateClients({background:true})],
@@ -1865,6 +1864,7 @@ async function refreshAllPagesWhenDue(){
    if(results[i].status==='rejected')
     console.warn('Auto-refresh failed: '+feeds[i][0],results[i].reason);
   }
+  if(!api.getSession()?.access_token||idleLogoutStarted)return false;
   // Only repaint when no draft, search field, or input is being edited.
   if(api.getSession()?.access_token&&!idleLogoutStarted&&!document.hidden&&canAutoRender())render();
  }finally{

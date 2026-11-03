@@ -629,7 +629,8 @@ test('Participant payment title and both filters are grouped without a wide head
  assert.ok(header.indexOf('tm-payment-filters')<header.indexOf('tm-payment-search'));
  assert.ok(header.indexOf('tm-payment-search')<header.indexOf('tm-payment-status'));
  assert.match(header,/<div class="tm-payment-heading">/);
- const css=readFileSync(new URL('../styles.css',import.meta.url),'utf8');
+ // Tournament-specific CSS now lives in its own stylesheet, loaded after base CSS.
+ const css=readFileSync(new URL('../styles/tournament.css',import.meta.url),'utf8');
  assert.ok(css.includes('.tm-payment-head{display:grid;grid-template-columns:minmax(0,1fr)'), 'Header must use a full-width grid instead of space-between');
  assert.ok(css.includes('.tm-payment-filters{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1fr)'), 'The two filters must be adjacent in the same row');
  assert.ok(css.includes('@media(max-width:560px){.tm-payment-head{gap:10px}'), 'Mobile header should remain compact');
