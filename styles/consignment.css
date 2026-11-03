@@ -1,0 +1,51 @@
+/* Consignment stock: staff read-only, administrator controls separate from daily finances. */
+.inv-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 19px}
+.inv-summary .summary-card{min-height:115px}
+.inv-toolbar{display:grid;grid-template-columns:minmax(0,2fr) minmax(175px,1fr);gap:12px;margin:15px 0 18px}
+.inv-toolbar label,.inv-fields label{display:grid;gap:7px;font-size:12px;font-weight:700;color:#607568}
+.inv-toolbar .form-input,.inv-fields .form-input{width:100%;min-width:0}
+.inv-table-panel{padding:0;overflow:hidden}
+.inv-table{width:100%}
+.inv-table th,.inv-table td{vertical-align:middle}
+.inv-table td:first-child{min-width:170px}
+.inv-table td strong{font-weight:750;color:#224b34}
+.inv-table td:first-child strong{overflow-wrap:anywhere}
+.inv-table td:first-child small{display:inline;color:#667e6c;font-size:11px;font-weight:500;margin-left:5px}
+.inv-table .inv-notes-display{font-size:11px;line-height:1.5;color:#708a79;overflow-wrap:anywhere;max-width:300px;margin:4px 0 0}
+.inv-quantity{display:inline-flex;align-items:center;border-radius:999px;font-size:12px;font-weight:800;padding:6px 11px}
+.inv-quantity.in-stock{background:#e8f6ed;color:#237345}
+.inv-quantity.out-of-stock{background:#fdf1ea;color:#ad6533}
+.inv-actions{display:flex;flex-wrap:wrap;gap:6px;min-width:145px}
+.inv-actions .btn{white-space:nowrap}
+.inv-empty{text-align:center;padding:28px;color:#799185}
+.inv-error{border-radius:10px;border:1px solid #f0d0c9;background:#fff5f3;padding:12px;color:#a8392e;margin:12px 0}
+.inv-editor{padding:19px 20px;margin:14px 0 20px;overflow:visible;border-color:#cddfd1}
+.inv-editor h3{font-size:17px;color:#19462d;margin:0 0 15px}
+.inv-editor p{font-size:12px;color:#67836f;margin:0 0 14px}
+.inv-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin-bottom:15px}
+.inv-fields .inv-notes{grid-column:1/-1}
+.inv-fields textarea{resize:vertical}
+.inv-form-actions{display:flex;gap:9px;flex-wrap:wrap}
+.inv-hint{font-size:11px!important;line-height:1.5}
+.inv-removal{background:#fff7f5;border-color:#efcac1}
+.inv-removal h3{color:#a24038}
+.inv-removal>label{display:grid;gap:7px;font-size:12px;color:#81594f;margin:12px 0}
+.inv-removal>label input{width:100%;max-width:500px}
+.inv-history-row td{background:#f7faf8!important;padding:14px!important}
+.inv-history{border-radius:10px;border:1px solid #dbe7de;padding:15px;background:#fff}
+.inv-history>strong{display:block;font-size:13px;color:#205037;margin-bottom:10px}
+.inv-history p{font-size:12px;color:#6a8573}
+.inv-history .data-table td{font-size:12px}
+@media(max-width:1060px){
+ .inv-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .inv-table-panel .data-table-wrap{overflow-x:auto}
+ .inv-table{min-width:810px}
+}
+@media(max-width:620px){
+ .inv-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .inv-summary .summary-card:last-child{grid-column:1/-1}
+ .inv-toolbar,.inv-fields{grid-template-columns:1fr}
+ .inv-editor{padding:14px}
+ .inv-form-actions .btn{flex:1 1 auto}
+ .inv-summary .metric{font-size:22px}
+}
