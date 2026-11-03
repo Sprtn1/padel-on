@@ -2,7 +2,6 @@
 .cpay-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin-bottom:17px}
 .cpay-summary .summary-card{min-height:112px}
 .cpay-summary .metric{margin-top:15px;font-size:25px}
-.cpay-notice{margin:0 0 18px;font-size:12px;line-height:1.6;color:#688175}
 .cpay-toolbar{display:grid;grid-template-columns:minmax(0,2fr) minmax(170px,1fr);gap:12px;margin:18px 0}
 .cpay-toolbar label,.cpay-fields label{display:grid;gap:7px;font-size:12px;color:#52675d;font-weight:700}
 .cpay-toolbar .form-input,.cpay-fields .form-input{width:100%;min-width:0}
@@ -43,3 +42,10 @@
  .cpay-amounts small{margin:0}
  .cpay-card-actions .btn{flex:1 1 auto}
 }
+
+/* Confirm destructive corrections in place, without hiding the amount or payee. */
+.cpay-removal-form{background:#fff8f7;border-color:#efc6c0}
+.cpay-removal-form h3{color:#973d36}
+.cpay-removal-form label{display:grid;gap:7px;font-size:12px;font-weight:700;color:#82544b;margin-bottom:12px}
+.cpay-removal-form .form-input{width:100%;max-width:500px;min-width:0}
+.cpay-history .btn{white-space:nowrap}
