@@ -48,7 +48,8 @@ function mockAllPageClock(){
   idleExpired:()=>false,
   canAutoRender:()=>canPaint&&!editing,
   loadData:record('shared'),
-  cafeteriaFinances:{load:record('cafeteria')},
+  cafeteriaFinances:{load:record('cafeteria'),getDate:()=> '2026-10-25'},
+  shiftHandover:{load:record('shift-cash')},
   cafeteriaPayments:{load:record('payables')},
   cafeteriaTodo:{load:record('todo')},
   consignmentInventory:{load:record('consignment')},
@@ -93,12 +94,13 @@ test('Every 30-second sync fetches ALL independent page data, not only the open 
  const names=m.seen.map(x=>x[0]);
  for(const category of ['shared','cafeteria','tournament','private','debts',
   'training','attendance','financial-overview','reports','historical-week',
-  'payables','todo','consignment',
+  'payables','todo','consignment','shift-cash',
   'order-counter','reem-items','render'])
   assert.ok(names.includes(category),'Missing background sync: '+category);
  assert.deepEqual(m.seen.find(x=>x[0]==='shared').slice(1),
   [false,{background:true}]);
  assert.deepEqual(m.seen.find(x=>x[0]==='cafeteria').slice(1),[true,true]);
+ assert.deepEqual(m.seen.find(x=>x[0]==='shift-cash').slice(1),['2026-10-25',true]);
  assert.deepEqual(m.seen.find(x=>x[0]==='tournament').slice(1),[true,true]);
  assert.deepEqual(m.seen.find(x=>x[0]==='reports').slice(1),[{background:true}]);
  assert.equal(names.filter(x=>x==='render').length,1,'Exactly one final page repaint');
