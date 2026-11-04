@@ -1,0 +1,57 @@
+/* Audit-only staff shift handover cash verification. */
+.shift-section{padding:19px 22px;margin:18px 0;border:1px solid #d4e5da}
+.shift-head{display:flex;gap:16px;align-items:flex-start;justify-content:space-between}
+.shift-head h3{font-size:17px;font-weight:800;color:#204832;margin:0 0 6px}
+.shift-head p{font-size:12px;line-height:1.6;color:#658272;margin:0}
+.shift-disclaimer{margin:12px 0 16px;font-size:11px;line-height:1.6;color:#769081}
+.shift-message{font-size:12px;color:#6b8475;margin:12px 0}
+.shift-error{background:#fff4ed;color:#b04b30;border:1px solid #f1cec0;padding:10px 12px;border-radius:9px;font-size:12px}
+.shift-handover-form{margin:15px 0;padding:18px;background:#f8fbf9;border:1px solid #d9e8de}
+.shift-handover-form h3{font-size:15px;font-weight:800;color:#1e4b35;margin:0 0 8px}
+.shift-handover-form p{font-size:12px;color:#647c6f;line-height:1.55;margin:0 0 14px}
+.shift-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-bottom:14px}
+.shift-form-grid label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#5e7869;min-width:0}
+.shift-form-grid .form-input{width:100%;min-width:0}
+.shift-form-grid .shift-wide{grid-column:1/-1}
+.shift-form-grid textarea{resize:vertical}
+.shift-prior{display:flex;align-items:center;gap:8px;font-size:12px;color:#618271;border:1px dashed #cbded1;border-radius:9px;padding:12px}
+.shift-prior strong{color:#1d5135}
+.shift-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.shift-check-result{border:1px solid #c7e0ce;background:#f2faf5;border-radius:12px;padding:15px;margin:12px 0}
+.shift-check-result.shift-short{border-color:#efc4b6;background:#fff7f3}
+.shift-check-result.shift-extra{border-color:#f0deb4;background:#fffbf1}
+.shift-check-result h4{font-weight:800;font-size:13px;color:#1e5036;margin:0 0 11px}
+.shift-breakdown{display:grid;gap:7px}
+.shift-breakdown>div{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:#557663}
+.shift-breakdown>div strong{white-space:nowrap;font-weight:800;color:#204b35}
+.shift-breakdown .shift-difference{padding-top:9px;border-top:1px solid #dce8dc;color:#243b31;font-weight:800}
+.shift-check-result>p{font-size:11px;line-height:1.55;margin:11px 0 4px}
+.shift-check-result>small{font-size:10px;color:#788d80}
+.shift-history{margin-top:18px}
+.shift-history h4{font-size:13px;font-weight:800;color:#325640;margin:0 0 10px}
+.shift-record{border:1px solid #e1e9e3;border-radius:12px;padding:13px 15px;margin-bottom:9px;background:#fff}
+.shift-record-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px}
+.shift-record-heading strong{color:#325b43}
+.shift-record>p{font-size:11px;color:#64806d;margin:6px 0 10px;overflow-wrap:anywhere}
+.shift-record>small{font-size:11px;color:#778979;white-space:pre-wrap}
+.shift-record-values{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#6c8375}
+.shift-record-values span{white-space:nowrap}
+.shift-record-values b{font-weight:800;color:#234532}
+.shift-status{display:inline-block;border-radius:20px;padding:5px 9px;font-size:10px;font-weight:750}
+.shift-pending{background:#fff4e0;color:#996c23}
+.shift-confirmed{background:#e4f6eb;color:#217146}
+.shift-void-form{display:grid;gap:9px;margin-top:12px;padding:10px;border-radius:10px;background:#fff7f4;border:1px solid #ecc4b8}
+.shift-void-form label{display:grid;gap:6px;font-size:11px;font-weight:700;color:#98534a}
+.shift-void-form .form-input{min-width:0;max-width:440px}
+.shift-void-form button{justify-self:start}
+.shift-removed{margin-top:14px;padding:12px;background:#f8faf8;border:1px solid #e1e9e3;border-radius:9px;font-size:11px;color:#6a806e}
+.shift-removed p{margin:8px 0;overflow-wrap:anywhere}
+@media(max-width:620px){
+ .shift-section{padding:15px}
+ .shift-head{flex-wrap:wrap;gap:10px}
+ .shift-form-grid{grid-template-columns:1fr}
+ .shift-form-grid .shift-wide{grid-column:auto}
+ .shift-handover-form{padding:13px}
+ .shift-actions .btn{flex:1 1 auto}
+ .shift-record-values{gap:8px 13px}
+}
