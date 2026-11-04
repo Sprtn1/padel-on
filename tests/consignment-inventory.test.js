@@ -12,7 +12,7 @@ test('Search across category, name, brand, model, supplier and size with multipl
   {id:'c',category:'Rackets',product_name:'Padel racket',brand:'HEAD',model:'Speed',size_label:'',supplier:'Vendor Two',quantity:0},
   {id:'d',category:'Shoes',product_name:'Removed',brand:'NOX',model:'Luxury',size_label:'42',supplier:'Vendor One',quantity:4,removed_at:'2026-11-03'}
  ];
- const ids=(query,filter)=>filterConsignment(items,query,filter).map(x=>x.id);
+ const ids=(query,filter,category)=>filterConsignment(items,query,filter,category).map(x=>x.id);
  assert.deepEqual(ids('nox luxury 42'),['a']);
  assert.deepEqual(ids('42 NOX'),['a']);
  assert.deepEqual(ids('padel shoes'),['b','a']);
@@ -21,6 +21,15 @@ test('Search across category, name, brand, model, supplier and size with multipl
  assert.deepEqual(ids('','out-of-stock'),['c']);
  assert.deepEqual(ids('No Such Product'),[]);
  assert.deepEqual(ids(''),['c','b','a']);
+ assert.deepEqual(ids('','all','Shoes'),['b','a']);
+ assert.deepEqual(ids('','all','Rackets'),['c']);
+ assert.deepEqual(ids('NOX 42','in-stock','Shoes'),['a']);
+ assert.deepEqual(ids('NOX 42','out-of-stock','Shoes'),[]);
+ assert.deepEqual(ids('','out-of-stock','Rackets'),['c']);
+ assert.deepEqual(ids('','all','Grips'),[]);
+ assert.deepEqual(ids('','all','Other'),[]);
+ assert.deepEqual(ids('','all','Nonexistent'),[]);
+
 });
 test('Dollar prices and stock counts must be exact and within bounds',()=>{
  assert.equal(consignmentMoneyCents('70'),7000);
@@ -183,4 +192,38 @@ test('Inventory code and SQL never write cafeteria daily finance, Whish or payme
  assert.match(sql,/Stock cannot fall below zero/);
  assert.match(sql,/revoke all on function public\.consignment_adjust_stock/);
  assert.match(src,/api\.rpc\('consignment_adjust_stock'/);
+});
+
+test('Category filter is available to staff and admin, combines with stock/search, and resets',async()=>{
+ const x=mock();
+ x.items.push(
+  {id:'s42',category:'Shoes',product_name:'Shoes',brand:'NOX',model:'Luxury',size_label:'42',supplier:'One',quantity:5,selling_price_cents:12000},
+  {id:'s40',category:'Shoes',product_name:'Shoes',brand:'NOX',model:'Luxury',size_label:'40',supplier:'One',quantity:0,selling_price_cents:12000},
+  {id:'r',category:'Rackets',product_name:'Racket',brand:'NOX',model:'Speed',size_label:'',supplier:'Two',quantity:3,selling_price_cents:8000},
+  {id:'removed',category:'Balls',product_name:'Removed',brand:'Brand',model:'',size_label:'',supplier:'Two',quantity:10,selling_price_cents:3000,removed_at:'2026-11-03'}
+ );
+ await x.ui.load();
+ const initial=x.ui.page();
+ assert.match(initial,/id="consign-category"/);
+ for(const name of ['All categories','Shoes','Rackets','Grips','Balls','Clothing','Accessories','Other'])
+  assert.ok(initial.includes(name),'Missing category option: '+name);
+ x.ui.setCategory('Shoes');
+ x.ui.setFilter('in-stock');
+ x.ui.setSearch('NOX Luxury 42');
+ assert.deepEqual(filterConsignment(x.ui.getState().items,x.ui.getState().search,x.ui.getState().filter,x.ui.getState().category).map(i=>i.id),['s42']);
+ assert.match(x.ui.page(),/<option value="Shoes" selected>/);
+ x.ui.setCategory('Rackets');
+ assert.equal(filterConsignment(x.ui.getState().items,x.ui.getState().search,x.ui.getState().filter,x.ui.getState().category).length,0);
+ x.ui.setSearch('');
+ assert.deepEqual(filterConsignment(x.ui.getState().items,'','in-stock','Rackets').map(i=>i.id),['r']);
+ x.ui.setCategory('all');
+ assert.equal(x.ui.getState().category,'all');
+ x.ui.setCategory('Made Up Category');
+ assert.equal(x.ui.getState().category,'all','Reject nonexistent categories');
+ x.setRole('staff');
+ await x.ui.load();
+ assert.match(x.ui.page(),/id="consign-category"/);
+ assert.equal(x.ui.getState().category,'all');
+ x.ui.reset();
+ assert.equal(x.ui.getState().category,'all');
 });

@@ -1,7 +1,7 @@
 /* Consignment stock: staff read-only, administrator controls separate from daily finances. */
 .inv-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 19px}
 .inv-summary .summary-card{min-height:115px}
-.inv-toolbar{display:grid;grid-template-columns:minmax(0,2fr) minmax(175px,1fr);gap:12px;margin:15px 0 18px}
+.inv-toolbar{display:grid;grid-template-columns:minmax(0,2fr) minmax(155px,1fr) minmax(155px,1fr);gap:12px;margin:15px 0 18px}
 .inv-toolbar label,.inv-fields label{display:grid;gap:7px;font-size:12px;font-weight:700;color:#607568}
 .inv-toolbar .form-input,.inv-fields .form-input{width:100%;min-width:0}
 .inv-table-panel{padding:0;overflow:hidden}

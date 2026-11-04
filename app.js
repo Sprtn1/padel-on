@@ -1841,7 +1841,8 @@ document.addEventListener('change',e=>{
  }
  if(e.target.dataset?.reemInput==='quantity' && state.tab==='reem-items' && canUseOrderLists()){render();return;}
  if(e.target.dataset?.orderInput==='quantity' && state.tab==='order-counter' && canUseOrderLists()){render();return;}
- if(e.target.id==='consign-filter'&&state.tab==='consignment'&&state.staff){consignmentInventory.setFilter(e.target.value);return;}
+ if(e.target.id==='consign-category'&&state.tab==='consignment'&&state.staff){consignmentInventory.setCategory(e.target.value);return;}
+  if(e.target.id==='consign-filter'&&state.tab==='consignment'&&state.staff){consignmentInventory.setFilter(e.target.value);return;}
   if(e.target.id==='ctodo-filter'&&state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){cafeteriaTodo.setFilter(e.target.value);return;}
   if(e.target.id==='cpay-filter'&&state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){cafeteriaPayments.setFilter(e.target.value);return;}
   if(e.target.id==='settings-private-account'){state.settingsPrivateAccountId=e.target.value;render();return}
