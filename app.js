@@ -8,6 +8,7 @@ const reemItems = await import(`./lib/reem-items-ui.js?v=${assetVersion}`);
 const cafeteriaFinanceModule = await import(`./lib/cafeteria-finances.js?v=${assetVersion}`);
 const cafeteriaPaymentsModule = await import(`./lib/cafeteria-payments.js?v=${assetVersion}`);
 const cafeteriaTodoModule = await import(`./lib/cafeteria-todo.js?v=${assetVersion}`);
+const shiftHandoverModule = await import(`./lib/cafeteria-shift-handover.js?v=${assetVersion}`);
 const consignmentModule = await import(`./lib/consignment-inventory.js?v=${assetVersion}`);
 const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
 const reportComparison = await import(`./lib/report-comparison.js?v=${assetVersion}`);
@@ -48,11 +49,18 @@ const consignmentInventory=consignmentModule.createConsignmentInventory({
  isAdmin:()=>state.staff?.role==='admin',
  rerender:()=>{if(state.tab==='consignment'&&api.getSession()?.access_token&&!autoRefreshRunning)render()}
 });
+const shiftHandover=shiftHandoverModule.createCafeteriaShiftHandover({
+ api,amount,today,toast,
+ staff:()=>state.staff,isAdmin:()=>state.staff?.role==='admin',
+ rerender:()=>{if(state.tab==='cafeteria-finances'&&api.getSession()?.access_token&&!autoRefreshRunning)render()}
+});
 const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
  api,heading,icon,amount,today,addDays,
  rerender:()=>{if(state.tab==='cafeteria-finances'&&api.getSession()?.access_token)render()},
  toast,isAdmin:()=>state.staff?.role==='admin',
  exportArabicPdf:data=>arabicDailyPdf.previewArabicDailySheet(data),
+ renderShiftHandover:(day,editable)=>shiftHandover.page(day,editable),
+ onShiftDateChanged:day=>{void shiftHandover.load(day)},
  sendArabicPdf:async data=>{
   // The same PDF bytes are downloaded and uploaded once; no Supabase Storage.
   const {pdf,pages}=arabicDailyPdf.makeArabicDailySheetPdf(data);
@@ -117,7 +125,7 @@ async function autoSignOut(){
  idleLogoutStarted=true;
  clearStaffActivity();
  state.staff=null;
- cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();consignmentInventory.reset();clubInsights.reset();compareClubInsights.reset();
+ cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();consignmentInventory.reset();shiftHandover.reset();clubInsights.reset();compareClubInsights.reset();
  state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';
  // api.signOut clears the local authentication token before contacting Supabase.
  const remoteLogout=api.signOut();
@@ -1223,7 +1231,7 @@ async function loadData(resetTab=false,{background=false}={}){if(state.loading)r
   if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients();
   if(state.tab==='debts'&&!state.debtLoading)void loadDebtData();
    if(state.tab==='consignment')void consignmentInventory.load();
-  if(state.tab==='cafeteria-finances')void cafeteriaFinances.load(true);
+  if(state.tab==='cafeteria-finances'){void cafeteriaFinances.load(true);void shiftHandover.load(cafeteriaFinances.getDate());}
   if(state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){void cafeteriaPayments.load();void cafeteriaTodo.load();}
   if(state.tab==='tournament')void tournamentManagement.load(true);
   if(state.tab==='dashboard'||state.tab==='reports')loadClubSources();
@@ -1429,7 +1437,11 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
   if(state.tab!=='tournament'||!state.staff)throw Error('Authorized staff only.');
   if(await tournamentManagement.action(target))return;
  }
- if(act?.startsWith('consign-')){
+ if(act?.startsWith('shift-')){
+   if(state.tab!=='cafeteria-finances'||!state.staff)throw Error('Authorized staff only.');
+   if(await shiftHandover.action({dataset:{shiftAction:act.slice(6),id},closest:selector=>target.closest(selector)}))return;
+  }
+  if(act?.startsWith('consign-')){
    if(state.tab!=='consignment'||!state.staff)throw Error('Authorized staff only.');
    if(await consignmentInventory.action({dataset:{consignAction:act.slice(8),id}}))return;
   }
@@ -1443,7 +1455,10 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
   }
   if(act?.startsWith('cafe-')){
   if(state.tab!=='cafeteria-finances'||!state.staff)throw Error('Authorized staff only.');
-  if(await cafeteriaFinances.action(target))return;
+  if(await cafeteriaFinances.action(target)){
+    if(act==='cafe-reload')await shiftHandover.load(cafeteriaFinances.getDate());
+    return;
+   }
  }
  switch(act){
  case 'open-reem-items':
@@ -1589,7 +1604,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  }
  case 'private-void-entry':if(state.staff?.role!=='admin')throw Error('Only admins can correct financial entries.');if(!state.privateEntries.some(e=>e.id===id))throw Error('Entry not found.');openModal('private-void',id);break;
  case 'private-export':exportPrivateClientCSV();break;
- case 'refresh':if(state.tab==='consignment'){await consignmentInventory.load();toast('Inventory refreshed');break;}if(state.tab==='cafeteria-payments'){if(state.staff?.role!=='admin')throw Error('Administrator access required.');await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);toast('Payments and tasks refreshed');break;}if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
+ case 'refresh':if(state.tab==='consignment'){await consignmentInventory.load();toast('Inventory refreshed');break;}if(state.tab==='cafeteria-payments'){if(state.staff?.role!=='admin')throw Error('Administrator access required.');await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);toast('Payments and tasks refreshed');break;}if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await Promise.all([cafeteriaFinances.load(true),shiftHandover.load(cafeteriaFinances.getDate())]);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
  case 'training-prev-month':
   state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
  case 'training-next-month':
@@ -1658,12 +1673,12 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'prev-month':state.month=shiftMonth(state.month,-1);render();break;
  case 'next-month':if(state.month<monthKey(today())){state.month=shiftMonth(state.month,1);render()}break;
  case 'export-finance':exportFinance();break;
- case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();consignmentInventory.reset();tournamentManagement.reset();clubInsights.reset();compareClubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
+ case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();consignmentInventory.reset();shiftHandover.reset();tournamentManagement.reset();clubInsights.reset();compareClubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
  }}
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
  if(e.target.id==='modal-backdrop'){closeModal();return;}
- const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab)||(tab.dataset.tab==='cafeteria-payments'&&state.staff?.role!=='admin'))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview(true);}if(state.tab==='debts')await loadDebtData();if(state.tab==='consignment')await consignmentInventory.load();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await cafeteriaFinances.load(true);if(state.tab==='cafeteria-payments'&&state.staff?.role==='admin')await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);if(state.tab==='tournament')await tournamentManagement.load(true);
+ const tab=e.target.closest('[data-tab]');if(tab){if(!tabs.some(([key])=>key===tab.dataset.tab)||(tab.dataset.tab==='cafeteria-payments'&&state.staff?.role!=='admin'))return;state.tab=tab.dataset.tab;state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(state.tab==='reports'){void loadClubSources();await loadReport();}if(state.tab==='dashboard'){loadClubSources();void clubInsights.loadOverview(true);}if(state.tab==='debts')await loadDebtData();if(state.tab==='consignment')await consignmentInventory.load();if(state.tab==='training')await loadTrainingMonth();if(state.tab==='private-clients')await loadPrivateClients();if(state.tab==='cafeteria-finances')await Promise.all([cafeteriaFinances.load(true),shiftHandover.load(cafeteriaFinances.getDate())]);if(state.tab==='cafeteria-payments'&&state.staff?.role==='admin')await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);if(state.tab==='tournament')await tournamentManagement.load(true);
  if(state.tab==='settings'&&state.staff?.role==='admin'){
   await Promise.all([loadPrivateClients(),loadDebtData()]);
   if(state.tab==='settings'&&api.getSession()?.access_token)render();
@@ -1672,6 +1687,12 @@ document.addEventListener('click',async e=>{
  const action=e.target.closest('[data-action]');if(action){try{await handleAction(action)}catch(err){toast(err.message,true)}}
 });
 document.addEventListener('submit',async e=>{
+  if(e.target.dataset?.shiftSave){
+   e.preventDefault();
+   if(state.tab!=='cafeteria-finances'||!state.staff){toast('Authorized staff only.',true);return;}
+   try{await shiftHandover.submit(e.target)}catch(err){toast(err.message||'Could not record handover.',true)}
+   return;
+  }
   if(e.target.dataset?.consignSave){
    e.preventDefault();
    if(state.tab!=='consignment'||!state.staff){toast('Authorized staff only.',true);return;}
@@ -1917,7 +1938,7 @@ async function refreshAllPagesWhenDue(){
   // A failing feed must not prevent other pages from refreshing.
   const feeds=[
    ['Shared data',()=>loadData(false,{background:true})],
-   ['Cafeteria Finances',()=>cafeteriaFinances.load(true,true)],
+   ['Cafeteria Finances',()=>Promise.all([cafeteriaFinances.load(true,true),shiftHandover.load(cafeteriaFinances.getDate(),true)])],
     ['Cafeteria Payments',()=>state.staff?.role==='admin'?Promise.all([cafeteriaPayments.load(true),cafeteriaTodo.load(true)]):undefined],
    ['Tournament Management',()=>tournamentManagement.load(true,true)],
    ['Private Sessions',()=>loadPrivateClients({background:true})],
