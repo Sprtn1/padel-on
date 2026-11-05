@@ -790,3 +790,6 @@
 
 /* Admin sidebar contains one additional protected destination; keep it scrollable on short screens. */
 .sidebar .menu{min-height:0;overflow-y:auto;scrollbar-width:thin}
+
+/* Pickleball singles: show only two player-paid markers. */
+.cafe-marks label[hidden]{display:none!important}

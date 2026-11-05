@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {courtPriceCents,bookingMinutes,bookingEndTime,bookingCrossesMidnight,parseCourtBooking} from '../lib/court-bookings.js';
+import {courtPriceCents,pickleballPricePerPersonCents,bookingMinutes,bookingEndTime,bookingCrossesMidnight,parseCourtBooking} from '../lib/court-bookings.js';
 test('Padel tariffs: 1h $25, 1.5h $32, 2h $40',()=>{
  assert.equal(courtPriceCents('padel_courts','18:00','19:00'),2500);
  assert.equal(courtPriceCents('padel_courts','18:00','19:30'),3200);
@@ -11,8 +11,28 @@ test('Basketball tariffs: 1h $20, 1.5h $30, 2h $40',()=>{
  assert.equal(courtPriceCents('basketball_courts','18:00','19:30'),3000);
  assert.equal(courtPriceCents('basketball_courts','18:00','20:00'),4000);
 });
-test('Pickleball and unlisted durations keep manual pricing',()=>{
- assert.equal(courtPriceCents('pickleball_courts','18:00','19:30'),null);
+test('Pickleball totals are player count × per-person rates; rackets included',()=>{
+ for(const [players,perPerson] of [
+  [2,{60:900,90:1200,120:1500}],
+  [4,{60:600,90:750,120:900}]
+ ]){
+  for(const [duration,each] of Object.entries(perPerson)){
+   const end=bookingEndTime('18:00',Number(duration));
+   assert.equal(pickleballPricePerPersonCents(Number(duration),players),each);
+   assert.equal(courtPriceCents('pickleball_courts','18:00',end,players),each*players);
+  }
+ }
+ assert.equal(courtPriceCents('pickleball_courts','18:00','19:00',2),1800);
+ assert.equal(courtPriceCents('pickleball_courts','18:00','19:30',2),2400);
+ assert.equal(courtPriceCents('pickleball_courts','18:00','20:00',2),3000);
+ assert.equal(courtPriceCents('pickleball_courts','18:00','19:00',4),2400);
+ assert.equal(courtPriceCents('pickleball_courts','18:00','19:30',4),3000);
+ assert.equal(courtPriceCents('pickleball_courts','18:00','20:00',4),3600);
+});
+test('Unsupported pickleball durations remain manually priced',()=>{
+ assert.equal(courtPriceCents('pickleball_courts','18:00','18:45',2),null);
+ assert.equal(courtPriceCents('pickleball_courts','18:00','18:45',4),null);
+ assert.equal(courtPriceCents('pickleball_courts','18:00','19:00',3),null);
  assert.equal(courtPriceCents('padel_courts','18:00','18:45'),null);
 });
 test('Overnight bookings use the next-day boundary and remain limited to 12 hours',()=>{
