@@ -100,3 +100,20 @@
 .tm-v2-chart-row>strong{text-align:right;white-space:nowrap;color:#22573b;font-variant-numeric:tabular-nums}
 .tm-v2-chart-row>strong small{color:#789480;font-size:10px;font-weight:500}
 @media(max-width:670px){.tm-v2-chart-row{grid-template-columns:minmax(0,1fr) minmax(70px,1fr);gap:7px}.tm-v2-chart-row>span{grid-column:1/-1}.tm-v2-chart-row>strong{font-size:11px}}
+
+/* Prize announcement controls, scoped to tournament pages. */
+.tm-prize-choice{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
+.tm-prize-choice label{display:flex;align-items:center;justify-content:center;gap:9px;padding:13px;border:1px solid #d9e7dc;border-radius:11px;background:#f7faf8;font-size:12px;font-weight:700;color:#365b42;cursor:pointer}
+.tm-prize-choice label:has(input:checked){border-color:#278c59;background:#e7f5eb;color:#175a37}
+.tm-prize-choice input{width:16px;height:16px;accent-color:#258d5a;flex:none}
+.tm-prize-announced{display:none;gap:13px;margin:12px 0 18px}
+.tm-prize-choice:has(input[value="announced"]:checked)+.tm-prize-announced{display:grid}
+.tm-prize-announced label{display:grid;gap:7px;min-width:0;font-size:12px;font-weight:700;color:#486b52}
+.tm-prize-announced input,.tm-prize-announced textarea{box-sizing:border-box;width:100%;min-width:0;padding:11px;border:1px solid #d6e4da;border-radius:9px;background:#fff;color:#244b33;font:inherit}
+.tm-prize-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.tm-v2-rules-compact{gap:8px}
+.tm-v2-rules-compact .tm-v2-rule{padding:11px 13px;gap:6px}
+.tm-v2-rules-compact .tm-v2-rule textarea{min-height:42px;padding:8px 10px;line-height:1.35}
+.tm-v2-rules-compact .tm-v2-check{font-size:12px}
+.tm-v2-rules-compact .tm-v2-rule:has(input:not(:checked)){opacity:.67}
+@media(max-width:720px){.tm-prize-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tm-prize-choice{grid-template-columns:1fr}}
