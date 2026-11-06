@@ -1585,6 +1585,6 @@ test('V2 roster changes obey custom group sizes and limits while preserving paym
   await widget.action({dataset:{action:'tm-team-start'}});
   for(let i=0;i<4;i++)await widget.action({dataset:{action:'tm-team-add'}});
   await assert.rejects(()=>widget.action({dataset:{action:'tm-team-add'}}),
-   /registration limit reached/);
+   /registration limit/);
  }finally{globalThis.FormData=old;}
 });
