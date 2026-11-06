@@ -85,3 +85,18 @@
  .tm-v2-activity,.tm-v2-settings,.tm-v2-exports{break-before:page}
 }
 @media(prefers-reduced-motion:reduce){.tm-v2-fixture,.tm-v2-participant{transition:none!important}}
+
+/* Tournament wizard: keep the prize editor below the announcement control. */
+.tm-v2-prize-details{display:block;width:100%;max-width:100%;margin-top:15px;min-width:0}
+.tm-v2-prize-details>label{display:grid!important;grid-template-columns:minmax(0,1fr);gap:7px;width:100%;max-width:100%}
+.tm-v2-prize-details textarea{display:block!important;box-sizing:border-box;width:100%!important;max-width:100%!important;min-width:0;min-height:105px;resize:vertical}
+.tm-v2-rule .tm-v2-check strong,.tm-v2-rule .tm-v2-check span{font-size:13px;font-weight:750;color:#254e36;text-transform:none}
+.tm-v2-rule{gap:10px;padding:15px}
+.tm-v2-chart-legend{display:flex;gap:16px;flex-wrap:wrap;margin:0 0 12px;font-size:11px;color:#587562}
+.tm-v2-chart-legend>span{display:inline-flex;align-items:center;gap:6px}
+.tm-v2-chart-legend i{display:inline-block;width:11px;height:11px;border-radius:3px}
+.tm-v2-legend-paid{background:#44ae78}.tm-v2-legend-due{background:#e7f2e9;border:1px solid #c9e0d0}
+.tm-v2-chart-row{grid-template-columns:minmax(140px,1.5fr) minmax(90px,2fr) minmax(100px,auto);padding:5px 0;border-bottom:1px solid #eef3ef}
+.tm-v2-chart-row>strong{text-align:right;white-space:nowrap;color:#22573b;font-variant-numeric:tabular-nums}
+.tm-v2-chart-row>strong small{color:#789480;font-size:10px;font-weight:500}
+@media(max-width:670px){.tm-v2-chart-row{grid-template-columns:minmax(0,1fr) minmax(70px,1fr);gap:7px}.tm-v2-chart-row>span{grid-column:1/-1}.tm-v2-chart-row>strong{font-size:11px}}
