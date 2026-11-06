@@ -243,7 +243,7 @@ test('Staff see tournament creation and the participant payment table, but not C
  assert.match(html,/>Pay</);
  assert.match(html,/Shuffled Group Stage/);
  assert.doesNotMatch(html,/Close Tournament/);
- assert.match(html,/Amount remaining/);
+ assert.match(html,/Remaining/);
 });
 test('Admins can export and begin archive closure, but deletion requires confirmation',async()=>{
  const row=sampleRow('knockout'),{widget,calls,backing}=makeUI(true,[row]);
