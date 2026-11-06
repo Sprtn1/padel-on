@@ -5,6 +5,7 @@ import {parseTournamentMoney,makeInitialTournament,makeKnockoutMatches,padelSetW
  padelMatchWinner,groupStandings,getQualifiers,tournamentTotals,tournamentChampion,proSetWinner,tournamentMatchWinner,
  knockoutSeedEntrants,reseedTournamentKnockout,makeSeededKnockoutMatches,tournamentCanResize,resizeTournamentDraw,tournamentTeamPlayerDues,knockoutManualSlots,arrangeTournamentKnockout} from '../lib/tournament-engine.js';
 import {createTournamentManagement} from '../lib/tournament-management.js';
+import {makeAdvancedGroupDraw} from '../lib/tournament-advanced-engine.js';
 import {knockoutBracketLayout} from '../lib/tournament-bracket-layout.js';
 import {tournamentArchivePdf,downloadTournamentPdf} from '../lib/tournament-pdf.js';
 
@@ -1552,4 +1553,37 @@ test('Wizard back-navigation clears unchecked courts, rules, playoffs and Team P
   assert.equal(request.args.p_settings.rules.find(r=>r.key==='fair_play').enabled,true);
   assert.equal(request.args.p_state.teams[0].members[0].due,2000);
  }finally{globalThis.FormData=original;}
+});
+
+test('V2 roster changes obey custom group sizes and limits while preserving payments and IDs',async()=>{
+ const row=sampleRow('groups');
+ row.state=makeAdvancedGroupDraw(row.state.teams,3,()=>.2);
+ row.settings={engine_version:2,group_size:3,qualifiers_per_group:2,entry_limit:9};
+ const member=row.state.teams[0].members[0];
+ member.paid=700;member.note='Keep member history';
+ const before=structuredClone(member);
+ const beforeIds=new Set(row.state.teams.flatMap(t=>t.members.map(m=>m.id)));
+ const {widget,calls}=makeUI(false,[row]);await widget.load();
+ await widget.action({dataset:{action:'tm-team-add-quick'}});
+ const old=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'resize-teams'},_values:[
+   ['new_p1_4','Additional first'],['new_p2_4','Additional second']]});
+  assert.equal(row.state.teams.length,5);
+  const retained=row.state.teams.flatMap(t=>t.members).find(m=>m.id===member.id);
+  assert.deepEqual(retained,before);
+  const sizes=[...new Set(row.state.teams.map(t=>t.group))].map(g=>
+   row.state.teams.filter(t=>t.group===g).length);
+  assert.ok(sizes.every(n=>n>=2&&n<=3));
+  assert.ok(sizes.every(n=>n>=row.settings.qualifiers_per_group));
+  const added=row.state.teams.flatMap(t=>t.members).filter(m=>!beforeIds.has(m.id));
+  assert.equal(added.length,2);
+  assert.ok(added.every(m=>m.paid===0&&m.due===1500));
+  assert.equal(calls.filter(x=>x.name==='tournament_resize_teams').length,1);
+  // Remaining slots may be added only until the configured cap is reached.
+  for(let i=0;i<4;i++)await widget.action({dataset:{action:'tm-team-add'}});
+  await assert.rejects(()=>widget.action({dataset:{action:'tm-team-add'}}),
+   /registration limit reached/);
+ }finally{globalThis.FormData=old;}
 });
