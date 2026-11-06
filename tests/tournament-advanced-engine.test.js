@@ -126,3 +126,14 @@ test('Team Player benefits stay independent of wins and points',()=>{
  assert.equal(isAmericano('groups'),false);
  assert.equal(isAmericano('americano_team'),true);
 });
+
+test('Americano creation prevents final stages with fewer than four entries and excessive fixtures',()=>{
+ assert.throws(()=>makeAmericanoDraw(names(2),2000,'americano_team',
+  {playoffs:true,rounds:1},()=>.3),/at least four entries/);
+ const round=makeAmericanoDraw(names(2),2000,'americano_team',{rounds:1},()=>.3);
+ assert.equal(round.matches.length,1,'Two-team Americano without a final is still valid.');
+ assert.throws(()=>makeAmericanoDraw(names(32),2000,'americano_team',
+  {rounds:31},()=>.3),/Too many Americano fixtures/);
+ assert.equal(makeAmericanoDraw(names(32),2000,'americano_team',
+  {rounds:18},()=>.3).matches.length,288);
+});
