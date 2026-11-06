@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {courtPriceCents,pickleballPricePerPersonCents,bookingMinutes,bookingEndTime,bookingCrossesMidnight,parseCourtBooking} from '../lib/court-bookings.js';
+import {courtPriceCents,pickleballPricePerPersonCents,bookingMinutes,bookingEndTime,bookingCrossesMidnight,parseCourtBooking,sortCourtBookingsByTime} from '../lib/court-bookings.js';
 test('Padel tariffs: 1h $25, 1.5h $32, 2h $40',()=>{
  assert.equal(courtPriceCents('padel_courts','18:00','19:00'),2500);
  assert.equal(courtPriceCents('padel_courts','18:00','19:30'),3200);
@@ -64,4 +64,35 @@ test('Basketball and pickleball use times without a court selection',()=>{
   });
   assert.throws(()=>parseCourtBooking(category,{court_number:'C1',booking_start_time:'18:00',booking_end_time:'19:30'}));
  }
+});
+
+test('Court display sorts by booking start time, then C1/C2/C3 regardless of entry order',()=>{
+ const bookings=[
+  {id:'evening',court_number:'C2',booking_start_time:'19:00:00',created_at:'2026-11-06T12:00:00Z'},
+  {id:'early-c3',court_number:'C3',booking_start_time:'16:00:00',created_at:'2026-11-06T09:00:00Z'},
+  {id:'early-c2',court_number:'C2',booking_start_time:'16:00:00',created_at:'2026-11-06T10:00:00Z'},
+  {id:'early-c1',court_number:'C1',booking_start_time:'16:00:00',created_at:'2026-11-06T11:00:00Z'},
+  {id:'morning',court_number:'C3',booking_start_time:'09:30:00',created_at:'2026-11-06T08:00:00Z'}
+ ];
+ const snapshot=bookings.map(item=>({...item}));
+ const sorted=sortCourtBookingsByTime(bookings);
+ assert.deepEqual(sorted.map(x=>x.id),['morning','early-c1','early-c2','early-c3','evening']);
+ assert.deepEqual(bookings,snapshot,'Sorting must not modify stored rows');
+});
+
+test('Court sorting is stable for same time/court and gracefully handles legacy records without times',()=>{
+ const bookings=[
+  {id:'legacy-old',court_number:'C3',booking_start_time:null,created_at:'2026-11-06T08:00:00Z'},
+  {id:'same-later',court_number:'C1',booking_start_time:'17:30:00',created_at:'2026-11-06T12:00:00Z'},
+  {id:'same-earlier',court_number:'C1',booking_start_time:'17:30:00',created_at:'2026-11-06T11:00:00Z'},
+  {id:'unassigned',court_number:null,booking_start_time:'17:30:00',created_at:'2026-11-06T10:00:00Z'},
+  {id:'legacy-new',court_number:null,booking_start_time:null,created_at:'2026-11-06T13:00:00Z'},
+  {id:'early',court_number:'C2',booking_start_time:'00:00:00',created_at:'2026-11-06T13:00:00Z'}
+ ];
+ assert.deepEqual(sortCourtBookingsByTime(bookings).map(x=>x.id),
+  ['early','same-earlier','same-later','unassigned','legacy-old','legacy-new']);
+ // Basketball and pickleball have no numbered courts, but still sort by start.
+ assert.deepEqual(sortCourtBookingsByTime([
+  {id:'b',booking_start_time:'18:00:00'},{id:'a',booking_start_time:'17:00:00'}
+ ]).map(x=>x.id),['a','b']);
 });

@@ -1257,3 +1257,41 @@ test('Court bookings save court/time with manual price override',()=>{
  }),/12 hours/);
 });
 
+
+test('Cafeteria court cards display chronological bookings and C1/C2/C3 for same-time ties',async()=>{
+ const day='2026-11-06';
+ const entries=[
+  {id:'later',entry_date:day,category:'padel_courts',name:'Later booking',court_number:'C2',
+   booking_start_time:'20:00:00',booking_end_time:'21:00:00',amount_cents:2500,checkmarks:[false,false,false,false]},
+  {id:'c3',entry_date:day,category:'padel_courts',name:'Same time C3',court_number:'C3',
+   booking_start_time:'18:00:00',booking_end_time:'19:00:00',amount_cents:2500,checkmarks:[false,false,false,false]},
+  {id:'c1',entry_date:day,category:'padel_courts',name:'Same time C1',court_number:'C1',
+   booking_start_time:'18:00:00',booking_end_time:'19:00:00',amount_cents:2500,checkmarks:[false,false,false,false]},
+  {id:'legacy',entry_date:day,category:'padel_courts',name:'Booking without time',
+   amount_cents:2500,checkmarks:[false,false,false,false]},
+  {id:'c2',entry_date:day,category:'padel_courts',name:'Same time C2',court_number:'C2',
+   booking_start_time:'18:00:00',booking_end_time:'19:00:00',amount_cents:2500,checkmarks:[false,false,false,false]},
+  {id:'pickle-later',entry_date:day,category:'pickleball_courts',name:'Pickle later',
+   booking_start_time:'21:00:00',booking_end_time:'22:00:00',amount_cents:2400,checkmarks:[false,false,false,false]},
+  {id:'pickle-earlier',entry_date:day,category:'pickleball_courts',name:'Pickle earlier',
+   booking_start_time:'16:00:00',booking_end_time:'17:00:00',amount_cents:2400,checkmarks:[false,false,false,false]},
+  {id:'expense-later',entry_date:day,category:'general_payment',name:'Original expense first',amount_cents:100},
+  {id:'expense-earlier',entry_date:day,category:'general_payment',name:'Original expense second',amount_cents:150}
+ ];
+ const original=entries.map(row=>({...row}));
+ const widget=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),listAll:async name=>name==='cafeteria_finance_entries'?entries:[]},
+  heading:()=>'',icon:()=>'',amount:cents=>'$'+(cents/100).toFixed(2),today:()=>day,
+  addDays:()=>day,rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const page=widget.page();
+ const order=['Same time C1','Same time C2','Same time C3','Later booking','Booking without time'];
+ for(let i=1;i<order.length;i++)assert.ok(page.indexOf(order[i-1])<page.indexOf(order[i]),
+  order[i-1]+' must appear before '+order[i]);
+ assert.ok(page.indexOf('Pickle earlier')<page.indexOf('Pickle later'));
+ assert.ok(page.indexOf('Original expense first')<page.indexOf('Original expense second'),
+  'Non-court categories keep their existing order');
+ assert.deepEqual(entries,original,'Sorting must not overwrite any financial records');
+ assert.match(page,/\$125\.00/,'Padel totals still include all five bookings');
+});
