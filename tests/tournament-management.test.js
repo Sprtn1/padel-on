@@ -1533,7 +1533,7 @@ test('Wizard back-navigation clears unchecked courts, rules, playoffs and Team P
   ['points_per_match','24'],['rounds','3'],['entry_limit','8'],
   ['court_c1','on'],['court_c2','on'],['rule_enabled_fair_play','on'],
   ['rule_enabled_late_arrivals','on'],['playoffs','on'],['team_player_1_1','on']];
- for(let i=1;i<=4;i++)fields.push(['player_'+i+'_1','Player A '+i],
+ for(let i=1;i<=8;i++)fields.push(['player_'+i+'_1','Player A '+i],
   ['player_'+i+'_2','Player B '+i]);
  let values=fields;
  globalThis.FormData=class{constructor(){this.entries=()=>values[Symbol.iterator]()}};
