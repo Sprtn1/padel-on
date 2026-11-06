@@ -1523,3 +1523,32 @@ test('Tournament match saves court C2 alongside time and validates court selecti
  }finally{globalThis.FormData=old;}
  assert.equal(calls.filter(c=>c.name==='tournament_set_match_schedule').length,1);
 });
+
+test('Wizard back-navigation clears unchecked courts, rules, playoffs and Team Player discounts',async()=>{
+ const {widget,calls}=makeUI(false,[]);
+ await widget.load();await widget.action({dataset:{action:'tm-create-show'}});
+ const original=globalThis.FormData;
+ const fields=[['name','Americano Control'],['format','americano_team'],['team_count','4'],
+  ['date','2026-11-14'],['time','18:00'],['fee_mode','paid'],['fee','20'],
+  ['points_per_match','24'],['rounds','3'],['entry_limit','8'],
+  ['court_c1','on'],['court_c2','on'],['rule_enabled_fair_play','on'],
+  ['rule_enabled_late_arrivals','on'],['playoffs','on'],['team_player_1_1','on']];
+ for(let i=1;i<=4;i++)fields.push(['player_'+i+'_1','Player A '+i],
+  ['player_'+i+'_2','Player B '+i]);
+ let values=fields;
+ globalThis.FormData=class{constructor(){this.entries=()=>values[Symbol.iterator]()}};
+ try{
+  const go=action=>widget.action({dataset:{action},closest:()=>({})});
+  await go('tm-wizard-next');
+  values=fields.filter(([key])=>!['court_c2','rule_enabled_late_arrivals','playoffs','team_player_1_1'].includes(key));
+  for(let step=1;step<6;step++)await go('tm-wizard-next');
+  await widget.submit({dataset:{tmSubmit:'create'}});
+  const request=calls.find(call=>call.name==='tournament_create_v2');
+  assert.ok(request);
+  assert.deepEqual(request.args.p_settings.courts,['C1']);
+  assert.equal(request.args.p_settings.playoffs,false);
+  assert.equal(request.args.p_settings.rules.find(r=>r.key==='late_arrivals').enabled,false);
+  assert.equal(request.args.p_settings.rules.find(r=>r.key==='fair_play').enabled,true);
+  assert.equal(request.args.p_state.teams[0].members[0].due,2000);
+ }finally{globalThis.FormData=original;}
+});
