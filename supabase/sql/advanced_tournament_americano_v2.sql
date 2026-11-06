@@ -44,6 +44,8 @@ begin
  if v_points not between 4 and 100 or mod(v_points,2)<>0 or
     v_rounds not between 1 and 31 or (p_settings->>'match_minutes')::integer not between 10 and 120 then
   raise exception 'Invalid Americano points, rounds or duration';end if;
+ if jsonb_typeof(p_settings->'playoffs') is distinct from 'boolean' then
+  raise exception 'Choose whether the tournament includes finals';end if;
  if p_settings->>'registration_deadline' is not null then
   begin v_deadline:=(p_settings->>'registration_deadline')::timestamptz;
   exception when others then raise exception 'Invalid registration deadline';end;
@@ -145,6 +147,11 @@ begin
     if not (v_match->>'a'=any(v_team_ids)) or not (v_match->>'b'=any(v_team_ids))
       or v_match->>'a'=v_match->>'b' then
      raise exception 'Americano fixture requires two valid teams';end if;
+    if v_round::text||':'||(v_match->>'a')=any(v_visited) or
+       v_round::text||':'||(v_match->>'b')=any(v_visited) then
+     raise exception 'A team cannot occupy multiple courts in the same round';end if;
+    v_visited:=array_append(v_visited,v_round::text||':'||(v_match->>'a'));
+    v_visited:=array_append(v_visited,v_round::text||':'||(v_match->>'b'));
    else
     if jsonb_typeof(v_match->'playersA') is distinct from 'array' or
        jsonb_typeof(v_match->'playersB') is distinct from 'array' or
