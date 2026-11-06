@@ -55,6 +55,7 @@ function fixture(admin=false,rows=[]){
 async function create(model,format,count){
  await model.ui.load();await model.ui.action({dataset:{action:'tm-create-show'}});
  const values=data(format,count);
+ if(count!==8)model.ui.change({id:'tm-team-count',value:String(count),closest:()=>({values})});
  for(let i=0;i<WIZARD_STEPS.length-1;i++)
   await model.ui.action({dataset:{action:'tm-wizard-next'},closest:()=>({values})});
  await model.ui.submit({dataset:{tmSubmit:'create'},values});
