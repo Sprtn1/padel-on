@@ -152,3 +152,31 @@
 .tm-balance-settled{background:#e8f6ed;color:#237a4c}
 @media(max-width:850px){.tm-payment-head{display:grid;grid-template-columns:1fr}.tm-payment-filters{width:100%;margin:0}.tm-v2-chart-row{grid-template-columns:minmax(0,1fr) minmax(70px,1fr) 100px}}
 @media(max-width:560px){.tm-v2-paychart,.tm-payments{padding:14px}.tm-v2-chart-row{grid-template-columns:minmax(0,1fr) 90px;gap:5px}.tm-v2-chart-row>span{grid-column:1/-1}.tm-v2-chart-row>strong{grid-column:2;grid-row:2}.tm-v2-chart-row>.tm-v2-chart-track{grid-column:1;grid-row:2}}
+
+/* Contain the payment panel inside the viewport; preserve a visible card border. */
+.tm-workspace-panel:has(.tm-v2-paychart){min-width:0;max-width:100%;width:100%}
+.tm-workspace-panel .tm-v2-paychart,.tm-workspace-panel .tm-payments{
+ box-sizing:border-box;width:100%;max-width:100%;min-width:0;
+ border:1px solid #d7e5db;border-radius:16px;background:#fff;
+ padding:20px;overflow:hidden;box-shadow:0 2px 12px rgba(20,62,39,.045);
+}
+.tm-v2-paychart .tm-head{min-width:0;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:6px 14px}
+.tm-v2-paychart .tm-head h2{min-width:0;overflow-wrap:break-word}
+.tm-v2-paychart .tm-v2-small-label{white-space:normal;text-align:right;overflow-wrap:break-word}
+.tm-v2-paychart .tm-v2-payment-figures{width:100%;max-width:100%;min-width:0}
+.tm-v2-paychart .tm-v2-payment-figures>div{min-width:0;max-width:100%;overflow:hidden}
+.tm-v2-paychart .tm-v2-payment-figures strong{white-space:normal;overflow-wrap:anywhere}
+.tm-v2-paychart .tm-v2-progress{width:100%;max-width:100%}
+.tm-v2-paychart .tm-v2-chart-list{box-sizing:border-box;width:100%;max-width:100%;min-width:0}
+.tm-v2-paychart .tm-v2-chart-row{min-width:0;max-width:100%}
+.tm-v2-paychart .tm-v2-chart-row>strong{min-width:0;overflow-wrap:anywhere}
+@media(max-width:670px){
+ .tm-workspace-panel .tm-v2-paychart,.tm-workspace-panel .tm-payments{padding:16px;border-radius:14px}
+ .tm-v2-paychart .tm-v2-payment-figures{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .tm-v2-paychart .tm-v2-payment-figures>div{padding:12px;min-height:84px}
+ .tm-v2-paychart .tm-v2-payment-figures>div:last-child{grid-column:1/-1;min-height:72px}
+ .tm-v2-paychart .tm-v2-payment-figures strong{font-size:19px}
+ .tm-v2-paychart .tm-head{display:grid;grid-template-columns:1fr}
+ .tm-v2-paychart .tm-v2-small-label{text-align:left}
+ .tm-v2-paychart .tm-v2-chart-summary{flex-wrap:wrap}
+}
