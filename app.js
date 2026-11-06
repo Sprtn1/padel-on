@@ -179,6 +179,7 @@ function financials(ym=state.month){
 function navMarkup(mobile=false){return renderNavigation(state.tab,icon,mobile,state.staff?.role==='admin')}
 function syncBrowserRoute(tab,{replace=false}={}){
  const hash=hashForTab(tab);
+ if(tab==='tournament'&&window.location.hash.startsWith('#tournament/'))return;
  if(window.location.hash!==hash)
   window.history[replace?'replaceState':'pushState'](null,'',hash);
 }
@@ -205,6 +206,7 @@ async function applyLocationRoute(){
  const tab=resolveTabFromHash(window.location.hash,state.staff.role);
  if(window.location.hash!==hashForTab(tab))syncBrowserRoute(tab,{replace:true});
  if(tab!==state.tab)await navigateToTab(tab);
+ else if(tab==='tournament'&&tournamentManagement.applyHashRoute(window.location.hash))render();
 }
 window.addEventListener('popstate',()=>{void applyLocationRoute().catch(err=>toast(err.message||'Navigation failed',true));});
 window.addEventListener('hashchange',()=>{void applyLocationRoute().catch(err=>toast(err.message||'Navigation failed',true));});
