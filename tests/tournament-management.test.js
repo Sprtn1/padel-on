@@ -1588,3 +1588,28 @@ test('V2 roster changes obey custom group sizes and limits while preserving paym
    /registration limit/);
  }finally{globalThis.FormData=old;}
 });
+
+test('V2 group settings cannot silently rewrite draws or qualify more than actual group size',async()=>{
+ const row=sampleRow('groups');
+ row.state=makeAdvancedGroupDraw(makeInitialTournament(players(5),1500,'groups',()=>.2).teams,3,()=>.2);
+ row.settings={engine_version:2,group_size:3,qualifiers_per_group:2,entry_limit:32,
+  courts:['C1'],fee_mode:'paid',prize_mode:'tba',prize_text:'',
+  registration_mode:'staff',publication_status:'draft',rules:[]};
+ const originalState=structuredClone(row.state);
+ const {widget,calls}=makeUI(true,[row]);await widget.load();
+ const html=widget.page();
+ assert.match(html,/name="group_size"[^>]*readonly/);
+ const original=globalThis.FormData;
+ globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+ try{
+  const values=(size,qualifiers)=>[
+   ['group_size',String(size)],['qualifiers_per_group',String(qualifiers)],
+   ['entry_limit','32'],['court_c1','on'],['publication_status','draft'],['prize_mode','tba']];
+  await assert.rejects(()=>widget.submit({dataset:{tmSubmit:'advanced-settings'},
+   _values:values(4,2)}),/Changing group size requires a new draw/);
+  await assert.rejects(()=>widget.submit({dataset:{tmSubmit:'advanced-settings'},
+   _values:values(3,3)}),/qualifiers exceed the smallest/);
+  assert.deepEqual(row.state,originalState);
+  assert.equal(calls.length,0);
+ }finally{globalThis.FormData=original;}
+});
