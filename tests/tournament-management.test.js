@@ -1539,6 +1539,7 @@ test('Wizard back-navigation clears unchecked courts, rules, playoffs and Team P
  globalThis.FormData=class{constructor(){this.entries=()=>values[Symbol.iterator]()}};
  try{
   const go=action=>widget.action({dataset:{action},closest:()=>({})});
+  await widget.change({id:'tm-team-count',value:'4',closest:()=>({})});
   await go('tm-wizard-next');
   values=fields.filter(([key])=>!['court_c2','rule_enabled_late_arrivals','playoffs','team_player_1_1'].includes(key));
   for(let step=1;step<6;step++)await go('tm-wizard-next');
