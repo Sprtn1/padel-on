@@ -1389,13 +1389,15 @@ test('Knockout scoring menu is independent during tournament creation, including
   const old=globalThis.FormData;
   try{
    globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
-   await widget.submit({dataset:{tmSubmit:'create'},_values:[
+   const values=[
     ['name','Knockout Settings'],['date','2026-11-18'],['time','19:00'],['fee','20'],
     ['format',format],['group_scoring','pro_8'],['knockout_scoring','pro_9'],['team_count','8'],
     ...players(8).flatMap((p,i)=>[['player_'+(i+1)+'_1',p.p1],['player_'+(i+1)+'_2',p.p2]])
-   ]});
+   ];
+   for(let step=0;step<6;step++)await widget.action({dataset:{action:'tm-wizard-next'},closest:()=>({_values:values})});
+   await widget.submit({dataset:{tmSubmit:'create'},_values:values});
   }finally{globalThis.FormData=old;}
-  const creation=calls.find(x=>x.name==='tournament_create');
+  const creation=calls.find(x=>x.name==='tournament_create_v2');
   assert.ok(creation);
   assert.equal(creation.args.p_knockout_scoring,'pro_9');
   assert.equal(creation.args.p_group_scoring,format==='groups'?'pro_8':'best_of_3');
