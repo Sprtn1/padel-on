@@ -1,0 +1,86 @@
+/* Advanced Tournament Management — scoped clean UI, no business logic. */
+.tm-v2-check{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-size:12px;font-weight:650;color:#526c5a}
+.tm-v2-check input{width:17px;height:17px;flex:none;accent-color:#208c57}
+.tm-v2-wide{grid-column:1/-1}
+.tm-v2-courts{margin:15px 0;padding:15px;border-radius:12px;border:1px solid #dbe8de;background:#f7fbf8}
+.tm-v2-courts strong{display:block;font-size:12px;color:#345c40;margin-bottom:10px}
+.tm-v2-courts>div{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.tm-v2-rules{display:grid;gap:11px;margin:16px 0 20px}
+.tm-v2-rule{padding:13px;border:1px solid #e0eae2;border-radius:11px;background:#fff;display:grid;gap:9px}
+.tm-v2-rule textarea{display:block;width:100%;max-width:100%;min-height:66px;resize:vertical;font:inherit;font-size:12px;line-height:1.5;color:#2f553d;border:1px solid #d7e5da;border-radius:9px;padding:10px}
+.tm-v2-rule textarea:focus-visible{outline:2px solid #32a26b;outline-offset:1px}
+.tm-v2-summary-row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}
+.tm-v2-summary-row>span{background:#edf6ef;color:#54755e;border-radius:20px;padding:7px 11px;font-size:11px;text-transform:capitalize}
+.tm-v2-filterbar{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(170px,.8fr);gap:11px;margin:15px 0}
+.tm-v2-filterbar label,.tm-v2-participant-status-form label,.tm-v2-score-form label{display:grid;gap:6px;font-size:11px;color:#627e6c;font-weight:700}
+.tm-v2-filterbar input,.tm-v2-filterbar select,.tm-v2-participant-status-form input,.tm-v2-participant-status-form select,
+.tm-v2-score-form input,.tm-v2-score-form select,.tm-v2-settings input,.tm-v2-settings select,.tm-v2-settings textarea{
+ width:100%;min-width:0;border:1px solid #d4e4d8;background:#fff;border-radius:9px;padding:10px 11px;font-size:12px;color:#20452f}
+.tm-v2-participant-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:12px;margin:12px 0 25px}
+.tm-v2-participant{border:1px solid #dce9df;border-radius:13px;background:#fff;padding:15px;display:grid;gap:11px;min-width:0}
+.tm-v2-participant-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.tm-v2-participant-head>div{display:grid;gap:5px;min-width:0}
+.tm-v2-participant-head small{font-size:10px;color:#86a18d}
+.tm-v2-participant-head strong{font-size:13px;color:#234c34;overflow-wrap:anywhere}
+.tm-v2-participant>p{font-size:11px;color:#688270;margin:0;line-height:1.5}
+.tm-v2-paid-row{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#65816c;font-size:11px}
+.tm-v2-status{font-size:10px;font-weight:800;color:#356747;background:#e7f4e9;border-radius:20px;padding:6px 9px;text-transform:capitalize;white-space:nowrap}
+.tm-v2-status-pending{background:#fff1d8;color:#8b6723}
+.tm-v2-status-waitlisted{background:#e5f0ff;color:#456e9c}
+.tm-v2-status-disqualified,.tm-v2-status-cancelled{background:#fae9e7;color:#a15b51}
+.tm-v2-participant-note{border-left:3px solid #9abda1;padding:8px;background:#f5faf6;overflow-wrap:anywhere}
+.tm-v2-participant-status-form{display:grid;gap:10px;border-top:1px solid #eaf1eb;padding-top:10px}
+.tm-v2-participant-status-form .btn{justify-self:start}
+.tm-v2-payment-figures{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.tm-v2-payment-figures>div{border:1px solid #e0eee4;border-radius:11px;padding:14px;background:#f9fcf9;display:grid;gap:7px}
+.tm-v2-payment-figures small{color:#6f8875;font-size:11px}
+.tm-v2-payment-figures strong{font-size:22px;color:#1d6542;white-space:nowrap}
+.tm-v2-progress{height:10px;background:#e8f1eb;border-radius:999px;overflow:hidden}
+.tm-v2-progress span{display:block;background:#2a9e66;height:100%;border-radius:999px}
+.tm-v2-paychart h3{font-size:13px;margin:18px 0 12px;color:#35563c}
+.tm-v2-chart-list{display:grid;gap:8px}
+.tm-v2-chart-row{display:grid;grid-template-columns:minmax(100px,1.3fr) minmax(75px,2fr) auto;align-items:center;gap:12px;font-size:11px;color:#49654e}
+.tm-v2-chart-row>span{overflow-wrap:anywhere}
+.tm-v2-chart-track{background:#e7f2e9;height:8px;border-radius:999px;overflow:hidden}
+.tm-v2-chart-track span{display:block;height:100%;background:#44ae78}
+.tm-v2-ranking,.tm-v2-activity,.tm-v2-settings,.tm-v2-exports{margin:14px 0;padding:19px}
+.tm-v2-ranking h2,.tm-v2-activity h2,.tm-v2-settings h2,.tm-v2-exports h2{font-size:16px;color:#24513a}
+.tm-v2-round{margin-top:16px}
+.tm-v2-round h3{font-size:14px;margin:0 0 12px;color:#315e43}
+.tm-v2-fixtures{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+.tm-v2-fixture{border:1px solid #dfe8e0;background:#fff;border-radius:13px;padding:15px;display:grid;gap:11px;min-width:0}
+.tm-v2-fixture-header{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;color:#75917b;font-size:10px}
+.tm-v2-match-sides{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;font-size:12px;color:#25523a}
+.tm-v2-match-sides strong{min-width:0;max-width:40%;overflow-wrap:anywhere}
+.tm-v2-match-sides b{font-size:16px;white-space:nowrap;color:#147a48}
+.tm-v2-fixture-actions,.tm-v2-export-actions{display:flex;gap:8px;flex-wrap:wrap}
+.tm-v2-score-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;border-top:1px solid #e5ede5;padding-top:11px}
+.tm-v2-score-form .btn{grid-column:auto}
+.tm-v2-timeline{display:grid;gap:10px}
+.tm-v2-timeline article{display:grid;grid-template-columns:minmax(135px,.7fr) minmax(120px,1fr) auto;gap:12px;align-items:center;border:1px solid #e5eee7;border-radius:9px;padding:10px 12px;font-size:11px}
+.tm-v2-timeline time,.tm-v2-timeline small{color:#7c9281}
+.tm-v2-timeline strong{color:#2b543b}
+.tm-v2-settings{display:grid;gap:14px}
+.tm-v2-settings form{display:grid;gap:16px}
+.tm-v2-settings>h3,.tm-v2-settings form>h3{font-size:13px;color:#34583f;margin:8px 0 3px}
+.tm-v2-settings form>label{display:grid;gap:8px;color:#587562;font-size:11px}
+.tm-v2-export-actions{margin:14px 0}
+.tm-v2-final-gate{padding:20px;margin:12px 0}
+.tm-v2-final-gate p{font-size:12px;line-height:1.6;color:#6a836f}
+.tm-v2-small-label{font-size:11px;color:#789480}
+@media(max-width:670px){
+ .tm-v2-filterbar,.tm-v2-payment-figures{grid-template-columns:1fr}
+ .tm-v2-payment-figures>div{padding:12px}
+ .tm-v2-timeline article{grid-template-columns:1fr;gap:4px}
+ .tm-v2-score-form{grid-template-columns:1fr}
+ .tm-wizard-steps{grid-template-columns:repeat(7,minmax(0,1fr))}
+ .tm-wizard-step-label>span{font-size:8px}
+}
+@media print{
+ .tm-workspace-tabs,.tm-workspace-back,.tm-v2-export-actions,.tm-tournament-actions,.tm-v2-participant-status-form,
+ .tm-v2-fixture-actions,.tm-v2-score-form,.topbar,.mobile-bar,.nav-item,.sidebar{display:none!important}
+ .tm-workspace-panel[hidden]{display:block!important}
+ .tm-v2-fixture,.tm-v2-participant{break-inside:avoid}
+ .tm-v2-activity,.tm-v2-settings,.tm-v2-exports{break-before:page}
+}
+@media(prefers-reduced-motion:reduce){.tm-v2-fixture,.tm-v2-participant{transition:none!important}}
