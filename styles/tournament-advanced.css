@@ -180,3 +180,56 @@
  .tm-v2-paychart .tm-v2-small-label{text-align:left}
  .tm-v2-paychart .tm-v2-chart-summary{flex-wrap:wrap}
 }
+
+/* Fix: generic settings input width was stretching checkboxes and radios to 100%,
+   pushing the adjacent rule/court labels outside their cards on mobile. */
+.tm-v2-settings,.tm-v2-settings form,.tm-v2-settings form>*,
+.tm-v2-settings .tm-v2-rules,.tm-v2-settings .tm-v2-rule,
+.tm-v2-settings .tm-v2-courts,.tm-v2-settings .tm-prize-choice,
+.tm-v2-settings .tm-prize-announced{box-sizing:border-box;min-width:0;max-width:100%}
+.tm-v2-settings form{width:100%;grid-template-columns:minmax(0,1fr)}
+.tm-v2-settings .tm-v2-rule{width:100%;grid-template-columns:minmax(0,1fr)}
+.tm-v2-settings .tm-v2-rule>.tm-v2-check,
+.tm-v2-settings .tm-v2-courts .tm-v2-check{
+ display:flex;flex-direction:row;align-items:center;justify-content:flex-start;
+ gap:10px;min-width:0;width:100%;max-width:100%;margin:0;
+ padding:0;box-sizing:border-box;text-align:left;cursor:pointer;
+}
+.tm-v2-settings .tm-v2-rule .tm-v2-check input[type="checkbox"],
+.tm-v2-settings .tm-v2-courts .tm-v2-check input[type="checkbox"]{
+ display:block;flex:0 0 18px;width:18px!important;min-width:18px!important;
+ max-width:18px!important;height:18px!important;margin:0!important;
+ padding:0!important;appearance:auto;accent-color:#208c57;
+}
+.tm-v2-settings .tm-v2-rule .tm-v2-check span,
+.tm-v2-settings .tm-v2-courts .tm-v2-check span{
+ display:block;flex:1 1 auto;min-width:0;max-width:100%;
+ overflow-wrap:break-word;word-break:normal;white-space:normal;
+ font-size:13px;line-height:1.45;
+}
+.tm-v2-settings .tm-v2-rule textarea{
+ box-sizing:border-box;display:block;width:100%!important;min-width:0!important;
+ max-width:100%!important;margin:0;resize:vertical;
+}
+.tm-v2-settings .tm-v2-courts>div{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px}
+.tm-v2-settings .tm-v2-courts .tm-v2-check{flex:0 0 auto;width:auto;min-width:68px;gap:8px}
+.tm-v2-settings .tm-prize-choice label{
+ display:flex;align-items:center;justify-content:center;flex-direction:row;
+ min-width:0;max-width:100%;gap:10px;
+}
+.tm-v2-settings .tm-prize-choice input[type="radio"]{
+ display:block;flex:0 0 18px;width:18px!important;min-width:18px!important;
+ max-width:18px!important;height:18px!important;margin:0!important;
+ padding:0!important;appearance:auto;accent-color:#258d5a;
+}
+.tm-v2-settings .tm-prize-grid{min-width:0;max-width:100%}
+.tm-v2-settings .tm-prize-announced label{min-width:0;max-width:100%}
+@media(max-width:670px){
+ .tm-v2-settings{padding:14px}
+ .tm-v2-settings form{gap:13px}
+ .tm-v2-settings .tm-v2-rule{padding:12px;gap:9px}
+ .tm-v2-settings .tm-v2-courts{padding:13px}
+ .tm-v2-settings .tm-v2-courts>div{gap:14px}
+ .tm-v2-settings .tm-prize-choice{grid-template-columns:minmax(0,1fr)}
+ .tm-v2-settings .tm-prize-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
