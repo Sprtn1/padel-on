@@ -5,6 +5,7 @@ import {parseTournamentMoney,makeInitialTournament,makeKnockoutMatches,padelSetW
  padelMatchWinner,groupStandings,getQualifiers,tournamentTotals,tournamentChampion,proSetWinner,tournamentMatchWinner,
  knockoutSeedEntrants,reseedTournamentKnockout,makeSeededKnockoutMatches,tournamentCanResize,resizeTournamentDraw,tournamentTeamPlayerDues,knockoutManualSlots,arrangeTournamentKnockout} from '../lib/tournament-engine.js';
 import {createTournamentManagement} from '../lib/tournament-management.js';
+import {makeAdvancedGroupDraw} from '../lib/tournament-advanced-engine.js';
 import {knockoutBracketLayout} from '../lib/tournament-bracket-layout.js';
 import {tournamentArchivePdf,downloadTournamentPdf} from '../lib/tournament-pdf.js';
 
@@ -108,7 +109,7 @@ function makeUI(isAdmin=false,backing=[]){
   listAll:async table=>table==='tournaments'?backing:[],
   rpc:async(name,args)=>{
    calls.push({name,args});
-   if(name==='tournament_create')return 'new-tournament';
+   if(name==='tournament_create_v2')return 'new-tournament';
    if(name==='tournament_resize_teams'){
     const row=backing.find(x=>x.id===args.p_id);
     assert.equal(row.version,args.p_expected_version);
@@ -363,10 +364,11 @@ test('Create Tournament collects names, fee, mode, date, time, and shuffles the 
    ['player_2_1','Player C'],['player_2_2','Player D'],
    ['player_3_1','Player E'],['player_3_2','Player F']
   ];
+  for(let step=0;step<6;step++)await widget.action({dataset:{action:'tm-wizard-next'},closest:()=>({_values:values})});
   await widget.submit({dataset:{tmSubmit:'create'},_values:values});
  }finally{globalThis.FormData=previous}
  assert.equal(calls.length,1);
- assert.equal(calls[0].name,'tournament_create');
+ assert.equal(calls[0].name,'tournament_create_v2');
  const x=calls[0].args;
  assert.equal(x.p_name,'Club Championship');
  assert.equal(x.p_date,'2026-11-01');
@@ -1110,9 +1112,10 @@ test('Create tournament Team Player checkboxes set stored participant dues and s
    ['player_3_1','C first'],['player_3_2','C second'],['team_player_3_2','on'],
    ['player_4_1','D first'],['player_4_2','D second']
   ];
+  for(let step=0;step<6;step++)await widget.action({dataset:{action:'tm-wizard-next'},closest:()=>({_values:values})});
   await widget.submit({dataset:{tmSubmit:'create'},_values:values});
  }finally{globalThis.FormData=oldFormData;}
- const create=calls.find(c=>c.name==='tournament_create');
+ const create=calls.find(c=>c.name==='tournament_create_v2');
  assert.ok(create);
  const teams=create.args.p_state.teams;
  const duesFor=name=>teams.find(t=>t.members[0].name===name).members.map(m=>m.due);
@@ -1224,18 +1227,20 @@ test('Group standings and five-team qualification handle pro-set scores',()=>{
 test('Tournament creation sends selected group scoring to Supabase',async()=>{
  const {widget,calls}=makeUI(false,[]);
  await widget.load();await widget.action({dataset:{action:'tm-create-show'}});
- assert.match(widget.page(),/Group stage scoring/);
+ assert.match(widget.page(),/Group scoring/);
  assert.match(widget.page(),/Pro Set · First to 9 games/);
  const old=globalThis.FormData;
  try{
   globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
-  await widget.submit({dataset:{tmSubmit:'create'},_values:[
+  const values=[
    ['name','Pro Set Cup'],['date','2026-11-08'],['time','18:00'],['fee','20'],
    ['format','groups'],['group_scoring','pro_9'],['team_count','8'],
    ...players(8).flatMap((p,i)=>[['player_'+(i+1)+'_1',p.p1],['player_'+(i+1)+'_2',p.p2]])
-  ]});
+  ];
+  for(let step=0;step<6;step++)await widget.action({dataset:{action:'tm-wizard-next'},closest:()=>({_values:values})});
+  await widget.submit({dataset:{tmSubmit:'create'},_values:values});
  }finally{globalThis.FormData=old;}
- assert.equal(calls[0].name,'tournament_create');
+ assert.equal(calls[0].name,'tournament_create_v2');
  assert.equal(calls[0].args.p_group_scoring,'pro_9');
  assert.equal(calls[0].args.p_state.teams.length,8);
 });
@@ -1385,13 +1390,15 @@ test('Knockout scoring menu is independent during tournament creation, including
   const old=globalThis.FormData;
   try{
    globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
-   await widget.submit({dataset:{tmSubmit:'create'},_values:[
+   const values=[
     ['name','Knockout Settings'],['date','2026-11-18'],['time','19:00'],['fee','20'],
     ['format',format],['group_scoring','pro_8'],['knockout_scoring','pro_9'],['team_count','8'],
     ...players(8).flatMap((p,i)=>[['player_'+(i+1)+'_1',p.p1],['player_'+(i+1)+'_2',p.p2]])
-   ]});
+   ];
+   for(let step=0;step<6;step++)await widget.action({dataset:{action:'tm-wizard-next'},closest:()=>({_values:values})});
+   await widget.submit({dataset:{tmSubmit:'create'},_values:values});
   }finally{globalThis.FormData=old;}
-  const creation=calls.find(x=>x.name==='tournament_create');
+  const creation=calls.find(x=>x.name==='tournament_create_v2');
   assert.ok(creation);
   assert.equal(creation.args.p_knockout_scoring,'pro_9');
   assert.equal(creation.args.p_group_scoring,format==='groups'?'pro_8':'best_of_3');
@@ -1516,4 +1523,68 @@ test('Tournament match saves court C2 alongside time and validates court selecti
   await assert.rejects(()=>widget.submit({dataset:{tmSubmit:'time',match:match.id},_values:[['time','19:00'],['court','C4']]}),/Choose C1, C2 or C3/);
  }finally{globalThis.FormData=old;}
  assert.equal(calls.filter(c=>c.name==='tournament_set_match_schedule').length,1);
+});
+
+test('Wizard back-navigation clears unchecked courts, rules, playoffs and Team Player discounts',async()=>{
+ const {widget,calls}=makeUI(false,[]);
+ await widget.load();await widget.action({dataset:{action:'tm-create-show'}});
+ const original=globalThis.FormData;
+ const fields=[['name','Americano Control'],['format','americano_team'],['team_count','4'],
+  ['date','2026-11-14'],['time','18:00'],['fee_mode','paid'],['fee','20'],
+  ['points_per_match','24'],['rounds','3'],['entry_limit','8'],
+  ['court_c1','on'],['court_c2','on'],['rule_enabled_fair_play','on'],
+  ['rule_enabled_late_arrivals','on'],['playoffs','on'],['team_player_1_1','on']];
+ for(let i=1;i<=8;i++)fields.push(['player_'+i+'_1','Player A '+i],
+  ['player_'+i+'_2','Player B '+i]);
+ let values=fields;
+ globalThis.FormData=class{constructor(){this.entries=()=>values[Symbol.iterator]()}};
+ try{
+  const go=action=>widget.action({dataset:{action},closest:()=>({})});
+  await widget.change({id:'tm-team-count',value:'4',closest:()=>({})});
+  await go('tm-wizard-next');
+  values=fields.filter(([key])=>!['court_c2','rule_enabled_late_arrivals','playoffs','team_player_1_1'].includes(key));
+  for(let step=1;step<6;step++)await go('tm-wizard-next');
+  await widget.submit({dataset:{tmSubmit:'create'}});
+  const request=calls.find(call=>call.name==='tournament_create_v2');
+  assert.ok(request);
+  assert.deepEqual(request.args.p_settings.courts,['C1']);
+  assert.equal(request.args.p_settings.playoffs,false);
+  assert.equal(request.args.p_settings.rules.find(r=>r.key==='late_arrivals').enabled,false);
+  assert.equal(request.args.p_settings.rules.find(r=>r.key==='fair_play').enabled,true);
+  assert.equal(request.args.p_state.teams[0].members[0].due,2000);
+ }finally{globalThis.FormData=original;}
+});
+
+test('V2 roster changes obey custom group sizes and limits while preserving payments and IDs',async()=>{
+ const row=sampleRow('groups');
+ row.state=makeAdvancedGroupDraw(row.state.teams,3,()=>.2);
+ row.settings={engine_version:2,group_size:3,qualifiers_per_group:2,entry_limit:9};
+ const member=row.state.teams[0].members[0];
+ member.paid=700;member.note='Keep member history';
+ const before=structuredClone(member);
+ const beforeIds=new Set(row.state.teams.flatMap(t=>t.members.map(m=>m.id)));
+ const {widget,calls}=makeUI(false,[row]);await widget.load();
+ await widget.action({dataset:{action:'tm-team-add-quick'}});
+ const old=globalThis.FormData;
+ try{
+  globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
+  await widget.submit({dataset:{tmSubmit:'resize-teams'},_values:[
+   ['new_p1_4','Additional first'],['new_p2_4','Additional second']]});
+  assert.equal(row.state.teams.length,5);
+  const retained=row.state.teams.flatMap(t=>t.members).find(m=>m.id===member.id);
+  assert.deepEqual(retained,before);
+  const sizes=[...new Set(row.state.teams.map(t=>t.group))].map(g=>
+   row.state.teams.filter(t=>t.group===g).length);
+  assert.ok(sizes.every(n=>n>=2&&n<=3));
+  assert.ok(sizes.every(n=>n>=row.settings.qualifiers_per_group));
+  const added=row.state.teams.flatMap(t=>t.members).filter(m=>!beforeIds.has(m.id));
+  assert.equal(added.length,2);
+  assert.ok(added.every(m=>m.paid===0&&m.due===1500));
+  assert.equal(calls.filter(x=>x.name==='tournament_resize_teams').length,1);
+  // Remaining slots may be added only until the configured cap is reached.
+  await widget.action({dataset:{action:'tm-team-start'}});
+  for(let i=0;i<4;i++)await widget.action({dataset:{action:'tm-team-add'}});
+  await assert.rejects(()=>widget.action({dataset:{action:'tm-team-add'}}),
+   /registration limit/);
+ }finally{globalThis.FormData=old;}
 });

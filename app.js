@@ -1829,6 +1829,13 @@ document.addEventListener('input',e=>{
   field?.focus();if(caret!==null)field?.setSelectionRange(caret,caret);
   return;
  }
+ if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-participant-search'){
+  const caret=e.target.selectionStart;
+  try{tournamentManagement.searchParticipants(e.target)}catch(err){toast(err.message||'Unable to search participants.',true)}
+  const field=document.getElementById('tm-participant-search');
+  field?.focus();if(caret!==null)field?.setSelectionRange(caret,caret);
+  return;
+ }
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-payment-search'){
   tournamentManagement.searchPayments(e.target);return;
  }
@@ -1917,11 +1924,15 @@ document.addEventListener('change',e=>{
   try{tournamentManagement.searchList(e.target)}catch(err){toast(err.message||'Unable to filter tournaments.',true)}
   return;
  }
+ if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-participant-filter'){
+  try{tournamentManagement.searchParticipants(e.target)}catch(err){toast(err.message||'Unable to filter participants.',true)}
+  return;
+ }
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-payment-status'){
   try{tournamentManagement.searchPayments(e.target)}catch(err){toast(err.message||'Unable to filter participant payments.',true)}
   return;
  }
- if(state.tab==='tournament'&&['tm-team-count','tm-existing-team-count','tm-archive-saved','tm-seed-stage','tm-seed-slot','tm-seed-side','tm-seed-team'].includes(e.target.id)){
+ if(state.tab==='tournament'&&['tm-team-count','tm-new-format','tm-fee-mode','tm-existing-team-count','tm-archive-saved','tm-seed-stage','tm-seed-slot','tm-seed-side','tm-seed-team'].includes(e.target.id)){
   try{tournamentManagement.change(e.target)}catch(err){toast(err.message||'Unable to update tournament.',true)}
   return;
  }

@@ -34,7 +34,7 @@ test('Deep links resolve to the Tournament Management page and safe sections',()
  assert.equal(tournamentHash('<script>'),'#tournament');
  assert.equal(allowedTournamentView('groups','knockout'),'overview');
  assert.equal(allowedTournamentView('groups','groups'),'groups');
- assert.equal(WIZARD_STEPS.length,5);
+ assert.equal(WIZARD_STEPS.length,7);
 });
 test('Tournament browser displays search, status filter, match progress, and safe card titles',async()=>{
  const a=row('one'),b=row('two','knockout','2026-12-01');b.name='<script>DO NOT RUN</script>';
@@ -115,13 +115,13 @@ test('Switching URLs restores an existing tournament and invalid IDs show the li
  assert.match(ui.page(),/All tournaments/);
  assert.equal(calls.length,0);
 });
-test('Five-step creator retains the existing player fields, score settings and team benefit checkboxes',async()=>{
+test('Seven-step creator retains player fields, scoring, prizes and rules',async()=>{
  const {ui}=create([]);await ui.load();
  await ui.action({dataset:{action:'tm-create-show'}});
  let html=ui.page();
  assert.match(html,/New tournament/);
  assert.match(html,/Live preview/);
- assert.equal((html.match(/class="tm-wizard-step-label/g)||[]).length,5);
+ assert.equal((html.match(/class="tm-wizard-step-label/g)||[]).length,7);
  assert.match(html,/Number of teams/);
  assert.match(html,/name="group_scoring"/);
  assert.match(html,/name="knockout_scoring"/);
@@ -140,14 +140,14 @@ test('Creation steps validate name, format, schedule and pairs before review',as
  globalThis.FormData=class{constructor(form){this.entries=()=>form.values[Symbol.iterator]()}};
  const target=action=>({dataset:{action},closest:()=>({values:entries})});
  try{
-  for(let step=1;step<=4;step++){
+  for(let step=1;step<=6;step++){
    await ui.action(target('tm-wizard-next'));
    assert.match(ui.page(),new RegExp('data-step="'+step+'">'));
   }
-  assert.match(ui.page(),/Create &amp; Shuffle Tournament|Create & Shuffle Tournament/);
+  assert.match(ui.page(),/Create Tournament &amp; Generate Fixtures|Create Tournament & Generate Fixtures/);
   assert.match(ui.page(),/Review/);
   await ui.action(target('tm-wizard-prev'));
-  assert.match(ui.page(),/data-step="3">/);
+  assert.match(ui.page(),/data-step="5">/);
   assert.equal(calls.length,0);
  }finally{globalThis.FormData=prior}
 });
