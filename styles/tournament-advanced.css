@@ -1,4 +1,5 @@
 /* Advanced Tournament Management — scoped clean UI, no business logic. */
+.tm-wizard-steps{grid-template-columns:repeat(7,minmax(0,1fr))}
 .tm-v2-check{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-size:12px;font-weight:650;color:#526c5a}
 .tm-v2-check input{width:17px;height:17px;flex:none;accent-color:#208c57}
 .tm-v2-wide{grid-column:1/-1}
