@@ -108,7 +108,7 @@ function makeUI(isAdmin=false,backing=[]){
   listAll:async table=>table==='tournaments'?backing:[],
   rpc:async(name,args)=>{
    calls.push({name,args});
-   if(name==='tournament_create')return 'new-tournament';
+   if(name==='tournament_create_v2')return 'new-tournament';
    if(name==='tournament_resize_teams'){
     const row=backing.find(x=>x.id===args.p_id);
     assert.equal(row.version,args.p_expected_version);
@@ -363,10 +363,11 @@ test('Create Tournament collects names, fee, mode, date, time, and shuffles the 
    ['player_2_1','Player C'],['player_2_2','Player D'],
    ['player_3_1','Player E'],['player_3_2','Player F']
   ];
+  for(let step=0;step<6;step++)await widget.action({dataset:{action:'tm-wizard-next'},closest:()=>({_values:values})});
   await widget.submit({dataset:{tmSubmit:'create'},_values:values});
  }finally{globalThis.FormData=previous}
  assert.equal(calls.length,1);
- assert.equal(calls[0].name,'tournament_create');
+ assert.equal(calls[0].name,'tournament_create_v2');
  const x=calls[0].args;
  assert.equal(x.p_name,'Club Championship');
  assert.equal(x.p_date,'2026-11-01');
@@ -1110,9 +1111,10 @@ test('Create tournament Team Player checkboxes set stored participant dues and s
    ['player_3_1','C first'],['player_3_2','C second'],['team_player_3_2','on'],
    ['player_4_1','D first'],['player_4_2','D second']
   ];
+  for(let step=0;step<6;step++)await widget.action({dataset:{action:'tm-wizard-next'},closest:()=>({_values:values})});
   await widget.submit({dataset:{tmSubmit:'create'},_values:values});
  }finally{globalThis.FormData=oldFormData;}
- const create=calls.find(c=>c.name==='tournament_create');
+ const create=calls.find(c=>c.name==='tournament_create_v2');
  assert.ok(create);
  const teams=create.args.p_state.teams;
  const duesFor=name=>teams.find(t=>t.members[0].name===name).members.map(m=>m.due);
@@ -1224,18 +1226,20 @@ test('Group standings and five-team qualification handle pro-set scores',()=>{
 test('Tournament creation sends selected group scoring to Supabase',async()=>{
  const {widget,calls}=makeUI(false,[]);
  await widget.load();await widget.action({dataset:{action:'tm-create-show'}});
- assert.match(widget.page(),/Group stage scoring/);
+ assert.match(widget.page(),/Group scoring/);
  assert.match(widget.page(),/Pro Set · First to 9 games/);
  const old=globalThis.FormData;
  try{
   globalThis.FormData=class{constructor(form){this.entries=()=>form._values[Symbol.iterator]()}};
-  await widget.submit({dataset:{tmSubmit:'create'},_values:[
+  const values=[
    ['name','Pro Set Cup'],['date','2026-11-08'],['time','18:00'],['fee','20'],
    ['format','groups'],['group_scoring','pro_9'],['team_count','8'],
    ...players(8).flatMap((p,i)=>[['player_'+(i+1)+'_1',p.p1],['player_'+(i+1)+'_2',p.p2]])
-  ]});
+  ];
+  for(let step=0;step<6;step++)await widget.action({dataset:{action:'tm-wizard-next'},closest:()=>({_values:values})});
+  await widget.submit({dataset:{tmSubmit:'create'},_values:values});
  }finally{globalThis.FormData=old;}
- assert.equal(calls[0].name,'tournament_create');
+ assert.equal(calls[0].name,'tournament_create_v2');
  assert.equal(calls[0].args.p_group_scoring,'pro_9');
  assert.equal(calls[0].args.p_state.teams.length,8);
 });
