@@ -2,6 +2,7 @@
 const assetVersion = new URL(import.meta.url).searchParams.get('v') || Date.now().toString(36);
 const {icon} = await import(`./lib/icons.js?v=${assetVersion}`);
 const {tabs,renderNavigation} = await import(`./lib/navigation.js?v=${assetVersion}`);
+const {readSidebarCollapsed,storeSidebarCollapsed,sidebarToggleLabel} = await import(`./lib/sidebar-layout.js?v=${assetVersion}`);
 const api = await import(`./lib/api.js?v=${assetVersion}`);
 const orderCounter = await import(`./lib/order-counter-ui.js?v=${assetVersion}`);
 const reemItems = await import(`./lib/reem-items-ui.js?v=${assetVersion}`);
@@ -21,6 +22,8 @@ const arabicDailyPdf = await import(`./lib/arabic-daily-pdf.js?v=${assetVersion}
 const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus,getMatchmakingFinance,getMatchmakingStreakLedger,getMatchmakingCurrentStreak} = await import(`./lib/logic.js?v=${assetVersion}`);
 const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = await import(`./lib/date.js?v=${assetVersion}`);
 const app=document.getElementById('app');
+let sidebarCollapsed=false;
+try{sidebarCollapsed=readSidebarCollapsed(window.localStorage)}catch{}
 function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function initials(name){return String(name).split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase()}
 function tag(label,color='green'){return `<span class="tag tag-${color}">${esc(label)}</span>`}
@@ -172,6 +175,21 @@ function financials(ym=state.month){
  return person?personFinancials(ym,person):getMatchmakingFinance(state.finance,ym);
 }
 function navMarkup(mobile=false){return renderNavigation(state.tab,icon,mobile,state.staff?.role==='admin')}
+function toggleDesktopSidebar(){
+ // Change layout in place to preserve forms, drafts, and scroll positions.
+ sidebarCollapsed=!sidebarCollapsed;
+ try{storeSidebarCollapsed(window.localStorage,sidebarCollapsed)}catch{}
+ const layout=app.querySelector('.app-layout');
+ if(!layout)return;
+ layout.classList.toggle('sidebar-collapsed',sidebarCollapsed);
+ const control=layout.querySelector('[data-action="sidebar-toggle"]');
+ if(!control)return;
+ const label=sidebarToggleLabel(sidebarCollapsed);
+ control.setAttribute('aria-label',label);
+ control.setAttribute('title',label);
+ control.setAttribute('aria-expanded',String(!sidebarCollapsed));
+ control.innerHTML=icon(sidebarCollapsed?'chevronRight':'chevronLeft');
+}
 function globalSearchCandidates(){
  const out=[];
  for(const m of state.members.filter(m=>m.active))out.push({kind:'team',id:m.id,title:m.name,sub:groupLabel(m.team_category)});
@@ -206,7 +224,7 @@ function globalSearchOverlay(){
 }
 function shell(){
  const name=state.staff?.email?.split('@')[0]||'Staff';
- return `<div class="app-layout"><aside class="sidebar"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><div class="brand-sub">Club management</div><nav class="menu">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></aside><main class="main"><header class="topbar"><div><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='consignment'||state.tab==='tournament'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><nav class="mobile-bar" aria-label="Mobile navigation"><div class="mobile-nav-scroll">${navMarkup(true)}</div><button type="button" class="mobile-nav mobile-settings-nav ${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'active':''}" data-tab="settings" aria-current="${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'page':'false'}" aria-label="Settings">${icon('settings')}<span>Settings</span></button></nav></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
+ return `<div class="app-layout ${sidebarCollapsed?'sidebar-collapsed':''}"><aside class="sidebar" aria-label="Primary navigation"><div class="sidebar-panel"><div class="sidebar-header"><div class="sidebar-brand"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><span class="brand-compact" aria-hidden="true">PO</span></div><button type="button" class="sidebar-toggle" data-action="sidebar-toggle" aria-controls="sidebar-menu" aria-label="${sidebarToggleLabel(sidebarCollapsed)}" title="${sidebarToggleLabel(sidebarCollapsed)}" aria-expanded="${!sidebarCollapsed}">${icon(sidebarCollapsed?'chevronRight':'chevronLeft')}</button></div><div class="brand-sub">Club management</div><nav class="menu" id="sidebar-menu" aria-label="Sections">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></div></aside><main class="main"><header class="topbar"><div><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='consignment'||state.tab==='tournament'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><nav class="mobile-bar" aria-label="Mobile navigation"><div class="mobile-nav-scroll">${navMarkup(true)}</div><button type="button" class="mobile-nav mobile-settings-nav ${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'active':''}" data-tab="settings" aria-current="${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'page':'false'}" aria-label="Settings">${icon('settings')}<span>Settings</span></button></nav></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
 }
 function heading(eyebrow,title,desc,actions=''){return `<div class="heading-row"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${desc}</p></div>${actions?`<div class="heading-actions">${actions}</div>`:''}</div>`}
 function summaryCard(label,num,sub,ico,feature=false){return `<article class="summary-card ${feature?'feature':''}"><div class="card-top"><span class="label">${label}</span><span class="metric-icon">${icon(ico)}</span></div><div class="metric num">${num}</div><div class="submetric">${sub}</div></article>`}
@@ -1461,6 +1479,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
    }
  }
  switch(act){
+ case 'sidebar-toggle':toggleDesktopSidebar();break;
  case 'open-reem-items':
   if(!canUseOrderLists())throw Error('Authorized staff only.');
   state.tab='reem-items';state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});break;
