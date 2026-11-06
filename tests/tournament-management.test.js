@@ -1582,6 +1582,7 @@ test('V2 roster changes obey custom group sizes and limits while preserving paym
   assert.ok(added.every(m=>m.paid===0&&m.due===1500));
   assert.equal(calls.filter(x=>x.name==='tournament_resize_teams').length,1);
   // Remaining slots may be added only until the configured cap is reached.
+  await widget.action({dataset:{action:'tm-team-start'}});
   for(let i=0;i<4;i++)await widget.action({dataset:{action:'tm-team-add'}});
   await assert.rejects(()=>widget.action({dataset:{action:'tm-team-add'}}),
    /registration limit reached/);
