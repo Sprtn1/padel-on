@@ -1822,6 +1822,13 @@ document.addEventListener('input',e=>{
    return;
   }
  if(state.tab==='cafeteria-finances'&&cafeteriaFinances.courtPricePreview(e.target))return;
+ if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-list-search'){
+  const caret=e.target.selectionStart;
+  try{tournamentManagement.searchList(e.target)}catch(err){toast(err.message||'Unable to search tournaments.',true)}
+  const field=document.getElementById('tm-list-search');
+  field?.focus();if(caret!==null)field?.setSelectionRange(caret,caret);
+  return;
+ }
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-payment-search'){
   tournamentManagement.searchPayments(e.target);return;
  }
@@ -1906,6 +1913,10 @@ document.addEventListener('toggle',e=>{
 },true);
 document.addEventListener('change',e=>{
  if(state.tab==='cafeteria-finances'&&cafeteriaFinances.courtPricePreview(e.target))return;
+ if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-list-status'){
+  try{tournamentManagement.searchList(e.target)}catch(err){toast(err.message||'Unable to filter tournaments.',true)}
+  return;
+ }
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-payment-status'){
   try{tournamentManagement.searchPayments(e.target)}catch(err){toast(err.message||'Unable to filter participant payments.',true)}
   return;
