@@ -255,11 +255,13 @@ test('special named income and expense categories map only to their own lines',(
  const paid=label=>sheet.expenseRows.find(r=>r[0]===label);
  assert.equal(row('ملعب بيكل بول')[1],1200);
  assert.equal(row('صف تدريب طابق أول')[1],2200);
- assert.equal(row('صف جم')[1],1700);
- assert.equal(row('اشتراك جم')[1],2100);
- assert.equal(row('أكاديمية باسكت')[1],2900);
+ assert.equal(row('صف جم')[1],3800,'Retired membership revenue is included in Gym');
+ assert.equal(row('اشتراك جم'),undefined);
+ assert.equal(row('أكاديمية باسكت'),undefined);
+ assert.equal(row('إيرادات أخرى')[1],2900,'Retired Basketball Academy remains in other income');
  assert.equal(row('اكاديمية بادل')[1],2600);
- assert.equal(sheet.amountRows.findIndex(r=>r[0]==='اكاديمية بادل'),sheet.amountRows.findIndex(r=>r[0]==='أكاديمية باسكت')+1);
+ assert.equal(sheet.amountRows.findIndex(r=>r[0]==='اكاديمية بادل'),sheet.amountRows.findIndex(r=>r[0]==='صف جم')+1);
+ assert.deepEqual(sheet.amountRows.slice(0,4).map(r=>r[0]),['ملعب بادل','ملعب بيكل بول','ملعب باسكت','مبيع متفرقات']);
  assert.equal(row('دورة الصيف')[1],3200);
  assert.equal(row('أحذية')[1],1800);
  assert.equal(row('طاولة بينغ بونغ'),undefined);
@@ -367,13 +369,14 @@ test('dedicated categories and older miscellaneous entries share their matching 
  const sheet=prepareArabicDailySheet(x);
  assert.equal(sheet.amountRows.find(r=>r[0]==='دورة الصيف')[1],2000);
  assert.equal(sheet.amountRows.find(r=>r[0]==='أحذية')[1],3000);
- assert.equal(sheet.amountRows.find(r=>r[0]==='أكاديمية باسكت')[1],1000);
+ assert.equal(sheet.amountRows.find(r=>r[0]==='أكاديمية باسكت'),undefined);
+ assert.equal(sheet.amountRows.find(r=>r[0]==='إيرادات أخرى')[1],1000);
  assert.equal(sheet.expenseRows.find(r=>r[0]==='دين عائلة')[1],1150);
  assert.equal(sheet.receipts,31500+1800+2700+900+600);
  assert.equal(sheet.expenses,27500+900+250);
  assert.ok(sheet.details.some(e=>e.section==='دورة الصيف'));
  assert.ok(sheet.details.some(e=>e.section==='أحذية'));
- assert.ok(sheet.details.some(e=>e.section==='أكاديمية باسكت'));
+ assert.ok(sheet.details.some(e=>e.section==='إيرادات أخرى'&&e.name==='Basketball Academy')||sheet.details.some(e=>e.section==='إيرادات أخرى'&&e.name==='Academy'));
  assert.ok(sheet.details.some(e=>e.section==='دين عائلة'));
  assert.ok(!sheet.amountRows.some(e=>e[0]==='Summer Camp'||e[0]==='Shoes'));
 });
@@ -612,3 +615,23 @@ test('Rendered Arabic PDF shows only the adjusted Whish totals, not the raw amou
  }finally{globalThis.document=old}
 });
 
+
+test('retired PDF categories never take dedicated rows and still reconcile old receipts',()=>{
+ const x=sample();
+ x.closingCash=40000;
+ x.rows.push(
+  {entry_date:DAY,category:'gym_membership',amount_cents:2500,name:'Old Gym Subscription'},
+  {entry_date:DAY,category:'pt_gym',amount_cents:1000,name:'Gym Training'},
+  {entry_date:DAY,category:'basketball_academy',amount_cents:1800,name:'Historic Academy'}
+ );
+ const sheet=prepareArabicDailySheet(x);
+ assert.equal(sheet.amountRows.find(r=>r[0]==='صف جم')[1],3500);
+ assert.equal(sheet.amountRows.find(r=>r[0]==='إيرادات أخرى')[1],1800);
+ assert.ok(!sheet.amountRows.some(r=>['اشتراك جم','أكاديمية باسكت'].includes(r[0])));
+ assert.deepEqual(sheet.amountRows.slice(0,4).map(r=>r[0]),['ملعب بادل','ملعب بيكل بول','ملعب باسكت','مبيع متفرقات']);
+ assert.equal(sheet.receipts,31500+2500+1000+1800);
+ assert.equal(sheet.totalGenerated,67500);
+ assert.equal(sheet.goodsSold,67500-sheet.receipts);
+ assert.ok(sheet.details.some(r=>r.name==='Historic Academy'&&r.section==='إيرادات أخرى'));
+ assert.ok(sheet.details.some(r=>r.name==='Old Gym Subscription'&&r.section==='صف جم'));
+});
