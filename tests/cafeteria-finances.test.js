@@ -9,13 +9,15 @@ import {
 } from '../lib/cafeteria-finances.js';
 
 test('all cashbook categories exist and fixed rental price is $2',()=>{
- assert.equal(CAFE_CATEGORIES.length,22);
+ assert.equal(CAFE_CATEGORIES.length,20);
  const rental=CAFE_CATEGORIES.findIndex(c=>c.id==='racket_rental');
  assert.deepEqual(CAFE_CATEGORIES.slice(rental+1,rental+3).map(c=>c.id),['clothes','racket_sold']);
  const ptGym=CAFE_CATEGORIES.findIndex(c=>c.id==='pt_gym');
- assert.deepEqual(CAFE_CATEGORIES.slice(ptGym,ptGym+2).map(c=>c.id),['pt_gym','gym_membership']);
- const basketballAcademy=CAFE_CATEGORIES.findIndex(c=>c.id==='basketball_academy');
- assert.deepEqual(CAFE_CATEGORIES.slice(basketballAcademy,basketballAcademy+2).map(c=>c.id),['basketball_academy','padel_academy']);
+ assert.deepEqual(CAFE_CATEGORIES.slice(ptGym,ptGym+2).map(c=>c.id),['pt_gym','summer_camp']);
+ assert.ok(CAFE_CATEGORIES.some(c=>c.id==='padel_academy'));
+ assert.ok(!CAFE_CATEGORIES.some(c=>['gym_membership','basketball_academy'].includes(c.id)));
+ assert.throws(()=>cafeEntryFromForm('gym_membership',{amount:'20'}),/Unknown cafeteria category/);
+ assert.throws(()=>cafeEntryFromForm('basketball_academy',{amount:'20'}),/Unknown cafeteria category/);
  assert.equal(CAFE_RENTAL_PRICE_CENTS,200);
  assert.deepEqual(CAFE_CATEGORIES.filter(x=>x.kind==='court').map(x=>x.label),['Padel Courts','Pickleball Courts','Basketball Courts']);
 });
@@ -647,7 +649,7 @@ test('dedicated summer camp shoes academy and family debt accept repeated entrie
   cafeEntryFromForm('summer_camp',{amount:'10.25'}),
   cafeEntryFromForm('summer_camp',{amount:'7.75',name:'Morning'}),
   cafeEntryFromForm('shoes',{amount:'24.50'}),
-  cafeEntryFromForm('basketball_academy',{amount:'35.00'}),
+  cafeEntryFromForm('other_income',{name:'Existing Academy Income',amount:'35.00'}),
   cafeEntryFromForm('padel_academy',{amount:'12.50'}),
   cafeEntryFromForm('family_debt',{amount:'6.99'}),
   cafeEntryFromForm('family_debt',{amount:'1.01',name:'Family'})
@@ -680,10 +682,12 @@ test('new income and expense cards render individual records without modifying c
  });
  await widget.load();
  const html=widget.page();
- for(const id of ['summer_camp','shoes','basketball_academy','padel_academy','family_debt'])
+ for(const id of ['summer_camp','shoes','padel_academy','family_debt'])
   assert.match(html,new RegExp('data-category="'+id+'"'));
- for(const name of ['Summer Camp','Shoes','Basketball Academy','Padel Academy','Family Debt','First','Second'])
+ for(const name of ['Summer Camp','Shoes','Padel Academy','Family Debt','First','Second','Academy'])
   assert.match(html,new RegExp(name));
+ assert.doesNotMatch(html,/data-category="basketball_academy"|data-category="gym_membership"/);
+ assert.match(html,/\$80\.00/,'Legacy Academy receipt remains visible in the Other Income card');
  assert.match(html,/\$62\.00/); // ($200 + $10) - $148 = $62 Goods Sold.
 });
 
@@ -1294,4 +1298,30 @@ test('Cafeteria court cards display chronological bookings and C1/C2/C3 for same
   'Non-court categories keep their existing order');
  assert.deepEqual(entries,original,'Sorting must not overwrite any financial records');
  assert.match(page,/\$125\.00/,'Padel totals still include all five bookings');
+});
+
+test('historical retired gym and basketball academy income is still reconciled and displayed without entry options',async()=>{
+ const day='2026-10-22';
+ const rows=[
+  {id:'legacy-gym',entry_date:day,category:'gym_membership',name:'Past gym subscription',amount_cents:2100},
+  {id:'legacy-basket',entry_date:day,category:'basketball_academy',name:'Past basketball class',amount_cents:900},
+  {id:'current-gym',entry_date:day,category:'pt_gym',name:'Training session',amount_cents:1100}
+ ];
+ const totals=cafeTotals(rows);
+ assert.equal(totals.income,4100);
+ assert.equal(cafeReconciliation(rows,5000).goodsSold,900);
+ const widget=createCafeteriaFinances({
+  api:{getSession:()=>({access_token:'token'}),listAll:async table=>
+   table==='cafeteria_finance_entries'?rows:
+   table==='cafeteria_finance_days'?[{closing_cash_cents:5000}]:
+   table==='whish_wallet_settings'?[{opening_balance_cents:60}]:[]},
+  heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
+  today:()=>day,addDays:()=>day,rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await widget.load();
+ const html=widget.page();
+ assert.match(html,/Past gym subscription/);
+ assert.match(html,/Past basketball class/);
+ assert.doesNotMatch(html,/data-category="gym_membership"|data-category="basketball_academy"/);
+ assert.match(html,/\$41\.00/);
 });
