@@ -1,0 +1,50 @@
+name: Daily database backups to Google Drive
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+      timezone: 'Asia/Beirut'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: padelon-offsite-database-backups
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check encrypted-backup credentials
+        id: credentials
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DRIVE_CONFIG: ${{ secrets.GDRIVE_RCLONE_CONFIG }}
+          BACKUP_PASSWORD: ${{ secrets.PADELON_BACKUP_PASSPHRASE }}
+        shell: bash
+        run: |
+          if [[ -z "$DB_URL" || -z "$DRIVE_CONFIG" || -z "$BACKUP_PASSWORD" ]]; then
+            echo '::error::Database backup is NOT ACTIVE. Configure SUPABASE_DB_URL, GDRIVE_RCLONE_CONFIG and PADELON_BACKUP_PASSPHRASE in GitHub Actions Secrets.'
+            exit 1
+          else
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install Google Drive uploader
+        if: steps.credentials.outputs.ready == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq rclone gnupg
+      - name: Dump, encrypt, upload and verify both backups; rotate and conditionally prune logs
+        if: steps.credentials.outputs.ready == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          GDRIVE_RCLONE_CONFIG: ${{ secrets.GDRIVE_RCLONE_CONFIG }}
+          PADELON_BACKUP_PASSPHRASE: ${{ secrets.PADELON_BACKUP_PASSPHRASE }}
+          DRIVE_FOLDER_ID: 1GaSNJSDIy0P3oivx1OHldFO6lZJz_TnI
+          ENABLE_AUDIT_PRUNE: ${{ vars.ENABLE_AUDIT_PRUNE }}
+        run: node scripts/drive-database-backup.mjs
