@@ -1,0 +1,52 @@
+/* V1.9 — stable multi-sport court calendar and clear, touch-friendly booking drawer. */
+.cafe-scheduler-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
+.cafe-scheduler-toolbar>div:first-child{gap:9px}
+.cafe-scheduler-sports{display:inline-flex;gap:5px;padding:4px;background:#edf4ef;border:1px solid #dce9df;border-radius:12px;width:max-content;max-width:100%}
+.cafe-scheduler-sports button{min-height:39px;padding:9px 16px;border:0;border-radius:9px;background:transparent;color:#5b7765;white-space:nowrap;cursor:pointer;font-size:12px;font-weight:750}
+.cafe-scheduler-sports button.active{color:#215f40;background:#fff;box-shadow:0 2px 7px rgba(12,61,36,.11)}
+.cafe-scheduler-sports button:focus-visible{outline:2px solid #2c9667;outline-offset:1px}
+.cafe-scheduler-sync{white-space:nowrap;font-size:11px;color:#658772;display:inline-flex;align-items:center;gap:5px}
+.cafe-scheduler-sync:before{content:'';display:block;width:6px;height:6px;border-radius:50%;background:#43b57e}
+.cafe-scheduler-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0 16px}
+.cafe-scheduler-stats>div{display:grid;gap:4px;min-width:0;background:#f6faf7;border:1px solid #dfebe2;border-radius:10px;padding:11px 12px}
+.cafe-scheduler-stats b{font-size:18px;color:#22573e;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cafe-scheduler-stats span{font-size:10px;color:#6a8a75}
+.cafe-single-court .cafe-timeboard{grid-template-columns:72px minmax(300px,1fr);min-width:440px}
+.cafe-single-court .cafe-timeboard-scroll::after{content:''!important;display:none}
+.cafe-scheduler .cafe-timeboard-booking.schedule-block{background:#e3e7e9;border-color:#8c9ba3;color:#44505b}
+.cafe-scheduler-legend .schedule-block:before{background:#e3e7e9;border-color:#8c9ba3}
+.cafe-editor-context{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.cafe-editor-context span{font-size:11px;font-weight:800;color:#32674a;background:#eaf6ee;border:1px solid #d6eadd;border-radius:50px;padding:6px 10px}
+.cafe-scheduler-payment-fieldset[hidden]{display:none!important}
+.cafe-scheduler-dialog{position:absolute;top:0;right:0;bottom:0;left:auto;width:min(480px,100%);max-height:100dvh;height:100dvh;border-radius:17px 0 0 17px;padding:22px 24px calc(23px + env(safe-area-inset-bottom));box-shadow:-18px 0 55px rgba(6,31,17,.25);border-right:0;overflow-y:auto}
+.cafe-scheduler-dialog-head{position:sticky;top:-22px;z-index:4;background:#fff;padding:14px 0 16px;border-bottom:1px solid #e1ebe4;margin:-12px 0 18px}
+.cafe-scheduler-dialog-head h3{font-size:19px;font-weight:800;color:#1f4d35}
+.cafe-scheduler-dialog-head p{font-size:11px;color:#74927d}
+.cafe-scheduler-form{gap:15px}
+.cafe-scheduler-form>label{gap:7px}
+.cafe-scheduler-form select,.cafe-scheduler-form input,.cafe-scheduler-form textarea{border-radius:10px;border:1px solid #d4e3d8;box-shadow:none}
+.cafe-scheduler-form input:focus-visible,.cafe-scheduler-form select:focus-visible,.cafe-scheduler-form textarea:focus-visible{outline:2px solid #61bc88;outline-offset:1px}
+.cafe-scheduler-actions{position:sticky;bottom:calc(-23px - env(safe-area-inset-bottom));background:#fff;border-top:1px solid #e2ebe4;margin:8px -24px calc(-23px - env(safe-area-inset-bottom));padding:14px 24px calc(14px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1.5fr;z-index:3}
+.cafe-scheduler-actions .btn{min-height:45px;border-radius:10px}
+.cafe-scheduler-warning{margin:12px 0}
+.cafe-scheduler-hint{margin-bottom:14px}
+@media(max-width:830px){
+ .cafe-scheduler-toolbar{grid-template-columns:minmax(0,1fr)}
+ .cafe-scheduler-date-controls{width:100%}
+ .cafe-scheduler-sports{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+ .cafe-scheduler-sports button{min-width:0;font-size:11px;padding:9px 6px}
+ .cafe-single-court .cafe-timeboard{grid-template-columns:64px minmax(270px,1fr);min-width:345px}
+ .cafe-scheduler-stats{gap:6px}
+ .cafe-scheduler-stats>div{padding:9px}
+ .cafe-scheduler-stats b{font-size:15px}
+ .cafe-scheduler-dialog{height:100dvh;max-height:100dvh;border-radius:0;right:0;top:0;bottom:0;width:min(450px,100%)}
+}
+@media(max-width:560px){
+ .cafe-scheduler-dialog{position:absolute;left:0;right:0;top:auto;bottom:0;width:100%;height:auto;max-height:94dvh;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+ .cafe-scheduler-dialog-head{top:-18px;margin:-10px 0 14px;padding-top:12px}
+ .cafe-scheduler-actions{margin:9px -16px calc(-18px - env(safe-area-inset-bottom));padding:12px 16px calc(12px + env(safe-area-inset-bottom));bottom:calc(-18px - env(safe-area-inset-bottom))}
+ .cafe-scheduler-sports button{font-size:10.5px}
+ .cafe-scheduler-stats span{font-size:9px}
+ .cafe-editor-context{gap:5px}
+}
+@media(prefers-reduced-motion:reduce){.cafe-scheduler-dialog{transition:none!important}}

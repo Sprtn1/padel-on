@@ -1053,6 +1053,10 @@ function enhanceResponsiveTables(root){
 function render(){
  if(state.staff&&!canAccessTab(state.tab,state.staff.role))state.tab='dashboard';
  if(routeInitialized&&state.staff){syncBrowserRoute(state.tab);document.title='PADEL ON · '+titleFor();}
+ // The scheduler patches booking nodes without remounting the static
+ // 09:00–01:00 grid, date, sport switch, or horizontal scroll state.
+ if(autoRefreshRunning&&state.tab==='cafeteria-finances'&&
+    lastRenderedTab===state.tab&&cafeteriaFinances.isTimetableMounted())return;
  const html=shell();
  // Ignore identical poll results rather than replacing the whole DOM.
  if(autoRefreshRunning&&lastRenderedTab===state.tab&&html===lastRenderedMarkup)return;
