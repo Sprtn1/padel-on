@@ -30,7 +30,8 @@ test('Booking positions follow exact start/end minutes and preserve midnight dur
   entry('morning','C1','09:00:00','10:00:00',[true,true,true,true]),
   entry('evening','C2','22:30:00','00:00:00',[true,false,true,false]),
   entry('midnight','C3','00:30:00','01:00:00',[false,false,false,false]),
-  entry('clip','C1','00:30:00','01:30:00')
+  entry('clip','C1','00:30:00','01:30:00'),
+  entry('early','C2','08:30:00','09:30:00')
  ]);
  const find=id=>grid.columns.flatMap(l=>l.bookings).find(e=>e.id===id);
  assert.equal(find('morning').topPx,0);
@@ -45,6 +46,9 @@ test('Booking positions follow exact start/end minutes and preserve midnight dur
  assert.equal(find('clip').topPx,15.5*COURT_GRID_HOUR_HEIGHT);
  assert.equal(find('clip').heightPx,.5*COURT_GRID_HOUR_HEIGHT);
  assert.equal(find('clip').clipped,true);
+ assert.equal(find('early').topPx,0);
+ assert.equal(find('early').heightPx,COURT_GRID_HOUR_HEIGHT/2);
+ assert.equal(find('early').clipped,true);
  assert.equal(grid.heightPx,COURT_GRID_HEIGHT);
 });
 
