@@ -66,6 +66,9 @@ BEGIN
  THEN RAISE EXCEPTION 'Select an active coach or leave coach unassigned'; END IF;
  IF p_session_fee_cents IS NULL OR p_session_fee_cents<0 OR p_session_fee_cents>100000000000
  THEN RAISE EXCEPTION 'Enter a valid session fee'; END IF;
+ -- Match the shared day lock order of existing court booking saves.
+ IF p_business_date IS NULL THEN RAISE EXCEPTION 'Choose a booking date'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtext('padelon_reservation_day'),p_business_date-date '2000-01-01');
  IF p_id IS NOT NULL THEN
   SELECT * INTO v_existing FROM public.padel_court_reservations WHERE id=p_id FOR UPDATE;
   IF NOT FOUND OR v_existing.private_client_id IS NULL
