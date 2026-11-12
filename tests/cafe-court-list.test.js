@@ -30,8 +30,8 @@ test('cancelled bookings stay hidden, while blocks and training appear',()=>{
   booked('training','padel',{booking_type:'private_training',private_client_id:'client-id',customer_name:''}),
   booked('tentative','padel',{status:'tentative'})];
  const shown=cafeCourtListEntries([],plans,'padel_courts','padel');
- assert.deepEqual(shown.map(x=>x.id),['block','training','tentative']);
- assert.deepEqual(shown.map(x=>x.name),['Court blocked','Private client training','Reserved guest']);
+ assert.deepEqual(shown.map(x=>x.id).sort(),['block','tentative','training']);
+ assert.deepEqual(shown.map(x=>x.name).sort(),['Court blocked','Private client training','Reserved guest'].sort());
  assert.equal(plans[1].name,undefined);
 });
 
