@@ -1558,7 +1558,7 @@ function exportFinance(){
  const slug=person?.name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'nazih';
  downloadCSV(rows,`padel-on-matchmaking-${slug}-${state.month}.csv`);
 }
-async function handleAction(target){const act=target.dataset.action,id=target.dataset.id;
+async function handleAction(target,event){const act=target.dataset.action,id=target.dataset.id;
  if(act?.startsWith('tm-')){
   if(state.tab!=='tournament'||!state.staff)throw Error('Authorized staff only.');
   if(await tournamentManagement.action(target))return;
@@ -1581,7 +1581,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
   }
   if(act?.startsWith('cafe-')){
   if(state.tab!=='cafeteria-finances'||!state.staff)throw Error('Authorized staff only.');
-  if(await cafeteriaFinances.action(target)){
+  if(await cafeteriaFinances.action(target,event)){
     if(act==='cafe-reload')await shiftHandover.load(cafeteriaFinances.getDate());
     return;
    }
@@ -1811,7 +1811,24 @@ document.addEventListener('click',async e=>{
   try{await navigateToTab(tab.dataset.tab);}catch(err){toast(err.message||'Navigation failed',true);}
   return;
  }
- const action=e.target.closest('[data-action]');if(action){try{await handleAction(action)}catch(err){toast(err.message,true)}}
+ const action=e.target.closest('[data-action]');if(action){try{await handleAction(action,e)}catch(err){toast(err.message,true)}}
+});
+// Booking pointer gestures. Native scrolling is retained outside booking blocks.
+// On phones, tapping a block opens the full accessible court/time editor.
+document.addEventListener('pointerdown',e=>{
+ if(state.tab==='cafeteria-finances'&&state.staff)cafeteriaFinances.schedulerPointerDown(e);
+});
+document.addEventListener('pointermove',e=>{
+ if(state.tab==='cafeteria-finances'&&state.staff)cafeteriaFinances.schedulerPointerMove(e);
+},{passive:false});
+document.addEventListener('pointerup',e=>{
+ if(state.tab==='cafeteria-finances'&&state.staff)
+  void cafeteriaFinances.schedulerPointerUp(e).catch(error=>toast(error.message||'Move unsuccessful',true));
+});
+document.addEventListener('pointercancel',()=>cafeteriaFinances.schedulerCancelDrag());
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&state.tab==='cafeteria-finances'&&state.staff)
+  cafeteriaFinances.schedulerCloseEditor();
 });
 document.addEventListener('submit',async e=>{
   if(e.target.dataset?.shiftSave){
@@ -1891,6 +1908,7 @@ document.addEventListener('input',e=>{
    const field=document.getElementById('cpay-search');field?.focus();if(cursor!==null)field?.setSelectionRange(cursor,cursor);
    return;
   }
+ if(state.tab==='cafeteria-finances'&&cafeteriaFinances.schedulerPreviewEnd(e.target))return;
  if(state.tab==='cafeteria-finances'&&cafeteriaFinances.courtPricePreview(e.target))return;
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-list-search'){
   const caret=e.target.selectionStart;
@@ -1989,6 +2007,7 @@ document.addEventListener('toggle',e=>{
   cafeteriaFinances.rememberNote(e.target.dataset.cafeNote,e.target.open);
 },true);
 document.addEventListener('change',e=>{
+ if(state.tab==='cafeteria-finances'&&cafeteriaFinances.schedulerPreviewEnd(e.target))return;
  if(state.tab==='cafeteria-finances'&&cafeteriaFinances.courtPricePreview(e.target))return;
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-list-status'){
   try{tournamentManagement.searchList(e.target)}catch(err){toast(err.message||'Unable to filter tournaments.',true)}
@@ -2006,7 +2025,7 @@ document.addEventListener('change',e=>{
   try{tournamentManagement.change(e.target)}catch(err){toast(err.message||'Unable to update tournament.',true)}
   return;
  }
- if((e.target.id==='cafe-finance-date'||e.target.id==='cafe-quick-category'||e.target.dataset?.cafeMarker||e.target.dataset?.cafePrivateCash!==undefined)&&state.tab==='cafeteria-finances'){
+ if((e.target.id==='cafe-finance-date'||e.target.id==='cafe-schedule-date'||e.target.id==='cafe-quick-category'||e.target.dataset?.cafeMarker||e.target.dataset?.cafePrivateCash!==undefined)&&state.tab==='cafeteria-finances'){
   void cafeteriaFinances.change(e.target).catch(err=>toast(err.message||'Could not update finances.',true));return;
  }
  if(e.target.dataset?.reemInput==='quantity' && state.tab==='reem-items' && canUseOrderLists()){render();return;}

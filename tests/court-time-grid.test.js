@@ -91,9 +91,11 @@ test('Timetable uses a preserved horizontal scroller and leaves financial cards 
  const html=read('../lib/cafeteria-finances.js');
  const css=read('../styles/court-timeboard.css');
  const bootstrap=read('../bootstrap.js');
- assert.match(html,/padelCourtTimeGrid\(rows\)/);
- assert.match(html,/data-preserve-scroll="daily-court-timetable"/);
- assert.match(html,/cafe-timeboard-booking/);
+ assert.match(html,/function timetable\(\)\{return scheduler\.page\(\);\}/);
+ const scheduler=read('../lib/court-scheduler-ui.js');
+ assert.match(scheduler,/padelCourtTimeGrid\(\[/);
+ assert.match(scheduler,/data-preserve-scroll="court-reservation-scroll"/);
+ assert.match(scheduler,/cafe-timeboard-booking/);
  assert.match(html,/courtView==='timetable'\?timetable\(\)/);
  assert.match(html,/const courtCards=/);
  assert.match(html,/cafeteria_finance_set_player_paid/);
