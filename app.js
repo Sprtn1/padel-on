@@ -13,6 +13,7 @@ const cafeteriaTodoModule = await import(`./lib/cafeteria-todo.js?v=${assetVersi
 const shiftHandoverModule = await import(`./lib/cafeteria-shift-handover.js?v=${assetVersion}`);
 const consignmentModule = await import(`./lib/consignment-inventory.js?v=${assetVersion}`);
 const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
+const {sevenDayActivity} = await import(`./lib/activity-visualizations.js?v=${assetVersion}`);
 const reportComparison = await import(`./lib/report-comparison.js?v=${assetVersion}`);
 const {getDebtDayEntries,summarizeDebtDay} = await import(`./lib/cafeteria-debt-daily.js?v=${assetVersion}`);
 const {visiblePrivateClientSelection} = await import(`./lib/private-client-selection.js?v=${assetVersion}`);
@@ -399,11 +400,37 @@ function overviewExtra(){
  <div class="two-col management-panels">${managementAlertPanel()}${commissions}</div>
  <div class="management-section-label"><h2>Daily coaching activity</h2></div>${todayPanel}`;
 }
+// Small-screen activity chart shares the same seven-day period for all four ledgers.
+function activityVisualization(){
+ const days=sevenDayActivity(today(),{
+  teamMatches:state.matches,specialGames:state.specialGames,
+  matchmaking:state.finance,privateEntries:state.privateLoaded?state.privateEntries:[]
+ },addDays);
+ const total=days.reduce((sum,day)=>sum+day.total,0),maximum=Math.max(1,...days.map(day=>day.total));
+ const bars=days.map(day=>{
+  const weekday=new Date(day.date+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'short',timeZone:'UTC'});
+  const subtitle=[day.team+' team',day.special+' benefits',day.matchmaking+' matchmaking',day.sessions+' training'].join(', ');
+  const segments=[['team',day.team],['special',day.special],['matchmaking',day.matchmaking],['sessions',day.sessions]]
+   .filter(([,count])=>count>0).map(([kind,count])=>'<i class="po-chart-segment po-chart-'+kind+'" style="flex:'+count+'"></i>').join('');
+  return '<div class="po-chart-day"><div class="po-chart-count">'+day.total+'</div>'+
+   '<div class="po-chart-track"><div class="po-chart-bar" style="height:'+Math.round(day.total/maximum*100)+'%" title="'+esc(day.date+' — '+subtitle)+'" aria-label="'+esc(day.date+' — '+subtitle)+'">'+segments+'</div></div>'+
+   '<span>'+weekday+'</span></div>';
+ }).join('');
+ return '<section class="panel po-activity-panel" aria-label="Seven-day activity summary"><div class="panel-head"><div><h2>Activity — last 7 days</h2>'+
+  '<p>Recorded team games, special games, matchmaking and private sessions</p></div>'+
+  '<span class="po-chart-total">'+total+' entries</span></div>'+
+  '<div class="po-chart-wrap">'+bars+'</div><div class="po-chart-legend">'+
+  '<span class="po-legend-team">Team games</span><span class="po-legend-special">Other benefits</span>'+
+  '<span class="po-legend-matchmaking">Matchmaking</span><span class="po-legend-sessions">Private sessions</span></div>'+
+  (!state.privateLoaded?'<p class="po-chart-note">Private session records are loading; this chart updates when they arrive.</p>':'')+
+  '<p class="po-chart-note">Activity counts are not cash receipts and do not represent court occupancy.</p></section>';
+}
 function dashboard(){const normal=normalMembers();const used=normal.reduce((n,m)=>n+status(m).used,0),left=normal.reduce((n,m)=>n+status(m).remain,0),empty=normal.filter(m=>status(m).remain===0).length;const recent=recentActivity(6);return `
-${heading('Your club, organized','Good day, team.','Here’s what’s happening at PADEL ON this week.',btn(`${icon('plus')} Quick Match`,'quick-team','btn-primary'))}
-<div class="notice" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">${icon('calendar')} <span><strong>Current week:</strong> ${weekLabel(today())} · Benefits reset each week.</span></div>
-<section class="summary">${summaryCard('Active team members',state.members.filter(m=>m.active).length,'','users',true)}${summaryCard('Benefits used',used,'This week · standard members','activity')}${summaryCard('Benefits remaining',left,'Available this week','gift')}${summaryCard('Allowances exhausted',empty,'Members with 0 remaining','shield')}</section>
+${heading('Club operations','Today at PADEL ON','Daily accounts, team benefits and activity in one place.',btn(`${icon('plus')} Quick Match`,'quick-team','btn-primary'))}
 ${overviewExtra()}
+<div class="management-section-label po-week-label"><h2>Team benefits this week</h2><span>${weekLabel(today())} · weekly reset</span></div>
+<section class="summary">${summaryCard('Active team members',state.members.filter(m=>m.active).length,'','users',true)}${summaryCard('Benefits used',used,'This week · standard members','activity')}${summaryCard('Benefits remaining',left,'Available this week','gift')}${summaryCard('Allowances exhausted',empty,'Members with 0 remaining','shield')}</section>
+${activityVisualization()}
 <section class="two-col"><article class="panel"><div class="panel-head"><div><h2>Recent game activity</h2><p>Last 30 days · latest first</p></div><button class="link" data-tab="activity">View all ${icon('arrow')}</button></div><div class="panel-body">${recent.length?recent.map(a=>`<div class="activity-line"><div class="activity-avatar">${esc(initials(a.names.split(',')[0]))}</div><div class="activity-copy"><strong>${esc(a.names)}</strong><small>${esc(a.type)}</small></div><span class="small-date">${niceDay(a.date)}</span></div>`).join(''):`<div class="empty-prompt">${icon('calendar')}<strong>No new games yet</strong><span>Recorded games will appear here.</span></div>`}</div></article><article class="panel"><div class="panel-head"><div><h2>Quick actions</h2></div></div><div class="panel-body quick-list"><button class="quick-link" data-action="quick-team">${icon('plus')}<span><strong>Quick Match</strong><small>Choose all four participants</small></span></button><button class="quick-link" data-tab="debts">${icon('wallet')}<span><strong>Cafeteria debts</strong><small>Track unpaid purchases and partial payments</small></span></button><button class="quick-link" data-action="add-nazih">${icon('wallet')}<span><strong>Log matchmaking revenue</strong><small>Separate revenue and commission by matchmaker</small></span></button><button class="quick-link" data-tab="other">${icon('gift')}<span><strong>Other player benefits</strong><small>Free game eligibility</small></span></button><button class="quick-link" data-tab="settings">${icon('settings')}<span><strong>Management settings</strong><small>Members and secure resets</small></span></button></div></article></section>`}
 function teamCategoryOptions(){return '<option value=all>All teams</option>'+TEAM_GROUPS.map(([id,name])=>'<option value='+id+(state.teamCategoryFilter===id?' selected':'')+'>'+esc(name)+'</option>').join('');}
 function groupedMemberCards(members,selected){let out='';for(const [key,label] of TEAM_GROUPS){if(state.teamCategoryFilter!=='all'&&state.teamCategoryFilter!==key)continue;const group=members.filter(m=>(m.team_category||'team')===key);if(!group.length)continue;out+='<section class=team-category-section><div class=team-category-heading><h2>'+esc(label)+'</h2><span>'+group.length+' members</span></div><div class=member-grid>'+group.map(m=>memberCard(m,selected)).join('')+'</div></section>';}return out||'<div class=panel-empty>No matching members.</div>';}

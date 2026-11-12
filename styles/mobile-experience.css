@@ -47,3 +47,42 @@
 }
 @media(prefers-reduced-motion:reduce){.mobile-drawer-backdrop,.mobile-drawer-panel{transition:none!important}}
 @media print{.mobile-menu-toggle,.mobile-drawer{display:none!important}}
+
+/* Compact, meaningful daily overview with responsive activity visualization. */
+.po-week-label{margin-top:24px}
+.po-activity-panel{margin:0 0 22px;min-width:0;max-width:100%}
+.po-chart-total{font-size:12px;font-weight:800;white-space:nowrap;color:#13754b;
+ background:#eaf7ee;border-radius:999px;padding:7px 11px}
+.po-chart-wrap{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;
+ align-items:end;height:205px;padding:14px 24px 7px}
+.po-chart-day{display:flex;align-items:center;flex-direction:column;height:100%;min-width:0;gap:4px}
+.po-chart-day>span{font-size:11px;color:#718c7b;font-weight:750}
+.po-chart-count{font-size:11px;color:#647e70;font-weight:800;font-variant-numeric:tabular-nums}
+.po-chart-track{height:100%;width:100%;min-height:0;display:flex;align-items:flex-end;justify-content:center;
+ border-bottom:1px solid #e4eee6}
+.po-chart-bar{display:flex;flex-direction:column-reverse;width:min(100%,42px);border-radius:7px 7px 0 0;
+ overflow:hidden;min-height:0;background:#d7e8dd}
+.po-chart-segment{display:block;min-height:1px}
+.po-chart-team{background:#199768}.po-chart-special{background:#7dbcb0}
+.po-chart-matchmaking{background:#e5ad5f}.po-chart-sessions{background:#647bb3}
+.po-chart-legend{display:flex;gap:14px;flex-wrap:wrap;padding:14px 24px 4px}
+.po-chart-legend span{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#587467}
+.po-chart-legend span:before{content:'';width:9px;height:9px;border-radius:3px;background:#199768}
+.po-chart-legend .po-legend-special:before{background:#7dbcb0}
+.po-chart-legend .po-legend-matchmaking:before{background:#e5ad5f}
+.po-chart-legend .po-legend-sessions:before{background:#647bb3}
+.po-chart-note{font-size:11px;line-height:1.5;color:#819286;margin:7px 24px 16px}
+@media(max-width:560px){
+ .management-section-label{gap:8px;flex-wrap:wrap}
+ .management-section-label>span{font-size:11px}
+ .management-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .management-summary .summary-card{min-width:0}
+ .po-chart-wrap{gap:5px;height:165px;padding:12px 12px 5px}
+ .po-chart-day>span{font-size:10px}
+ .po-chart-count{font-size:10px}
+ .po-chart-legend{gap:10px 14px;padding:12px 15px 4px}
+ .po-chart-legend span{font-size:10px}
+ .po-chart-note{margin:8px 15px 13px}
+ .po-activity-panel>.panel-head{padding:17px 15px 8px}
+ .po-chart-total{font-size:10px}
+}
