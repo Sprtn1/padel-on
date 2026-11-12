@@ -80,7 +80,7 @@ test('Private client page shows upcoming bookings, but only a completed session 
  const sql=read('../supabase/migrations/20261112234000_private_training_and_cash_closing_fix.sql');
  assert.match(sql,/public\.private_log_entry\(/);
  assert.match(sql,/v_booking\.business_date>\(now\(\) at time zone 'Asia\/Beirut'\)::date/);
- assert.match(sql,/p_session_fee_cents,0,0/);
+ assert.match(sql,/v_booking\.private_session_fee_cents,0,0/);
  assert.match(sql,/private_session_entry_id IS NOT NULL/);
  assert.match(sql,/REVOKE ALL ON FUNCTION public\.club_private_training_save/);
  assert.match(sql,/REVOKE ALL ON FUNCTION public\.club_private_training_complete/);
