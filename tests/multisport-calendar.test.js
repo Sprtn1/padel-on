@@ -77,6 +77,21 @@ test('The original booking fee schedule and existing Padel payment view are reta
  assert.match(finance,/Whish Court Payments/);
 });
 
+test('The global 30-second refresh keeps a mounted timetable and only patches booking nodes',()=>{
+ const app=file('../app.js'),finance=file('../lib/cafeteria-finances.js');
+ const calendar=file('../lib/court-scheduler-ui.js');
+ assert.match(app,/autoRefreshRunning&&state\.tab==='cafeteria-finances'/);
+ assert.match(app,/cafeteriaFinances\.isTimetableMounted\(\)/);
+ assert.match(finance,/isTimetableMounted/);
+ assert.match(calendar,/function patchMountedBookings\(\)/);
+ assert.match(calendar,/data-schedule-sport/);
+ assert.match(calendar,/data-cafe-schedule-sync/);
+ assert.match(calendar,/if\(editor\|\|drag\)/);
+ assert.match(calendar,/Payments recorded/);
+ assert.match(calendar,/data-cafe-court-count/);
+ assert.doesNotMatch(calendar,/root\.innerHTML=page\(\)/);
+});
+
 test('Multisport UI modules parse in Node',()=>{
  for(const path of ['lib/club-court-sports.js','lib/court-timetable.js','lib/court-scheduler-ui.js','lib/cafeteria-finances.js','app.js']){
   const x=spawnSync(process.execPath,['--check',new URL('../'+path,import.meta.url).pathname],{encoding:'utf8'});
