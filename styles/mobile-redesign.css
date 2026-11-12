@@ -114,3 +114,41 @@
 @media(min-width:831px){.mobile-drawer,.mobile-drawer-backdrop{display:none!important}}
 @media print{.mobile-menu-toggle,.mobile-drawer,.mobile-drawer-backdrop,.dashboard-activity-panel{display:none!important}}
 @media(prefers-reduced-motion:reduce){.mobile-drawer,.mobile-drawer-backdrop{transition:none!important}}
+
+/* Daily cashbook: accessible list by default, scrollable per-court start-time grid on demand. */
+.cafe-timetable-panel{min-width:0;margin:0 0 17px;padding:15px;border:1px solid #d9e8dd;border-radius:14px;background:#fff}
+.cafe-timetable-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+.cafe-timetable-head h3{margin:0 0 5px;font-size:15px;letter-spacing:-.25px;color:#234e36}
+.cafe-timetable-head p{margin:0;font-size:11px;color:#7b8f81}
+.cafe-view-switch{display:inline-flex;gap:3px;padding:4px;border-radius:11px;background:#edf5ee;border:1px solid #dfebe1}
+.cafe-view-switch button{border:0;border-radius:8px;background:transparent;color:#597562;padding:8px 16px;min-height:36px;font-size:12px;font-weight:750;cursor:pointer}
+.cafe-view-switch button.active{background:#fff;color:#217e4c;box-shadow:0 1px 6px rgba(18,55,32,.10)}
+.cafe-view-switch button:focus-visible{outline:2px solid #258c5a;outline-offset:2px}
+.cafe-timetable-list{display:grid;gap:8px}
+.cafe-timetable-list-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:#f7faf7;border:1px solid #e1ebe3;border-radius:10px;min-width:0}
+.cafe-timetable-list-row>div{display:grid;gap:5px;min-width:0}
+.cafe-timetable-list-row strong{font-size:12px;color:#244c32;overflow-wrap:anywhere}
+.cafe-timetable-list-row small{font-size:11px;color:#718777;line-height:1.45;overflow-wrap:anywhere}
+.cafe-timetable-list-row>b{white-space:nowrap;font-size:13px;color:#236946;flex:none}
+.cafe-timetable-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;border:1px solid #dbe7de;border-radius:11px;background:#fff}
+.cafe-timetable-scroll:focus-visible{outline:2px solid #258c5a}
+.cafe-timetable-grid{display:grid;grid-template-columns:95px repeat(3,minmax(165px,1fr));min-width:595px;align-items:stretch}
+.cafe-time-header{background:#ebf5ef;font-size:11px;font-weight:800;color:#325e44;padding:13px 10px;border-bottom:1px solid #dbe7de;border-right:1px solid #dbe7de}
+.cafe-time-slot{background:#f7faf8;color:#3c654b;font-weight:800;font-size:11px;padding:14px 9px;border-bottom:1px solid #e0eae2;border-right:1px solid #e0eae2}
+.cafe-time-cell{display:grid;align-content:start;gap:6px;padding:8px;min-width:0;min-height:48px;border-right:1px solid #e0eae2;border-bottom:1px solid #e0eae2}
+.cafe-time-booking{display:grid;gap:5px;padding:9px;border-radius:8px;background:#eaf6ee;border:1px solid #cfe8d5;min-width:0}
+.cafe-time-booking strong{font-size:11px;color:#276348;overflow-wrap:anywhere}
+.cafe-time-booking span{font-size:10px;color:#587d65}
+.cafe-time-booking b{font-size:11px;color:#296547}
+.cafe-time-empty{color:#a8b7ac;text-align:center;padding:7px 0}
+.cafe-time-no-entries{grid-column:1/-1;padding:18px;color:#7d9082;font-size:12px;text-align:center}
+.cafe-court-extra{display:grid;gap:7px;margin-top:14px}
+.cafe-court-extra>strong{font-size:12px;color:#315a3f;margin-bottom:2px}
+.cafe-timetable-note{margin:12px 0 0;font-size:11px;color:#718876;line-height:1.5}
+@media(max-width:560px){
+ .cafe-timetable-panel{padding:12px;margin:0 0 14px}
+ .cafe-timetable-head{align-items:flex-start}
+ .cafe-timetable-list-row{padding:11px}
+ .cafe-view-switch{width:100%;display:grid;grid-template-columns:1fr 1fr}
+ .cafe-timetable-grid{grid-template-columns:80px repeat(3,minmax(153px,1fr));min-width:539px}
+}
