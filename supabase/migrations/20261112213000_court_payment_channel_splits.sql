@@ -73,7 +73,7 @@ FOR EACH ROW EXECUTE FUNCTION public.court_split_guard_ledger();
 
 -- Preserve the existing administrator void action, including its Cash/Whish corrections.
 CREATE OR REPLACE FUNCTION public.court_split_sync_void_finance()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
 DECLARE v_split public.court_payment_splits%rowtype;v_net bigint;
 BEGIN
  IF OLD.voided_at IS NULL AND NEW.voided_at IS NOT NULL THEN
@@ -95,7 +95,7 @@ BEGIN
   END IF;
  END IF;
  RETURN NEW;
-END $;
+END $$;
 CREATE TRIGGER court_split_finance_void_sync AFTER UPDATE OF voided_at ON public.cafeteria_finance_entries
 FOR EACH ROW EXECUTE FUNCTION public.court_split_sync_void_finance();
 
