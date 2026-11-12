@@ -120,3 +120,14 @@
  .cafe-scheduler-sports button,.cafe-scheduler .cafe-timeboard-booking,
  .cafe-scheduler-form input,.cafe-scheduler-form select,.cafe-scheduler-form textarea{transition:none!important}
 }
+
+/* Live updates transition booking blocks, not the entire calendar container. */
+.cafe-scheduler .cafe-scheduler-event:not(.cafe-scheduler-dragging){
+ transition:top .20s ease,left .20s ease,width .20s ease,height .20s ease,
+  box-shadow .16s ease,filter .16s ease;
+}
+.cafe-scheduler .cafe-scheduler-event{animation:club-booking-appear .15s ease-out both}
+@keyframes club-booking-appear{from{opacity:.62}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){
+ .cafe-scheduler .cafe-scheduler-event{transition:none!important;animation:none!important}
+}
