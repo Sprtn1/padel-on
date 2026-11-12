@@ -87,6 +87,54 @@ test('Private client page shows upcoming bookings, but only a completed session 
  assert.match(sql,/source_kind='reservation'/);
 });
 
+
+test('Closing a day with a Whish court split no longer falsely reports negative Goods Sold',async()=>{
+ const {createCafeteriaFinances}=await import('../lib/cafeteria-finances.js');
+ const day='2026-11-12',calls=[];
+ const entries=[
+  {category:'padel_courts',amount_cents:35500,entry_date:day},
+  {category:'classes',amount_cents:13000,entry_date:day},
+  {category:'gymnastics',amount_cents:4000,entry_date:day},
+  {category:'grips',amount_cents:2900,entry_date:day},
+  {category:'balls',amount_cents:1000,entry_date:day},
+  {category:'clothes',amount_cents:200,entry_date:day},
+  {category:'racket_rental',amount_cents:600,entry_date:day},
+  {category:'coaches',amount_cents:11500,entry_date:day},
+  {category:'family_debt',amount_cents:700,entry_date:day},
+  {category:'other_expense',amount_cents:10500,entry_date:day}
+ ];
+ const api={
+  getSession:()=>({access_token:'staff'}),
+  listAll:async table=>{
+   if(table==='cafeteria_finance_entries')return entries;
+   if(table==='cafeteria_finance_days')return [{day_date:day,closing_cash_cents:42000}];
+   if(table==='private_clients')return [{id:'client',name:'Client',active:true}];
+   if(table==='private_ledger_entries')return [{id:'deposit',client_id:'client',entry_date:day,entry_type:'deposit',deposit_cents:8000,payment_channel:'cash',created_at:day+'T01:00:00Z'}];
+   if(table==='court_payment_cash_movements')return [{split_id:'split',entry_date:day,cash_delta_cents:-4100}];
+   if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
+   return [];
+  },
+  rpc:async(name,args)=>calls.push({name,args})
+ };
+ const finance=createCafeteriaFinances({
+  api,today:()=>day,addDays:()=>day,heading:()=>'',icon:()=>'',amount:n=>'
+ for(const path of ['app.js','lib/cafeteria-finances.js','lib/court-scheduler-ui.js']){
+  const res=spawnSync(process.execPath,['--check',new URL('../'+path,import.meta.url).pathname],{encoding:'utf8'});
+  assert.equal(res.status,0,path+': '+res.stderr);
+ }
+});
++(n/100).toFixed(2),
+  rerender:()=>{},toast:()=>{},isAdmin:()=>false
+ });
+ await finance.load();
+ const html=finance.page();
+ assert.match(html,/Close day for review/);
+ assert.doesNotMatch(html,/data-action="cafe-day-close" disabled/);
+ await finance.action({dataset:{action:'cafe-day-close'}});
+ assert.equal(calls.filter(x=>x.name==='cafeteria_change_day_status').length,1);
+ assert.equal(calls.at(-1).args.p_action,'close');
+});
+
 test('Affected JavaScript parses without changing existing financial and scheduler APIs',()=>{
  for(const path of ['app.js','lib/cafeteria-finances.js','lib/court-scheduler-ui.js']){
   const res=spawnSync(process.execPath,['--check',new URL('../'+path,import.meta.url).pathname],{encoding:'utf8'});
