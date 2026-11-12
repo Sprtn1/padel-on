@@ -13,6 +13,7 @@ const cafeteriaTodoModule = await import(`./lib/cafeteria-todo.js?v=${assetVersi
 const shiftHandoverModule = await import(`./lib/cafeteria-shift-handover.js?v=${assetVersion}`);
 const consignmentModule = await import(`./lib/consignment-inventory.js?v=${assetVersion}`);
 const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
+const {sevenDayActivity} = await import(`./lib/activity-visualizations.js?v=${assetVersion}`);
 const reportComparison = await import(`./lib/report-comparison.js?v=${assetVersion}`);
 const {getDebtDayEntries,summarizeDebtDay} = await import(`./lib/cafeteria-debt-daily.js?v=${assetVersion}`);
 const {visiblePrivateClientSelection} = await import(`./lib/private-client-selection.js?v=${assetVersion}`);
@@ -24,6 +25,7 @@ const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus,getMatchmakingFin
 const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = await import(`./lib/date.js?v=${assetVersion}`);
 const app=document.getElementById('app');
 let sidebarCollapsed=false;
+let mobileMenuOpen=false;
 let routeInitialized=false;
 try{sidebarCollapsed=readSidebarCollapsed(window.localStorage)}catch{}
 function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -185,6 +187,7 @@ function syncBrowserRoute(tab,{replace=false}={}){
 }
 async function navigateToTab(tab){
  if(!api.getSession()?.access_token||!state.staff||!canAccessTab(tab,state.staff.role))return;
+ if(mobileMenuOpen)setMobileMenuOpen(false,{restoreFocus:false});
  state.tab=tab;state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';
  render();window.scrollTo({top:0,behavior:'instant'});
  if(tab==='reports'){void loadClubSources();await loadReport();}
@@ -210,6 +213,21 @@ async function applyLocationRoute(){
 }
 window.addEventListener('popstate',()=>{void applyLocationRoute().catch(err=>toast(err.message||'Navigation failed',true));});
 window.addEventListener('hashchange',()=>{void applyLocationRoute().catch(err=>toast(err.message||'Navigation failed',true));});
+// Drawer operates in place so opening navigation never clears a half-filled form.
+function setMobileMenuOpen(open,{restoreFocus=true}={}){
+ mobileMenuOpen=Boolean(open);
+ const drawer=app.querySelector('#mobile-drawer');
+ if(!drawer)return;
+ drawer.classList.toggle('is-open',mobileMenuOpen);
+ drawer.setAttribute('aria-hidden',String(!mobileMenuOpen));
+ if(mobileMenuOpen)drawer.removeAttribute('inert');
+ else drawer.setAttribute('inert','');
+ document.body.classList.toggle('mobile-menu-open',mobileMenuOpen);
+ const trigger=app.querySelector('[data-action="mobile-menu-toggle"]');
+ trigger?.setAttribute('aria-expanded',String(mobileMenuOpen));
+ if(mobileMenuOpen)drawer.querySelector('[data-action="mobile-menu-close"]')?.focus();
+ else if(restoreFocus)trigger?.focus();
+}
 function toggleDesktopSidebar(){
  // Change layout in place to preserve forms, drafts, and scroll positions.
  sidebarCollapsed=!sidebarCollapsed;
@@ -259,7 +277,7 @@ function globalSearchOverlay(){
 }
 function shell(){
  const name=state.staff?.email?.split('@')[0]||'Staff';
- return `<div class="app-layout ${sidebarCollapsed?'sidebar-collapsed':''}"><aside class="sidebar" aria-label="Primary navigation"><div class="sidebar-panel"><div class="sidebar-header"><div class="sidebar-brand"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><span class="brand-compact" aria-hidden="true">PO</span></div><button type="button" class="sidebar-toggle" data-action="sidebar-toggle" aria-controls="sidebar-menu" aria-label="${sidebarToggleLabel(sidebarCollapsed)}" title="${sidebarToggleLabel(sidebarCollapsed)}" aria-expanded="${!sidebarCollapsed}">${icon(sidebarCollapsed?'chevronRight':'chevronLeft')}</button></div><div class="brand-sub">Club management</div><nav class="menu" id="sidebar-menu" aria-label="Sections">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></div></aside><main class="main"><header class="topbar"><div><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='consignment'||state.tab==='tournament'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><nav class="mobile-bar" aria-label="Mobile navigation"><div class="mobile-nav-scroll">${navMarkup(true)}</div><button type="button" class="mobile-nav mobile-settings-nav ${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'active':''}" data-tab="settings" aria-current="${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'page':'false'}" aria-label="Settings">${icon('settings')}<span>Settings</span></button></nav></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
+ return `<div class="app-layout ${sidebarCollapsed?'sidebar-collapsed':''}"><aside class="sidebar" aria-label="Primary navigation"><div class="sidebar-panel"><div class="sidebar-header"><div class="sidebar-brand"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><span class="brand-compact" aria-hidden="true">PO</span></div><button type="button" class="sidebar-toggle" data-action="sidebar-toggle" aria-controls="sidebar-menu" aria-label="${sidebarToggleLabel(sidebarCollapsed)}" title="${sidebarToggleLabel(sidebarCollapsed)}" aria-expanded="${!sidebarCollapsed}">${icon(sidebarCollapsed?'chevronRight':'chevronLeft')}</button></div><div class="brand-sub">Club management</div><nav class="menu" id="sidebar-menu" aria-label="Sections">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></div></aside><main class="main"><header class="topbar"><button type="button" class="mobile-menu-toggle" data-action="mobile-menu-toggle" aria-label="Open navigation menu" aria-controls="mobile-drawer" aria-expanded="${mobileMenuOpen}">${icon("menu")}</button><div class="topbar-identity"><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='consignment'||state.tab==='tournament'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><div id="mobile-drawer" class="mobile-drawer ${mobileMenuOpen?'is-open':''}" aria-hidden="${!mobileMenuOpen}" ${mobileMenuOpen?'':'inert'}><button type="button" class="mobile-drawer-backdrop" data-action="mobile-menu-close" aria-label="Close navigation menu"></button><aside class="mobile-drawer-panel" aria-label="Mobile sections"><div class="mobile-drawer-header"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><button class="mobile-menu-close" type="button" data-action="mobile-menu-close" aria-label="Close menu">${icon('close')}</button></div><div class="mobile-drawer-title">Club management</div><nav class="mobile-drawer-links" aria-label="All sections">${navMarkup(false)}</nav><div class="mobile-drawer-account"><span class="avatar">${esc(initials(name))}</span><div><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div></div></aside></div></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
 }
 function heading(eyebrow,title,desc,actions=''){return `<div class="heading-row"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${desc}</p></div>${actions?`<div class="heading-actions">${actions}</div>`:''}</div>`}
 function summaryCard(label,num,sub,ico,feature=false){return `<article class="summary-card ${feature?'feature':''}"><div class="card-top"><span class="label">${label}</span><span class="metric-icon">${icon(ico)}</span></div><div class="metric num">${num}</div><div class="submetric">${sub}</div></article>`}
@@ -369,7 +387,7 @@ function overviewExtra(){
   return `<tr><td>${esc(client?.name||'Unknown client')}<br/><small>${esc(client?.client_code||'No client ID')}</small></td><td>${esc(privateCoachName(e.coach_id))}</td><td>${amount(e.session_fee_cents)}</td><td>${amount(e.paid_cents)}</td></tr>`;
  }).join('');
  const todayPanel=`<article class="panel"><div class="panel-head"><div><h2>Today's private sessions</h2><p>${niceDay(todayDate,{weekday:'long',month:'short',day:'numeric'})} · session fees and amounts received</p></div><button class="link" data-tab="private-clients">View daily log ${icon('arrow')}</button></div>
- <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Client</th><th>Coach</th><th>Charge</th><th>Paid</th></tr></thead>
+ <div class="data-table-wrap"><table class="data-table po-overview-sessions"><thead><tr><th>Client</th><th>Coach</th><th>Charge</th><th>Paid</th></tr></thead>
  <tbody>${!state.privateLoaded?'<tr><td colspan="4" class="panel-empty">'+(state.privateError?'Private sessions unavailable':'Loading private sessions…')+'</td></tr>':rows||'<tr><td colspan="4" class="panel-empty">No private sessions recorded today.</td></tr>'}</tbody></table></div></article>`;
  const commissions=`<article class="panel"><div class="panel-head"><div><h2>Pending matchmaking commissions</h2><p>${monthLabel(month)} · not marked as paid</p></div><button class="link" data-tab="finance">Matchmaking ${icon('arrow')}</button></div><div class="panel-body">
  <div class="management-commission-total">${amount(pending)}<small>${dueRows.length} unsettled person${dueRows.length===1?'':'s'}</small></div>
@@ -382,11 +400,37 @@ function overviewExtra(){
  <div class="two-col management-panels">${managementAlertPanel()}${commissions}</div>
  <div class="management-section-label"><h2>Daily coaching activity</h2></div>${todayPanel}`;
 }
+// Small-screen activity chart shares the same seven-day period for all four ledgers.
+function activityVisualization(){
+ const days=sevenDayActivity(today(),{
+  teamMatches:state.matches,specialGames:state.specialGames,
+  matchmaking:state.finance,privateEntries:state.privateLoaded?state.privateEntries:[]
+ },addDays);
+ const total=days.reduce((sum,day)=>sum+day.total,0),maximum=Math.max(1,...days.map(day=>day.total));
+ const bars=days.map(day=>{
+  const weekday=new Date(day.date+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'short',timeZone:'UTC'});
+  const subtitle=[day.team+' team',day.special+' benefits',day.matchmaking+' matchmaking',day.sessions+' training'].join(', ');
+  const segments=[['team',day.team],['special',day.special],['matchmaking',day.matchmaking],['sessions',day.sessions]]
+   .filter(([,count])=>count>0).map(([kind,count])=>'<i class="po-chart-segment po-chart-'+kind+'" style="flex:'+count+'"></i>').join('');
+  return '<div class="po-chart-day"><div class="po-chart-count">'+day.total+'</div>'+
+   '<div class="po-chart-track"><div class="po-chart-bar" style="height:'+Math.round(day.total/maximum*100)+'%" title="'+esc(day.date+' — '+subtitle)+'" aria-label="'+esc(day.date+' — '+subtitle)+'">'+segments+'</div></div>'+
+   '<span>'+weekday+'</span></div>';
+ }).join('');
+ return '<section class="panel po-activity-panel" aria-label="Seven-day activity summary"><div class="panel-head"><div><h2>Activity — last 7 days</h2>'+
+  '<p>Recorded team games, special games, matchmaking and private sessions</p></div>'+
+  '<span class="po-chart-total">'+total+' entries</span></div>'+
+  '<div class="po-chart-wrap">'+bars+'</div><div class="po-chart-legend">'+
+  '<span class="po-legend-team">Team games</span><span class="po-legend-special">Other benefits</span>'+
+  '<span class="po-legend-matchmaking">Matchmaking</span><span class="po-legend-sessions">Private sessions</span></div>'+
+  (!state.privateLoaded?'<p class="po-chart-note">Private session records are loading; this chart updates when they arrive.</p>':'')+
+  '<p class="po-chart-note">Activity counts are not cash receipts and do not represent court occupancy.</p></section>';
+}
 function dashboard(){const normal=normalMembers();const used=normal.reduce((n,m)=>n+status(m).used,0),left=normal.reduce((n,m)=>n+status(m).remain,0),empty=normal.filter(m=>status(m).remain===0).length;const recent=recentActivity(6);return `
-${heading('Your club, organized','Good day, team.','Here’s what’s happening at PADEL ON this week.',btn(`${icon('plus')} Quick Match`,'quick-team','btn-primary'))}
-<div class="notice" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">${icon('calendar')} <span><strong>Current week:</strong> ${weekLabel(today())} · Benefits reset each week.</span></div>
-<section class="summary">${summaryCard('Active team members',state.members.filter(m=>m.active).length,'','users',true)}${summaryCard('Benefits used',used,'This week · standard members','activity')}${summaryCard('Benefits remaining',left,'Available this week','gift')}${summaryCard('Allowances exhausted',empty,'Members with 0 remaining','shield')}</section>
+${heading('Club operations','Today at PADEL ON','Daily accounts, team benefits and activity in one place.',btn(`${icon('plus')} Quick Match`,'quick-team','btn-primary'))}
 ${overviewExtra()}
+<div class="management-section-label po-week-label"><h2>Team benefits this week</h2><span>${weekLabel(today())} · weekly reset</span></div>
+<section class="summary">${summaryCard('Active team members',state.members.filter(m=>m.active).length,'','users',true)}${summaryCard('Benefits used',used,'This week · standard members','activity')}${summaryCard('Benefits remaining',left,'Available this week','gift')}${summaryCard('Allowances exhausted',empty,'Members with 0 remaining','shield')}</section>
+${activityVisualization()}
 <section class="two-col"><article class="panel"><div class="panel-head"><div><h2>Recent game activity</h2><p>Last 30 days · latest first</p></div><button class="link" data-tab="activity">View all ${icon('arrow')}</button></div><div class="panel-body">${recent.length?recent.map(a=>`<div class="activity-line"><div class="activity-avatar">${esc(initials(a.names.split(',')[0]))}</div><div class="activity-copy"><strong>${esc(a.names)}</strong><small>${esc(a.type)}</small></div><span class="small-date">${niceDay(a.date)}</span></div>`).join(''):`<div class="empty-prompt">${icon('calendar')}<strong>No new games yet</strong><span>Recorded games will appear here.</span></div>`}</div></article><article class="panel"><div class="panel-head"><div><h2>Quick actions</h2></div></div><div class="panel-body quick-list"><button class="quick-link" data-action="quick-team">${icon('plus')}<span><strong>Quick Match</strong><small>Choose all four participants</small></span></button><button class="quick-link" data-tab="debts">${icon('wallet')}<span><strong>Cafeteria debts</strong><small>Track unpaid purchases and partial payments</small></span></button><button class="quick-link" data-action="add-nazih">${icon('wallet')}<span><strong>Log matchmaking revenue</strong><small>Separate revenue and commission by matchmaker</small></span></button><button class="quick-link" data-tab="other">${icon('gift')}<span><strong>Other player benefits</strong><small>Free game eligibility</small></span></button><button class="quick-link" data-tab="settings">${icon('settings')}<span><strong>Management settings</strong><small>Members and secure resets</small></span></button></div></article></section>`}
 function teamCategoryOptions(){return '<option value=all>All teams</option>'+TEAM_GROUPS.map(([id,name])=>'<option value='+id+(state.teamCategoryFilter===id?' selected':'')+'>'+esc(name)+'</option>').join('');}
 function groupedMemberCards(members,selected){let out='';for(const [key,label] of TEAM_GROUPS){if(state.teamCategoryFilter!=='all'&&state.teamCategoryFilter!==key)continue;const group=members.filter(m=>(m.team_category||'team')===key);if(!group.length)continue;out+='<section class=team-category-section><div class=team-category-heading><h2>'+esc(label)+'</h2><span>'+group.length+' members</span></div><div class=member-grid>'+group.map(m=>memberCard(m,selected)).join('')+'</div></section>';}return out||'<div class=panel-empty>No matching members.</div>';}
@@ -985,6 +1029,27 @@ function settingsPage(){
 }
 function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'cafeteria-finances':return cafeteriaFinances.page();case'cafeteria-payments':return state.staff?.role==='admin'?cafeteriaPayments.page()+cafeteriaTodo.page():dashboard();case'debts':return debtPage();case'consignment':return consignmentInventory.page();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
 let lastRenderedMarkup=null,lastRenderedTab=null;
+// Mobile card conversion is presentation-only. Preserve every DOM node, form and action.
+function enhanceResponsiveTables(root){
+ const selectors='.private-daily-table,.debt-daily-table,.debt-transactions,.private-ledger-table,.report-comparison-table,.po-overview-sessions';
+ for(const table of root.querySelectorAll(selectors)){
+  if(!table.classList.contains('data-table'))continue;
+  table.classList.add('po-mobile-card-table');
+  const labels=[...table.querySelectorAll('thead tr:first-child th')].map(th=>th.textContent.trim());
+  for(const row of table.querySelectorAll('tbody tr')){
+   const cells=[...row.children].filter(node=>node.tagName==='TD');
+   if(cells.length===1&&cells[0].colSpan>1){cells[0].classList.add('po-mobile-empty-cell');continue;}
+   for(const [index,cell] of cells.entries()){
+    if(!cell.dataset.label)cell.dataset.label=labels[index]||'Details';
+    if(cell.querySelector(':scope > .po-mobile-cell-value'))continue;
+    const value=document.createElement('span');
+    value.className='po-mobile-cell-value';
+    while(cell.firstChild)value.appendChild(cell.firstChild);
+    cell.append(value);
+   }
+  }
+ }
+}
 function render(){
  if(state.staff&&!canAccessTab(state.tab,state.staff.role))state.tab='dashboard';
  if(routeInitialized&&state.staff){syncBrowserRoute(state.tab);document.title='PADEL ON · '+titleFor();}
@@ -996,6 +1061,8 @@ function render(){
  const scroll=lastRenderedTab===state.tab?
   scrollPreservation.captureScrollPosition(app,window):null;
  app.innerHTML=html;
+ enhanceResponsiveTables(app);
+ document.body.classList.toggle('mobile-menu-open',mobileMenuOpen);
  lastRenderedMarkup=html;lastRenderedTab=state.tab;
  if(scroll)scrollPreservation.restoreScrollPosition(app,window,scroll);
  if(searchFocus){const input=document.getElementById('global-search-input');input?.focus();if(cursor!==null)input?.setSelectionRange(cursor,cursor);}
@@ -1520,6 +1587,8 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  }
  switch(act){
  case 'sidebar-toggle':toggleDesktopSidebar();break;
+ case 'mobile-menu-toggle':setMobileMenuOpen(!mobileMenuOpen);break;
+ case 'mobile-menu-close':setMobileMenuOpen(false);break;
  case 'open-reem-items':
   if(!canUseOrderLists())throw Error('Authorized staff only.');
   state.tab='reem-items';state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});break;
@@ -1732,7 +1801,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'prev-month':state.month=shiftMonth(state.month,-1);render();break;
  case 'next-month':if(state.month<monthKey(today())){state.month=shiftMonth(state.month,1);render()}break;
  case 'export-finance':exportFinance();break;
- case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;routeInitialized=false;cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();consignmentInventory.reset();shiftHandover.reset();tournamentManagement.reset();clubInsights.reset();compareClubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
+ case 'signout':{mobileMenuOpen=false;document.body.classList.remove('mobile-menu-open');clearStaffActivity();const logout=api.signOut();state.staff=null;routeInitialized=false;cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();consignmentInventory.reset();shiftHandover.reset();tournamentManagement.reset();clubInsights.reset();compareClubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
  }}
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
@@ -1980,6 +2049,7 @@ document.addEventListener('keydown',e=>{
   }
   return;
  }
+ if(e.key==='Escape'&&mobileMenuOpen){setMobileMenuOpen(false);return;}
  if(e.key==='Escape'&&state.globalSearchOpen){state.globalSearchOpen=false;state.globalSearchQuery='';render();return;}
  if(e.key==='Escape'&&state.modal)closeModal();
 });

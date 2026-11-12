@@ -27,32 +27,58 @@ try{
  await page.locator('#login-form [name=password]').fill(password);
  await page.locator('#login-form button[type=submit]').click();
  await page.locator('.app-layout').waitFor({state:'visible',timeout:30_000});
- // Check every main screen without making payments or changing client records.
- for(const [key,title] of tabs){
-  const button=page.locator('.sidebar [data-tab="'+key+'"]');
-  await button.click();
+ // Check every authorized desktop screen without changing any records.
+ const visibleTabs=await page.locator('.sidebar [data-tab]').evaluateAll(nodes=>nodes.map(n=>n.dataset.tab));
+ for(const [key,title] of tabs.filter(([key])=>visibleTabs.includes(key))){
+  await page.locator('.sidebar [data-tab="'+key+'"]').click();
   await page.waitForFunction(expected=>document.querySelector('.topbar-main')?.textContent?.trim()===expected,title);
   assert.equal((await page.locator('.topbar-main').textContent()).trim(),title);
  }
- // Mobile mode must have distinct controls for cafeteria finances/debts.
+ // The mobile navigation is a drawer. Validate accessible routing at phone and tablet widths.
+ for(const width of [320,390,768]){
+  await page.setViewportSize({width,height:844});
+  const menu=page.locator('[data-action="mobile-menu-toggle"]');
+  await menu.waitFor({state:'visible'});
+  assert.equal(await menu.getAttribute('aria-expanded'),'false');
+  await menu.click();
+  const drawer=page.locator('#mobile-drawer');
+  await drawer.waitFor({state:'visible'});
+  assert.equal(await drawer.getAttribute('aria-hidden'),'false');
+  assert.equal(await drawer.locator('[data-tab="cafeteria-finances"]').count(),1);
+  assert.equal(await drawer.locator('[data-tab="debts"]').count(),1);
+  await drawer.locator('[data-action="mobile-menu-close"]').click();
+  assert.equal(await drawer.getAttribute('aria-hidden'),'true');
+  const metrics=await page.evaluate(()=>({
+   viewport:document.documentElement.clientWidth,
+   document:document.documentElement.scrollWidth
+  }));
+  assert.ok(metrics.document<=metrics.viewport+2,'Horizontal page overflow at '+width+'px: '+JSON.stringify(metrics));
+ }
  await page.setViewportSize({width:390,height:844});
- const nav=page.locator('.mobile-bar');
- await nav.waitFor({state:'visible'});
- for(const [key,label,title] of [
-  ['cafeteria-finances','Finances','Cafeteria Finances'],
-  ['debts','Debts','Cafeteria Debts'],
-  ['private-clients','Sessions','Private Sessions'],
-  ['tournament','Tournaments','Tournament Management'],
-  ['settings','Settings','Settings']
+ for(const [key,title] of [
+  ['cafeteria-finances','Cafeteria Finances'],
+  ['debts','Cafeteria Debts'],
+  ['private-clients','Private Sessions'],
+  ['tournament','Tournament Management'],
+  ['settings','Settings']
  ]){
-  const button=nav.locator('[data-tab="'+key+'"]');
-  assert.equal((await button.locator('span').textContent()).trim(),label);
+  await page.locator('[data-action="mobile-menu-toggle"]').click();
+  const button=page.locator('#mobile-drawer [data-tab="'+key+'"]');
   await button.click();
   await page.waitForFunction(expected=>document.querySelector('.topbar-main')?.textContent?.trim()===expected,title);
+  assert.equal(await page.locator('#mobile-drawer').getAttribute('aria-hidden'),'true');
  }
+ // The read-only timetable and its editable source list must coexist.
+ await page.locator('[data-action="mobile-menu-toggle"]').click();
+ await page.locator('#mobile-drawer [data-tab="cafeteria-finances"]').click();
+ const timetable=page.locator('[data-action="cafe-court-view"][data-view="timetable"]');
+ await timetable.waitFor({state:'visible',timeout:30_000});
+ await timetable.click();
+ assert.equal(await page.locator('.cafe-timetable-grid').count(),1);
+ assert.ok(await page.locator('.cafe-court-grid').count()>0);
  assert.deepEqual(errors,[], 'Browser JavaScript errors or CSP violations');
  // No financial mutations are performed during this test.
- console.log('Authenticated browser smoke passed: all desktop pages and key mobile tabs.');
+ console.log('Authenticated browser smoke passed: desktop permissions, mobile drawer, layouts and read-only court timetable.');
 } finally {
  await browser.close();
 }
