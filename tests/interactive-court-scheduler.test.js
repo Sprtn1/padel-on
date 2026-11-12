@@ -17,7 +17,7 @@ test('Thick hour lines and lighter half-hour lines are defined in the scheduler 
 
 test('Drag start times snap to half-hour and stay inside 9 AM–1 AM business window',()=>{
  assert.equal(courtSchedulerMove('09:00',60,28),'09:30');
- assert.equal(courtSchedulerMove('22:30',90,56),'23:00');
+ assert.equal(courtSchedulerMove('22:30',90,56),'23:30');
  assert.equal(courtSchedulerMove('00:00',60,56),'00:00');
  assert.equal(courtSchedulerMove('18:30',90,-28),'18:00');
  assert.equal(courtSchedulerMove('09:00',60,-200),'09:00');
