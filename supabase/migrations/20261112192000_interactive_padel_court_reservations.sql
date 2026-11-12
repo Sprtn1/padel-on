@@ -134,14 +134,15 @@ DECLARE
  v_old_start integer; v_old_end integer;
  v_other_start integer; v_other_end integer;
  v_new_end time;
+ v_business_date date;
  v_booking record; v_existing record;
 BEGIN
  IF auth.uid() IS NULL OR NOT public.is_staff() THEN RAISE EXCEPTION 'Staff authorization required'; END IF;
  IF p_entry_id IS NULL OR p_court NOT IN ('C1','C2','C3') OR p_court IS NULL THEN RAISE EXCEPTION 'Invalid court booking'; END IF;
  IF p_start IS NULL OR p_start !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' THEN RAISE EXCEPTION 'Invalid start time'; END IF;
  -- The daily lock is shared with the reservations table.
- SELECT entry_date INTO STRICT v_old.entry_date FROM public.cafeteria_finance_entries WHERE id=p_entry_id;
- PERFORM pg_advisory_xact_lock(hashtext('padelon_reservation_day'),v_old.entry_date - date '2000-01-01');
+ SELECT entry_date INTO STRICT v_business_date FROM public.cafeteria_finance_entries WHERE id=p_entry_id;
+ PERFORM pg_advisory_xact_lock(hashtext('padelon_reservation_day'),v_business_date - date '2000-01-01');
  SELECT * INTO v_old FROM public.cafeteria_finance_entries WHERE id=p_entry_id FOR UPDATE;
  IF NOT FOUND OR v_old.voided_at IS NOT NULL OR v_old.category<>'padel_courts'
   OR v_old.booking_start_time IS NULL OR v_old.booking_end_time IS NULL
