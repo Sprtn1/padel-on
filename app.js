@@ -968,6 +968,7 @@ function privateClientsPage(){
  const controls=btn(`${icon('plus')} Add Client`,'private-add-client','btn-primary')+(ready?btn(`${icon('download')} Export Client CSV`,'private-export','btn-light',!selected?'disabled':''):'');
  const headline=heading('Client coaching','Private Sessions','Track client IDs, coaching sessions, payments, prepaid credit, and outstanding balances.',controls);
  if(!ready)return `${headline}<div class="panel"><div class="panel-body"><div class="empty-prompt"><strong>${state.privateLoading?'Loading private sessions…':state.privateError?'Private Sessions unavailable':'Loading client records…'}</strong><span>${state.privateError?esc(state.privateError):'Client and coach records are visible only to authorized staff.'}</span>${state.privateError?btn('Try again','private-retry','btn-light'):''}</div></div></div>`;
+ const upcomingTrainingPanel=upcomingPrivateTrainingsPanel();
  const intro=`<section class="finance-grid four-up">${summaryCard('Active clients',active.length,'Client profiles','users',true)}${summaryCard('Sessions recorded',activeSessions.length,'Across all recorded dates','calendar')}${summaryCard('Client credit',amount(credit),'Prepaid balances','wallet')}${summaryCard('Outstanding',amount(owed),'Total amount owed','activity')}</section>`;
  const search=`<div class="private-directory-head">
  <label class="search">${icon('search')}<input id="private-client-search" placeholder="Search by name or client ID…" autocomplete="off" value="${esc(state.privateSearch)}"/></label>
@@ -984,7 +985,7 @@ function privateClientsPage(){
  }).join('')||'<div class="panel-empty">No matching clients.</div>';
  const panel=`<article class="panel private-directory"><div class="panel-head"><div><h2>Clients</h2><p>${rows.length} shown · ${active.length} active${state.privateListFilter==='owing'?' · outstanding balances only':''}</p></div></div>${search}<div class="private-client-list">${clientButtons}</div></article>`;
  if(!selected){
-  return `${headline}${intro}${privateDailySessionsPanel()}<div class="private-layout">${panel}<article class="panel"><div class="empty-prompt"><strong>${state.privateClients.length?'No clients match these filters':'No client records yet'}</strong><span>${state.privateClients.length?'Try All clients or clear the search to see the full list.':'Add a client to start tracking private coaching.'}</span>${state.privateClients.length?btn('Show All Clients','private-reset-filters','btn-light'):btn(`${icon('plus')} Add First Client`,'private-add-client','btn-primary')}</div></article></div>`;
+  return `${headline}${intro}${upcomingTrainingPanel}${privateDailySessionsPanel()}<div class="private-layout">${panel}<article class="panel"><div class="empty-prompt"><strong>${state.privateClients.length?'No clients match these filters':'No client records yet'}</strong><span>${state.privateClients.length?'Try All clients or clear the search to see the full list.':'Add a client to start tracking private coaching.'}</span>${state.privateClients.length?btn('Show All Clients','private-reset-filters','btn-light'):btn(`${icon('plus')} Add First Client`,'private-add-client','btn-primary')}</div></article></div>`;
  }
  const balance=privateClientBalance(selected),entries=privateClientEntries(selected.id),sessions=entries.filter(e=>e.entry_type==='session');
  let running=Number(selected.opening_balance_cents||0);
@@ -992,13 +993,14 @@ function privateClientsPage(){
  const details=`<div class="private-detail">
  <div class="private-detail-header"><div><div class="eyebrow">${esc(selected.client_code||'ID NOT ASSIGNED')}</div><h2>${esc(selected.name)}</h2><details class="private-client-notes" data-private-client-notes ${state.privateNotesOpen?'open':''}><summary>Internal notes</summary><p>${selected.notes?esc(selected.notes):'No internal notes saved.'}</p></details><p>${selected.contact?esc(selected.contact):'Client account'} · ${sessions.length} session${sessions.length===1?'':'s'}</p></div><div class="private-balance-box ${balance<0?'negative':''}"><small>${balance<0?'Outstanding':'Account credit'}</small><strong>${amount(Math.abs(balance))}</strong></div></div>
  <div class="private-client-actions">${btn(`${icon('plus')} Record Session`,'private-record-session','btn-primary',selected.active?'':'disabled')}${btn('Add Balance','private-add-balance','btn-light',selected.active?'':'disabled')}${btn('Edit Client','private-edit-client','btn-light')}${state.staff?.role==='admin'?btn('Close Balance','private-close-balance','btn-danger',balance>0?'':`disabled title="This account has no credit to return"`):''}</div>
- <div class="private-account-note">Balance = opening balance + top-ups + paid amounts − session fees. A negative balance is money owed by the client.</div>
+ <div class="private-account-note">Balance = opening balance + top-ups + paid amounts − session fees. Scheduled private trainings only affect balances after a completed session is recorded.</div>
+ ${privateScheduledTrainingPanel(selected)}
  <div class="panel-head private-ledger-head"><div><h2>Session & payment history</h2><p>${entries.length} session and payment entries</p></div></div>
  <div class="data-table-wrap"><table class="data-table private-ledger-table"><thead><tr><th>Date</th><th>Type / coach</th><th>Charge</th><th>Paid / top-up</th><th>Balance</th><th>Action</th></tr></thead><tbody>
  ${history.length?history.map(({entry:e,remaining:v})=>`<tr><td>${niceDay(e.entry_date)}</td><td><strong>${e.entry_type==='session'?'Private session':e.entry_type==='deposit'?'Balance top-up':'Balance closed'}</strong><br/><small>${e.entry_type==='session'?esc(privateCoachName(e.coach_id)):esc(e.notes||(e.entry_type==='deposit'?'Deposit':'Credit returned to client'))}</small>${e.entry_type==='session'&&e.notes?`<br/><small>${esc(e.notes)}</small>`:''}</td><td>${e.entry_type==='session'||e.entry_type==='balance_close'?amount(e.session_fee_cents):'—'}</td><td>${e.entry_type==='deposit'?amount(e.deposit_cents):e.entry_type==='session'?amount(e.paid_cents):'—'}</td><td class="${v<0?'private-negative':''}">${privateBalanceLabel(v)}</td><td>${state.staff?.role==='admin'?btn('Void','private-void-entry','btn-danger btn-xs',`data-id="${e.id}"`):'<span class="tiny">Recorded</span>'}</td></tr>`).join(''):'<tr><td colspan="6" class="panel-empty">No sessions or payments recorded yet.</td></tr>'}
  </tbody></table></div>
  </div>`;
- return `${headline}${intro}${privateDailySessionsPanel()}<div class="private-layout">${panel}<article class="panel">${details}</article></div>`;
+ return `${headline}${intro}${upcomingTrainingPanel}${privateDailySessionsPanel()}<div class="private-layout">${panel}<article class="panel">${details}</article></div>`;
 }
 
 function exportPrivateClientCSV(){
@@ -1782,6 +1784,19 @@ async function handleAction(target,event){const act=target.dataset.action,id=tar
  case 'private-add-client':if(!state.privateLoaded||state.privateError)throw Error('Private Sessions are unavailable. Try refreshing or contact an administrator.');openModal('private-client');break;
  case 'private-select-client':if(!state.privateClients.some(c=>c.id===id&&!c.deleted_at))throw Error('Client not found.');state.privateSelected=id;state.privateNotesOpen=false;render();break;
  case 'private-edit-client':if(!state.privateSelected)throw Error('Select a client.');openModal('private-client',null,{clientId:state.privateSelected});break;
+ case 'private-complete-training':{
+  if(!state.staff||!state.privateLoaded)throw Error('Private Sessions data is unavailable.');
+  const booking=state.privateBookings.find(b=>b.id===id&&b.status==='confirmed'&&!b.private_session_entry_id);
+  if(!booking)throw Error('Training booking is unavailable or already recorded.');
+  if(booking.business_date>today())throw Error('Complete the session on or after its date.');
+  const coachId=document.querySelector('[data-private-training-coach="'+id+'"]')?.value||
+   booking.private_coach_id||'';
+  if(!state.privateCoaches.some(c=>c.id===coachId&&c.active))
+   throw Error('Choose an active coach before recording this session.');
+  await api.rpc('club_private_training_complete',{p_booking_id:id,p_coach_id:coachId});
+  await loadPrivateClients();toast('Private training recorded in the client account.');
+  break;
+ }
  case 'private-record-session':if(!state.privateSelected)throw Error('Select a client.');if(!state.privateCoaches.some(c=>c.active))throw Error('Coaches are not set up. Run the private coach setup script.');openModal('private-session',null,{clientId:state.privateSelected});break;
  case 'private-add-balance':if(!state.privateSelected)throw Error('Select a client.');openModal('private-deposit',null,{clientId:state.privateSelected});break;
  case 'private-close-balance':{
