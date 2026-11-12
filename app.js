@@ -1826,6 +1826,10 @@ document.addEventListener('pointerup',e=>{
   void cafeteriaFinances.schedulerPointerUp(e).catch(error=>toast(error.message||'Move unsuccessful',true));
 });
 document.addEventListener('pointercancel',()=>cafeteriaFinances.schedulerCancelDrag());
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&state.tab==='cafeteria-finances'&&state.staff)
+  cafeteriaFinances.schedulerCloseEditor();
+});
 document.addEventListener('submit',async e=>{
   if(e.target.dataset?.shiftSave){
    e.preventDefault();
@@ -1904,6 +1908,7 @@ document.addEventListener('input',e=>{
    const field=document.getElementById('cpay-search');field?.focus();if(cursor!==null)field?.setSelectionRange(cursor,cursor);
    return;
   }
+ if(state.tab==='cafeteria-finances'&&cafeteriaFinances.schedulerPreviewEnd(e.target))return;
  if(state.tab==='cafeteria-finances'&&cafeteriaFinances.courtPricePreview(e.target))return;
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-list-search'){
   const caret=e.target.selectionStart;
@@ -2002,6 +2007,7 @@ document.addEventListener('toggle',e=>{
   cafeteriaFinances.rememberNote(e.target.dataset.cafeNote,e.target.open);
 },true);
 document.addEventListener('change',e=>{
+ if(state.tab==='cafeteria-finances'&&cafeteriaFinances.schedulerPreviewEnd(e.target))return;
  if(state.tab==='cafeteria-finances'&&cafeteriaFinances.courtPricePreview(e.target))return;
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-list-status'){
   try{tournamentManagement.searchList(e.target)}catch(err){toast(err.message||'Unable to filter tournaments.',true)}
