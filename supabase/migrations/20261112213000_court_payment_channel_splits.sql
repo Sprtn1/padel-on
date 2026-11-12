@@ -4,6 +4,7 @@ CREATE TABLE public.court_payment_splits (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  source_kind text NOT NULL CHECK (source_kind IN ('ledger','reservation')),
  source_id uuid NOT NULL,
+ booking_name text NOT NULL,
  payment_date date NOT NULL,
  amount_cents bigint NOT NULL CHECK (amount_cents>0 AND amount_cents<=100000000000),
  cash_cents bigint NOT NULL DEFAULT 0 CHECK (cash_cents>=0),
@@ -151,10 +152,10 @@ BEGIN
  END IF;
  IF v_old.id IS NULL THEN
   INSERT INTO public.court_payment_splits
-  (id,source_kind,source_id,payment_date,amount_cents,cash_cents,whish_cents,unpaid_cents,created_by)
-  VALUES(v_id,p_source_kind,p_source_id,v_date,p_total_cents,p_cash_cents,p_whish_cents,p_unpaid_cents,auth.uid());
+  (id,source_kind,source_id,booking_name,payment_date,amount_cents,cash_cents,whish_cents,unpaid_cents,created_by)
+  VALUES(v_id,p_source_kind,p_source_id,v_name,v_date,p_total_cents,p_cash_cents,p_whish_cents,p_unpaid_cents,auth.uid());
  ELSE
-  UPDATE public.court_payment_splits SET amount_cents=p_total_cents,cash_cents=p_cash_cents,
+  UPDATE public.court_payment_splits SET booking_name=v_name,amount_cents=p_total_cents,cash_cents=p_cash_cents,
     whish_cents=p_whish_cents,unpaid_cents=p_unpaid_cents,revision=revision+1,updated_at=now()
    WHERE id=v_id;
  END IF;
@@ -179,11 +180,7 @@ BEGIN
   IF v_whish IS NULL THEN
    INSERT INTO public.whish_ledger_entries
    (id,entry_date,entry_type,name,amount_cents,created_by,source_court_split_id)
-   VALUES(gen_random_uuid(),v_date,'deposit',
-    CASE WHEN p_source_kind='ledger' AND v_ledger.category<>'padel_courts'
-      THEN CASE v_ledger.category WHEN 'pickleball_courts' THEN 'Pickleball Courts' ELSE 'Basketball Courts' END
-      ELSE 'Padel Courts' END,
-    p_whish_cents,auth.uid(),v_id);
+   VALUES(gen_random_uuid(),v_date,'deposit','Padel Courts',p_whish_cents,auth.uid(),v_id);
   ELSE
    UPDATE public.whish_ledger_entries SET amount_cents=p_whish_cents,
     voided_at=NULL,voided_by=NULL,void_reason=NULL WHERE id=v_whish;
@@ -265,3 +262,34 @@ BEGIN
    v_start_cash+v_finance_in+v_court_adjust+v_private_in-v_finance_out-v_private_out END,
   'finance_count',v_finance_count,'private_count',v_private_count);
 END $$;
+
+-- Save a reservation and its payment allocation in one transaction, preventing
+-- a booking from existing without its selected payment split after an error.
+CREATE OR REPLACE FUNCTION public.padel_reservation_save_with_split(
+ p_id uuid,p_business_date date,p_court text,p_start text,p_duration integer,
+ p_customer text,p_notes text,p_status text,p_expected_revision integer,
+ p_payment_total_cents bigint,p_cash_cents bigint,p_whish_cents bigint,
+ p_unpaid_cents bigint,p_split_revision integer DEFAULT NULL,
+ p_update_payments boolean DEFAULT true)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+DECLARE v_id uuid;v_existing record;
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.is_staff()
+ THEN RAISE EXCEPTION 'Staff authorization required'; END IF;
+ IF p_update_payments AND p_status='cancelled'
+  AND (coalesce(p_cash_cents,0)>0 OR coalesce(p_whish_cents,0)>0)
+ THEN RAISE EXCEPTION 'A paid reservation cannot be cancelled without reversing its payments'; END IF;
+ v_id:=public.padel_reservation_save(
+  p_id,p_business_date,p_court,p_start,p_duration,
+  p_customer,p_notes,p_status,p_expected_revision);
+ IF p_update_payments AND p_status<>'cancelled' THEN
+  IF p_payment_total_cents IS NULL OR p_payment_total_cents<1 THEN
+   RAISE EXCEPTION 'Enter a court price before saving the payment breakdown'; END IF;
+  PERFORM public.court_payment_split_save(
+    'reservation',v_id,p_payment_total_cents,p_cash_cents,p_whish_cents,
+    p_unpaid_cents,p_split_revision,NULL);
+ END IF;
+ RETURN v_id;
+END $$;
+REVOKE EXECUTE ON FUNCTION public.padel_reservation_save_with_split(uuid,date,text,text,integer,text,text,text,integer,bigint,bigint,bigint,integer,boolean) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.padel_reservation_save_with_split(uuid,date,text,text,integer,text,text,text,integer,bigint,bigint,bigint,integer,boolean) TO authenticated;
