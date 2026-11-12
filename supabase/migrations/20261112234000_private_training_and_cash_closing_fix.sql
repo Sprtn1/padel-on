@@ -200,5 +200,4 @@ begin
    case when v_record.day_date is null then null else jsonb_build_object('status',v_record.status) end,
    jsonb_build_object('status',v_next,'reason',nullif(btrim(coalesce(p_reason,'')),'')));
  return v_next;
-end$function$
-
+end$function$;
