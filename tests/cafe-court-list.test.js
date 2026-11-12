@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cafeCourtListEntries,cafeTotals} from '../lib/cafeteria-finances.js';
+import {createCafeteriaFinances,cafeCourtListEntries,cafeTotals} from '../lib/cafeteria-finances.js';
 
 const booked=(id,sport,other={})=>({
  id,business_date:'2026-11-12',sport,booking_type:'reservation',status:'confirmed',
@@ -39,4 +39,29 @@ test('voided financial entries are not restored by the merged list',()=>{
  const ledger=[{id:'void',category:'padel_courts',voided_at:'2026-11-13T00:00:00Z',amount_cents:2500},
   {id:'active',category:'padel_courts',amount_cents:2500}];
  assert.deepEqual(cafeCourtListEntries(ledger,[],'padel_courts','padel').map(r=>r.id),['active']);
+});
+
+test('finance List renders a timetable reservation without counting it as income',async()=>{
+ const api={
+  getSession:()=>({access_token:'token'}),
+  listAll:async(table)=>{
+   if(table==='padel_court_reservations')return [
+    booked('booked-from-grid','padel',{customer_name:'Guest & Friends',court_number:'C2'})];
+   if(table==='cafeteria_finance_entries')return [
+    {id:'cashbook',category:'padel_courts',name:'Recorded receipt',
+     amount_cents:2500,booking_start_time:'11:00',checkmarks:[false,false,false,false]}];
+   if(table==='cafeteria_finance_days')return [];
+   if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
+   return [];
+  }
+ };
+ const finance=createCafeteriaFinances({api,heading:()=>'',icon:()=>'',amount:v=>'$'+(v/100).toFixed(2),
+  today:()=> '2026-11-12',addDays:()=> '2026-11-11',rerender:()=>{},toast:()=>{},isAdmin:()=>false});
+ await finance.load();
+ const html=finance.page();
+ assert.match(html,/Guest &amp; Friends/);
+ assert.match(html,/data-action="cafe-open-planned" data-id="booked-from-grid" data-sport="padel"/);
+ assert.match(html,/Scheduled only · not a cashbook receipt/);
+ assert.match(html,/Recorded income \(including private payments\)<\/span><strong>\$25\.00<\/strong>/);
+ assert.doesNotMatch(html,/Guest & Friends/);
 });
