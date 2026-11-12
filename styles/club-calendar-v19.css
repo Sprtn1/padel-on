@@ -131,3 +131,45 @@
 @media(prefers-reduced-motion:reduce){
  .cafe-scheduler .cafe-scheduler-event{transition:none!important;animation:none!important}
 }
+
+/* Private-client coaching is scheduled separately from court receipts. */
+.cafe-scheduler .cafe-timeboard-booking.schedule-training{
+ color:#4b3b79;background:#ede7fa;border-color:#a999da;
+}
+.cafe-scheduler-legend .schedule-training::before{background:#ede7fa;border-color:#a999da}
+.cafe-scheduler-dialog .cafe-private-training-fields{
+ display:grid;gap:12px;padding:13px;border:1px solid #dcd3ee;
+ border-radius:12px;background:#faf8fe;
+}
+.cafe-scheduler-dialog .cafe-private-training-fields[hidden],
+.cafe-scheduler-dialog .cafe-customer-field[hidden],
+.cafe-scheduler-dialog .cafe-scheduler-payment-fieldset[hidden]{display:none!important}
+.cafe-private-training-note{margin:0;color:#64577f;font-size:12px;line-height:1.55}
+.cafe-private-training-fields select,.cafe-private-training-fields input{min-width:0;max-width:100%}
+.cafe-scheduler-dialog .cafe-private-training-fields label{font-size:12px}
+.private-scheduled-bookings{margin:15px 0 20px;border:1px solid #e6deef;border-radius:13px;overflow:hidden}
+.private-scheduled-bookings .private-scheduled-head{
+ display:flex;gap:10px;align-items:center;justify-content:space-between;
+ padding:12px 14px;background:#f7f3fd;border-bottom:1px solid #ece6f3;
+}
+.private-scheduled-bookings .private-scheduled-head h3{font-size:14px;color:#57447c;margin:0}
+.private-scheduled-bookings .private-scheduled-head p{font-size:11px;color:#80718e;margin:4px 0 0}
+.private-training-list{display:grid;gap:0}
+.private-training-item{display:grid;gap:7px;align-items:center;
+ grid-template-columns:minmax(0,1.4fr) minmax(0,.8fr) auto;
+ padding:12px 14px;border-bottom:1px solid #ece7f3;font-size:12px}
+.private-training-item:last-child{border-bottom:0}
+.private-training-item strong{color:#513e72;font-size:12px}
+.private-training-item small{display:block;color:#777086;margin-top:3px}
+.private-training-fee{white-space:nowrap;text-align:right;color:#55437e;font-weight:750}
+.private-training-actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.private-training-actions select{max-width:165px;padding:7px;border:1px solid #ddd4eb;
+ border-radius:8px;font-size:12px;background:#fff}
+.private-training-empty{padding:12px 14px;color:#746c7d;font-size:12px}
+@media(max-width:720px){
+ .private-training-item{grid-template-columns:1fr auto;gap:7px}
+ .private-training-actions{grid-column:1/-1;justify-content:flex-start}
+}
+@media(max-width:440px){.private-training-item{grid-template-columns:1fr}
+ .private-training-fee{text-align:left}
+}
