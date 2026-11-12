@@ -324,5 +324,5 @@ BEGIN
  END IF;
  RETURN v_id;
 END $$;
-REVOKE EXECUTE ON FUNCTION public.padel_reservation_save_with_split(uuid,date,text,text,integer,text,text,text,integer,bigint,bigint,bigint,integer,boolean) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.padel_reservation_save_with_split(uuid,date,text,text,integer,text,text,text,integer,bigint,bigint,bigint,integer,boolean) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.padel_reservation_save_with_split(uuid,date,text,text,integer,text,text,text,integer,bigint,bigint,bigint,bigint,integer,boolean) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.padel_reservation_save_with_split(uuid,date,text,text,integer,text,text,text,integer,bigint,bigint,bigint,bigint,integer,boolean) TO authenticated;
