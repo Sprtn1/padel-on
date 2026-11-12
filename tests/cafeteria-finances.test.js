@@ -99,7 +99,7 @@ test('page shows saved cash, auto Goods Sold and six basketball player-paid tick
   getSession:()=>({access_token:'token'}),
   listAll:async(table)=>table==='cafeteria_finance_days'?[{closing_cash_cents:5000}]:
      table==='whish_wallet_settings'?[{opening_balance_cents:60}]:
-     table==='whish_ledger_entries'?[]:entries
+     (table==='whish_ledger_entries'||table==='court_payment_splits'||table==='court_payment_cash_movements')?[]:entries
  };
  const widget=createCafeteriaFinances({
   api,heading:()=>'<h1>Cafeteria Finances</h1>',icon:()=>'',amount:cents=>'$'+(cents/100).toFixed(2),
@@ -220,7 +220,8 @@ test('private payments render as a read-only daily table and update on refresh',
     {id:'pay-1',entry_type:'session',entry_date:'2026-10-21',client_id:'client1',paid_cents:2500,session_fee_cents:8000},
     ...(extraPayment?[{id:'pay-2',entry_type:'deposit',entry_date:'2026-10-21',client_id:'client1',deposit_cents:extraPayment}]:[])
    ];
-   throw Error('Unexpected source '+table);
+   if(table==='court_payment_splits'||table==='court_payment_cash_movements')return [];
+    throw Error('Unexpected source '+table);
   }
  };
  const widget=createCafeteriaFinances({
@@ -601,6 +602,7 @@ test('Arabic PDF export action downloads the selected daily data without writing
     if(table==='whish_ledger_entries')return wallet;
     if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
    if(table==='cafeteria_day_closings')return [];
+    if(table==='court_payment_splits'||table==='court_payment_cash_movements')return [];
     throw Error('Unexpected source '+table);
    },
    rpc:async(...args)=>writes.push(args)
