@@ -24,6 +24,7 @@ const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus,getMatchmakingFin
 const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = await import(`./lib/date.js?v=${assetVersion}`);
 const app=document.getElementById('app');
 let sidebarCollapsed=false;
+let mobileMenuOpen=false;
 let routeInitialized=false;
 try{sidebarCollapsed=readSidebarCollapsed(window.localStorage)}catch{}
 function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -185,6 +186,7 @@ function syncBrowserRoute(tab,{replace=false}={}){
 }
 async function navigateToTab(tab){
  if(!api.getSession()?.access_token||!state.staff||!canAccessTab(tab,state.staff.role))return;
+ if(mobileMenuOpen)setMobileMenuOpen(false,{restoreFocus:false});
  state.tab=tab;state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';
  render();window.scrollTo({top:0,behavior:'instant'});
  if(tab==='reports'){void loadClubSources();await loadReport();}
@@ -210,6 +212,21 @@ async function applyLocationRoute(){
 }
 window.addEventListener('popstate',()=>{void applyLocationRoute().catch(err=>toast(err.message||'Navigation failed',true));});
 window.addEventListener('hashchange',()=>{void applyLocationRoute().catch(err=>toast(err.message||'Navigation failed',true));});
+// Drawer operates in place so opening navigation never clears a half-filled form.
+function setMobileMenuOpen(open,{restoreFocus=true}={}){
+ mobileMenuOpen=Boolean(open);
+ const drawer=app.querySelector('#mobile-drawer');
+ if(!drawer)return;
+ drawer.classList.toggle('is-open',mobileMenuOpen);
+ drawer.setAttribute('aria-hidden',String(!mobileMenuOpen));
+ if(mobileMenuOpen)drawer.removeAttribute('inert');
+ else drawer.setAttribute('inert','');
+ document.body.classList.toggle('mobile-menu-open',mobileMenuOpen);
+ const trigger=app.querySelector('[data-action="mobile-menu-toggle"]');
+ trigger?.setAttribute('aria-expanded',String(mobileMenuOpen));
+ if(mobileMenuOpen)drawer.querySelector('[data-action="mobile-menu-close"]')?.focus();
+ else if(restoreFocus)trigger?.focus();
+}
 function toggleDesktopSidebar(){
  // Change layout in place to preserve forms, drafts, and scroll positions.
  sidebarCollapsed=!sidebarCollapsed;
@@ -259,7 +276,7 @@ function globalSearchOverlay(){
 }
 function shell(){
  const name=state.staff?.email?.split('@')[0]||'Staff';
- return `<div class="app-layout ${sidebarCollapsed?'sidebar-collapsed':''}"><aside class="sidebar" aria-label="Primary navigation"><div class="sidebar-panel"><div class="sidebar-header"><div class="sidebar-brand"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><span class="brand-compact" aria-hidden="true">PO</span></div><button type="button" class="sidebar-toggle" data-action="sidebar-toggle" aria-controls="sidebar-menu" aria-label="${sidebarToggleLabel(sidebarCollapsed)}" title="${sidebarToggleLabel(sidebarCollapsed)}" aria-expanded="${!sidebarCollapsed}">${icon(sidebarCollapsed?'chevronRight':'chevronLeft')}</button></div><div class="brand-sub">Club management</div><nav class="menu" id="sidebar-menu" aria-label="Sections">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></div></aside><main class="main"><header class="topbar"><div><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='consignment'||state.tab==='tournament'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><nav class="mobile-bar" aria-label="Mobile navigation"><div class="mobile-nav-scroll">${navMarkup(true)}</div><button type="button" class="mobile-nav mobile-settings-nav ${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'active':''}" data-tab="settings" aria-current="${state.tab==='settings'||state.tab==='order-counter'||state.tab==='reem-items'?'page':'false'}" aria-label="Settings">${icon('settings')}<span>Settings</span></button></nav></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
+ return `<div class="app-layout ${sidebarCollapsed?'sidebar-collapsed':''}"><aside class="sidebar" aria-label="Primary navigation"><div class="sidebar-panel"><div class="sidebar-header"><div class="sidebar-brand"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><span class="brand-compact" aria-hidden="true">PO</span></div><button type="button" class="sidebar-toggle" data-action="sidebar-toggle" aria-controls="sidebar-menu" aria-label="${sidebarToggleLabel(sidebarCollapsed)}" title="${sidebarToggleLabel(sidebarCollapsed)}" aria-expanded="${!sidebarCollapsed}">${icon(sidebarCollapsed?'chevronRight':'chevronLeft')}</button></div><div class="brand-sub">Club management</div><nav class="menu" id="sidebar-menu" aria-label="Sections">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></div></aside><main class="main"><header class="topbar"><button type="button" class="mobile-menu-toggle" data-action="mobile-menu-toggle" aria-label="Open navigation menu" aria-controls="mobile-drawer" aria-expanded="${mobileMenuOpen}">${icon("menu")}</button><div class="topbar-identity"><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='consignment'||state.tab==='tournament'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><div id="mobile-drawer" class="mobile-drawer ${mobileMenuOpen?'is-open':''}" aria-hidden="${!mobileMenuOpen}" ${mobileMenuOpen?'':'inert'}><button type="button" class="mobile-drawer-backdrop" data-action="mobile-menu-close" aria-label="Close navigation menu"></button><aside class="mobile-drawer-panel" aria-label="Mobile sections"><div class="mobile-drawer-header"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><button class="mobile-menu-close" type="button" data-action="mobile-menu-close" aria-label="Close menu">${icon('close')}</button></div><div class="mobile-drawer-title">Club management</div><nav class="mobile-drawer-links" aria-label="All sections">${navMarkup(false)}</nav><div class="mobile-drawer-account"><span class="avatar">${esc(initials(name))}</span><div><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div></div></aside></div></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
 }
 function heading(eyebrow,title,desc,actions=''){return `<div class="heading-row"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${desc}</p></div>${actions?`<div class="heading-actions">${actions}</div>`:''}</div>`}
 function summaryCard(label,num,sub,ico,feature=false){return `<article class="summary-card ${feature?'feature':''}"><div class="card-top"><span class="label">${label}</span><span class="metric-icon">${icon(ico)}</span></div><div class="metric num">${num}</div><div class="submetric">${sub}</div></article>`}
@@ -996,6 +1013,7 @@ function render(){
  const scroll=lastRenderedTab===state.tab?
   scrollPreservation.captureScrollPosition(app,window):null;
  app.innerHTML=html;
+ document.body.classList.toggle('mobile-menu-open',mobileMenuOpen);
  lastRenderedMarkup=html;lastRenderedTab=state.tab;
  if(scroll)scrollPreservation.restoreScrollPosition(app,window,scroll);
  if(searchFocus){const input=document.getElementById('global-search-input');input?.focus();if(cursor!==null)input?.setSelectionRange(cursor,cursor);}
@@ -1520,6 +1538,8 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  }
  switch(act){
  case 'sidebar-toggle':toggleDesktopSidebar();break;
+ case 'mobile-menu-toggle':setMobileMenuOpen(!mobileMenuOpen);break;
+ case 'mobile-menu-close':setMobileMenuOpen(false);break;
  case 'open-reem-items':
   if(!canUseOrderLists())throw Error('Authorized staff only.');
   state.tab='reem-items';state.modal=null;render();window.scrollTo({top:0,behavior:'instant'});break;
@@ -1732,7 +1752,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'prev-month':state.month=shiftMonth(state.month,-1);render();break;
  case 'next-month':if(state.month<monthKey(today())){state.month=shiftMonth(state.month,1);render()}break;
  case 'export-finance':exportFinance();break;
- case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;routeInitialized=false;cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();consignmentInventory.reset();shiftHandover.reset();tournamentManagement.reset();clubInsights.reset();compareClubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
+ case 'signout':{mobileMenuOpen=false;document.body.classList.remove('mobile-menu-open');clearStaffActivity();const logout=api.signOut();state.staff=null;routeInitialized=false;cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();consignmentInventory.reset();shiftHandover.reset();tournamentManagement.reset();clubInsights.reset();compareClubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
  }}
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
@@ -1980,6 +2000,7 @@ document.addEventListener('keydown',e=>{
   }
   return;
  }
+ if(e.key==='Escape'&&mobileMenuOpen){setMobileMenuOpen(false);return;}
  if(e.key==='Escape'&&state.globalSearchOpen){state.globalSearchOpen=false;state.globalSearchQuery='';render();return;}
  if(e.key==='Escape'&&state.modal)closeModal();
 });
