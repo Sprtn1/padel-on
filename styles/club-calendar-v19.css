@@ -173,3 +173,36 @@
 @media(max-width:440px){.private-training-item{grid-template-columns:1fr}
  .private-training-fee{text-align:left}
 }
+
+
+/* Reservation list: scheduled items are visible but are never financial receipts. */
+.cafe-planned-entry{border-left:3px solid #7ab89a;background:#f7fbf8}
+.cafe-planned-entry .cafe-ledger-row{gap:12px;align-items:center}
+.cafe-planned-entry .cafe-entry-description{min-width:0;overflow-wrap:anywhere}
+.cafe-planned-entry .cafe-entry-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:7px}
+.cafe-planned-pill{display:inline-block;padding:5px 9px;border-radius:20px;
+ color:#286a4b;background:#e5f4ea;font-size:10px;font-weight:750;white-space:normal;text-align:center}
+.cafe-planned-entry .btn{white-space:nowrap}
+
+/* iPhone: every calendar action gets its own usable grid cell; the CTA cannot clip. */
+@media(max-width:830px){
+ .cafe-scheduler-toolbar,.cafe-scheduler-toolbar>div{min-width:0;max-width:100%}
+ .cafe-scheduler-date-controls{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;width:100%;min-width:0}
+ .cafe-scheduler-date-controls>button,.cafe-scheduler-date-controls>input{
+  box-sizing:border-box;min-width:0;max-width:100%;width:100%;margin:0;white-space:nowrap}
+ .cafe-scheduler-date-controls>button:nth-of-type(1){grid-column:span 1}
+ .cafe-scheduler-date-controls>input{grid-column:span 4}
+ .cafe-scheduler-date-controls>button:nth-of-type(2){grid-column:span 1}
+ .cafe-scheduler-date-controls>button:nth-of-type(3),
+ .cafe-scheduler-date-controls>button:nth-of-type(4){grid-column:span 3}
+ .cafe-scheduler-date-controls>button.btn-primary{
+  grid-column:1/-1;min-height:43px;justify-self:stretch;overflow:visible;text-align:center}
+ /* Quick cash entry stays compact on List; timetable has no overlapping FAB. */
+ .cafe-quick-entry{left:auto;right:max(12px,env(safe-area-inset-right));max-width:calc(100vw - 24px)}
+ .cafe-quick-fab{display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 auto;width:max-content;max-width:100%;min-height:44px;
+  padding:11px 15px;border-radius:16px;font-size:12px;white-space:nowrap}
+ .cafe-quick-sheet{width:min(460px,calc(100vw - 28px));max-width:100%}
+ .cafe-planned-entry .cafe-ledger-row{flex-wrap:wrap}
+ .cafe-planned-entry .cafe-entry-actions{justify-content:space-between;width:100%}
+}
