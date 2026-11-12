@@ -11,6 +11,7 @@ CREATE TABLE public.court_payment_splits (
  whish_cents bigint NOT NULL DEFAULT 0 CHECK (whish_cents>=0),
  unpaid_cents bigint NOT NULL DEFAULT 0 CHECK (unpaid_cents>=0),
  revision integer NOT NULL DEFAULT 1,
+ voided_at timestamptz,
  updated_at timestamptz NOT NULL DEFAULT now(),
  created_by uuid NOT NULL REFERENCES auth.users(id),
  UNIQUE(source_kind,source_id),
@@ -61,8 +62,7 @@ BEGIN
  IF OLD.category IN ('padel_courts','pickleball_courts','basketball_courts')
   AND EXISTS(SELECT 1 FROM public.court_payment_splits p
    WHERE p.source_kind='ledger' AND p.source_id=OLD.id)
-  AND (NEW.amount_cents IS DISTINCT FROM OLD.amount_cents
-     OR NEW.voided_at IS DISTINCT FROM OLD.voided_at)
+  AND NEW.amount_cents IS DISTINCT FROM OLD.amount_cents
   AND current_setting('app.court_split_internal',true) IS DISTINCT FROM 'yes'
  THEN RAISE EXCEPTION 'Edit amount or payments through the court Cash/Whish breakdown first.';
  END IF;
@@ -71,12 +71,40 @@ END $$;
 CREATE TRIGGER court_split_ledger_amount_guard BEFORE UPDATE ON public.cafeteria_finance_entries
 FOR EACH ROW EXECUTE FUNCTION public.court_split_guard_ledger();
 
+-- Preserve the existing administrator void action, including its Cash/Whish corrections.
+CREATE OR REPLACE FUNCTION public.court_split_sync_void_finance()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $
+DECLARE v_split public.court_payment_splits%rowtype;v_net bigint;
+BEGIN
+ IF OLD.voided_at IS NULL AND NEW.voided_at IS NOT NULL THEN
+  SELECT * INTO v_split FROM public.court_payment_splits
+   WHERE source_kind='ledger' AND source_id=NEW.id AND voided_at IS NULL FOR UPDATE;
+  IF FOUND THEN
+   SELECT coalesce(sum(cash_delta_cents),0) INTO v_net
+    FROM public.court_payment_cash_movements WHERE split_id=v_split.id;
+   IF v_net<>0 THEN
+    INSERT INTO public.court_payment_cash_movements(split_id,entry_date,cash_delta_cents,created_by)
+     VALUES(v_split.id,NEW.entry_date,-v_net,auth.uid());
+   END IF;
+   UPDATE public.court_payment_splits SET voided_at=now(),updated_at=now() WHERE id=v_split.id;
+   PERFORM set_config('app.court_split_internal','yes',true);
+   UPDATE public.whish_ledger_entries SET voided_at=now(),voided_by=auth.uid(),
+    void_reason='Source court finance entry voided' WHERE source_court_split_id=v_split.id
+    AND voided_at IS NULL;
+   PERFORM set_config('app.court_split_internal','no',true);
+  END IF;
+ END IF;
+ RETURN NEW;
+END $;
+CREATE TRIGGER court_split_finance_void_sync AFTER UPDATE OF voided_at ON public.cafeteria_finance_entries
+FOR EACH ROW EXECUTE FUNCTION public.court_split_sync_void_finance();
+
 CREATE OR REPLACE FUNCTION public.court_split_guard_reservation()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
 BEGIN
  IF NEW.status='cancelled' AND OLD.status<>'cancelled'
  AND EXISTS(SELECT 1 FROM public.court_payment_splits p WHERE p.source_kind='reservation'
-  AND p.source_id=OLD.id AND (p.cash_cents>0 OR p.whish_cents>0)) THEN
+  AND p.source_id=OLD.id AND p.voided_at IS NULL AND (p.cash_cents>0 OR p.whish_cents>0)) THEN
   RAISE EXCEPTION 'Reservation has collected payments. Reverse them before cancelling.';
  END IF;
  RETURN NEW;
@@ -155,7 +183,7 @@ BEGIN
   (id,source_kind,source_id,booking_name,payment_date,amount_cents,cash_cents,whish_cents,unpaid_cents,created_by)
   VALUES(v_id,p_source_kind,p_source_id,v_name,v_date,p_total_cents,p_cash_cents,p_whish_cents,p_unpaid_cents,auth.uid());
  ELSE
-  UPDATE public.court_payment_splits SET booking_name=v_name,amount_cents=p_total_cents,cash_cents=p_cash_cents,
+  UPDATE public.court_payment_splits SET booking_name=v_name,voided_at=NULL,amount_cents=p_total_cents,cash_cents=p_cash_cents,
     whish_cents=p_whish_cents,unpaid_cents=p_unpaid_cents,revision=revision+1,updated_at=now()
    WHERE id=v_id;
  END IF;
@@ -282,6 +310,11 @@ BEGIN
  v_id:=public.padel_reservation_save(
   p_id,p_business_date,p_court,p_start,p_duration,
   p_customer,p_notes,p_status,p_expected_revision);
+ IF p_status='cancelled' THEN
+  UPDATE public.court_payment_splits SET voided_at=now(),updated_at=now()
+   WHERE source_kind='reservation' AND source_id=v_id AND voided_at IS NULL
+    AND cash_cents=0 AND whish_cents=0;
+ END IF;
  IF p_update_payments AND p_status<>'cancelled' THEN
   IF p_payment_total_cents IS NULL OR p_payment_total_cents<1 THEN
    RAISE EXCEPTION 'Enter a court price before saving the payment breakdown'; END IF;
