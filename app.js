@@ -1764,7 +1764,7 @@ async function handleAction(target){const act=target.dataset.action,id=target.da
  case 'prev-month':state.month=shiftMonth(state.month,-1);render();break;
  case 'next-month':if(state.month<monthKey(today())){state.month=shiftMonth(state.month,1);render()}break;
  case 'export-finance':exportFinance();break;
- case 'signout':{clearStaffActivity();const logout=api.signOut();state.staff=null;routeInitialized=false;cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();consignmentInventory.reset();shiftHandover.reset();tournamentManagement.reset();clubInsights.reset();compareClubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
+ case 'signout':{setMobileMenu(false,false);clearStaffActivity();const logout=api.signOut();state.staff=null;routeInitialized=false;cafeteriaFinances.reset();cafeteriaPayments.reset();cafeteriaTodo.reset();consignmentInventory.reset();shiftHandover.reset();tournamentManagement.reset();clubInsights.reset();compareClubInsights.reset();state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';renderAuth();await logout;break;}
  }}
 // Delegate events so every newly rendered interactive component works.
 document.addEventListener('click',async e=>{
