@@ -49,7 +49,7 @@ function canAutoRender(){
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
-const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,reportCompare:false,reportCompareDay:addDays(todayBeirut(),-1),reportCompareWeek:addDays(weekStart(todayBeirut()),-7),reportCompareMonth:shiftMonth(monthKey(todayBeirut()),-1),reportCompareData:null,reportCompareKey:'',trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateNotesOpen:false,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',debtDay:todayBeirut(),settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
+const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,reportCompare:false,reportCompareDay:addDays(todayBeirut(),-1),reportCompareWeek:addDays(weekStart(todayBeirut()),-7),reportCompareMonth:shiftMonth(monthKey(todayBeirut()),-1),reportCompareData:null,reportCompareKey:'',trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateBookings:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateNotesOpen:false,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',debtDay:todayBeirut(),settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
 // The daily cashbook owns its own dated Supabase query and does not mix with other ledgers.
 const consignmentInventory=consignmentModule.createConsignmentInventory({
  api,heading,icon,toast,
@@ -901,6 +901,60 @@ function privateDailySessionsPanel(){
  ${dailyDeposits.length?`<div class="panel-head private-daily-table-title"><div><h2>Balance top-ups</h2><p>Deposits recorded this day, separate from session payments</p></div></div><div class="data-table-wrap"><table class="data-table private-daily-table"><thead><tr><th>Client / ID</th><th>Amount added</th><th>Notes</th><th>Account</th></tr></thead><tbody>${depositRows}</tbody></table></div>`:''}
  </article>`;
 }
+function privateScheduledTrainingPanel(client){
+ const bookings=state.privateBookings.filter(b=>
+  b.private_client_id===client.id&&b.status!=='cancelled')
+  .sort((a,b)=>a.business_date.localeCompare(b.business_date)||
+    String(a.booking_start_time).localeCompare(String(b.booking_start_time)));
+ if(!bookings.length)return '';
+ const current=today();
+ const options=value=>'<option value="">Choose coach</option>'+state.privateCoaches.filter(c=>c.active)
+   .map(c=>'<option value="'+esc(c.id)+'" '+(c.id===value?'selected':'')+'>'+
+    esc(c.name+' · '+c.category)+'</option>').join('');
+ const rows=bookings.map(b=>{
+  const entry=b.private_session_entry_id?
+   state.privateEntries.find(e=>e.id===b.private_session_entry_id&&!e.voided_at):null;
+  const status=entry?'Recorded in private ledger':b.status==='tentative'?'Tentative':
+   b.business_date>current?'Upcoming':'Awaiting completion';
+  const due=!entry&&b.status==='confirmed'&&b.business_date<=current&&!b.private_session_entry_id;
+  return '<div class="private-training-item"><div><strong>'+esc(niceDay(b.business_date))+
+   ' · '+esc(String(b.booking_start_time||'').slice(0,5))+'–'+esc(String(b.booking_end_time||'').slice(0,5))+
+   '</strong><small>'+esc((b.sport||'padel')+' · '+b.court_number)+
+   ' · '+esc(status)+(b.notes?' · '+esc(b.notes):'')+'</small></div>'+
+   '<div class="private-training-fee">'+amount(b.private_session_fee_cents||0)+
+   '<small>Session fee · not a court receipt</small></div>'+
+   '<div class="private-training-actions">'+(due?
+    '<select aria-label="Coach for '+esc(client.name)+' training" data-private-training-coach="'+esc(b.id)+'">'+
+      options(b.private_coach_id)+'</select>'+
+    btn('Record completed session','private-complete-training','btn-primary btn-xs', 'data-id="'+esc(b.id)+'"'):
+    '<small>'+esc(status)+'</small>')+'</div></div>';
+ }).join('');
+ return '<section class="private-scheduled-bookings"><div class="private-scheduled-head"><div>'+
+  '<h3>Private training reservations</h3><p>'+bookings.length+
+  ' bookings · only recorded sessions affect the account balance</p></div></div>'+
+  '<div class="private-training-list">'+rows+'</div></section>';
+}
+function upcomingPrivateTrainingsPanel(){
+ const upcoming=state.privateBookings.filter(b=>b.status!=='cancelled'&&
+  !b.private_session_entry_id&&b.business_date>=today())
+  .sort((a,b)=>a.business_date.localeCompare(b.business_date)||
+   String(a.booking_start_time).localeCompare(String(b.booking_start_time)));
+ if(!upcoming.length)return '';
+ const rows=upcoming.slice(0,12).map(b=>{
+  const client=state.privateClients.find(c=>c.id===b.private_client_id&&!c.deleted_at);
+  return '<div class="private-training-item"><div><strong>'+esc(client?.name||'Private client')+
+    '</strong><small>'+esc(niceDay(b.business_date))+' · '+
+    esc(String(b.booking_start_time||'').slice(0,5))+' · '+esc((b.sport||'padel')+' '+b.court_number)+'</small></div>'+
+    '<div class="private-training-fee">'+amount(b.private_session_fee_cents||0)+'</div>'+
+    '<div class="private-training-actions">'+(client?
+     btn('View client','private-open-from-day','btn-light btn-xs','data-id="'+esc(client.id)+'"'):
+     '<small>Client unavailable</small>')+'</div></div>';
+ }).join('');
+ return '<section class="private-scheduled-bookings"><div class="private-scheduled-head"><div>'+
+  '<h3>Upcoming private training</h3><p>'+upcoming.length+
+  ' scheduled · charges are recorded only after completion</p></div></div>'+
+  '<div class="private-training-list">'+rows+'</div></section>';
+}
 function privateClientsPage(){
  const ready=state.privateLoaded&&!state.privateError;
  const rows=state.privateClients.filter(c=>!c.deleted_at&&(state.privateShowArchived||c.active)&&(state.privateListFilter!=='owing'||privateClientBalance(c)<0)&&(!state.privateSearch||[c.name,c.client_code,c.contact].some(v=>String(v||'').toLowerCase().includes(state.privateSearch.toLowerCase())))).sort((a,b)=>comparePrivateClients(a,b));
@@ -1313,13 +1367,14 @@ async function loadPrivateClients({background=false}={}){
  state.privateLoading=true;state.privateError=null;
  if(state.tab==='private-clients'&&!state.privateLoaded&&!background)render();
  try{
-  const [clients,coaches,entries]=await Promise.all([
+  const [clients,coaches,entries,trainingBookings]=await Promise.all([
    api.listAll('private_clients'),
    api.listAll('private_coaches'),
-   api.listAll('private_ledger_entries')
+   api.listAll('private_ledger_entries'),
+   api.listAll('padel_court_reservations','private_client_id=not.is.null&order=business_date.asc,booking_start_time.asc')
   ]);
   if(!api.getSession()?.access_token||idleLogoutStarted)return;
-  state.privateClients=clients;state.privateCoaches=coaches;state.privateEntries=entries;
+  state.privateClients=clients;state.privateCoaches=coaches;state.privateEntries=entries;state.privateBookings=trainingBookings;
   state.privateLoaded=true;state.privateError=null;
   if(!clients.some(c=>c.id===state.privateSelected&&!c.deleted_at)){
    state.privateSelected=clients.find(c=>c.active&&!c.deleted_at)?.id||clients.find(c=>!c.deleted_at)?.id||null;
