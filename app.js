@@ -387,7 +387,7 @@ function overviewExtra(){
   return `<tr><td>${esc(client?.name||'Unknown client')}<br/><small>${esc(client?.client_code||'No client ID')}</small></td><td>${esc(privateCoachName(e.coach_id))}</td><td>${amount(e.session_fee_cents)}</td><td>${amount(e.paid_cents)}</td></tr>`;
  }).join('');
  const todayPanel=`<article class="panel"><div class="panel-head"><div><h2>Today's private sessions</h2><p>${niceDay(todayDate,{weekday:'long',month:'short',day:'numeric'})} · session fees and amounts received</p></div><button class="link" data-tab="private-clients">View daily log ${icon('arrow')}</button></div>
- <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Client</th><th>Coach</th><th>Charge</th><th>Paid</th></tr></thead>
+ <div class="data-table-wrap"><table class="data-table po-overview-sessions"><thead><tr><th>Client</th><th>Coach</th><th>Charge</th><th>Paid</th></tr></thead>
  <tbody>${!state.privateLoaded?'<tr><td colspan="4" class="panel-empty">'+(state.privateError?'Private sessions unavailable':'Loading private sessions…')+'</td></tr>':rows||'<tr><td colspan="4" class="panel-empty">No private sessions recorded today.</td></tr>'}</tbody></table></div></article>`;
  const commissions=`<article class="panel"><div class="panel-head"><div><h2>Pending matchmaking commissions</h2><p>${monthLabel(month)} · not marked as paid</p></div><button class="link" data-tab="finance">Matchmaking ${icon('arrow')}</button></div><div class="panel-body">
  <div class="management-commission-total">${amount(pending)}<small>${dueRows.length} unsettled person${dueRows.length===1?'':'s'}</small></div>
@@ -1029,6 +1029,27 @@ function settingsPage(){
 }
 function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'cafeteria-finances':return cafeteriaFinances.page();case'cafeteria-payments':return state.staff?.role==='admin'?cafeteriaPayments.page()+cafeteriaTodo.page():dashboard();case'debts':return debtPage();case'consignment':return consignmentInventory.page();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
 let lastRenderedMarkup=null,lastRenderedTab=null;
+// Mobile card conversion is presentation-only. Preserve every DOM node, form and action.
+function enhanceResponsiveTables(root){
+ const selectors='.private-daily-table,.debt-daily-table,.debt-transactions,.private-ledger-table,.report-comparison-table,.po-overview-sessions';
+ for(const table of root.querySelectorAll(selectors)){
+  if(!table.classList.contains('data-table'))continue;
+  table.classList.add('po-mobile-card-table');
+  const labels=[...table.querySelectorAll('thead tr:first-child th')].map(th=>th.textContent.trim());
+  for(const row of table.querySelectorAll('tbody tr')){
+   const cells=[...row.children].filter(node=>node.tagName==='TD');
+   if(cells.length===1&&cells[0].colSpan>1){cells[0].classList.add('po-mobile-empty-cell');continue;}
+   for(const [index,cell] of cells.entries()){
+    if(!cell.dataset.label)cell.dataset.label=labels[index]||'Details';
+    if(cell.querySelector(':scope > .po-mobile-cell-value'))continue;
+    const value=document.createElement('span');
+    value.className='po-mobile-cell-value';
+    while(cell.firstChild)value.appendChild(cell.firstChild);
+    cell.append(value);
+   }
+  }
+ }
+}
 function render(){
  if(state.staff&&!canAccessTab(state.tab,state.staff.role))state.tab='dashboard';
  if(routeInitialized&&state.staff){syncBrowserRoute(state.tab);document.title='PADEL ON · '+titleFor();}
@@ -1040,6 +1061,7 @@ function render(){
  const scroll=lastRenderedTab===state.tab?
   scrollPreservation.captureScrollPosition(app,window):null;
  app.innerHTML=html;
+ enhanceResponsiveTables(app);
  document.body.classList.toggle('mobile-menu-open',mobileMenuOpen);
  lastRenderedMarkup=html;lastRenderedTab=state.tab;
  if(scroll)scrollPreservation.restoreScrollPosition(app,window,scroll);
