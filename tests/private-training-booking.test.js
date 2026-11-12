@@ -117,13 +117,7 @@ test('Closing a day with a Whish court split no longer falsely reports negative 
   rpc:async(name,args)=>calls.push({name,args})
  };
  const finance=createCafeteriaFinances({
-  api,today:()=>day,addDays:()=>day,heading:()=>'',icon:()=>'',amount:n=>'
- for(const path of ['app.js','lib/cafeteria-finances.js','lib/court-scheduler-ui.js']){
-  const res=spawnSync(process.execPath,['--check',new URL('../'+path,import.meta.url).pathname],{encoding:'utf8'});
-  assert.equal(res.status,0,path+': '+res.stderr);
- }
-});
-+(n/100).toFixed(2),
+  api,today:()=>day,addDays:()=>day,heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
   rerender:()=>{},toast:()=>{},isAdmin:()=>false
  });
  await finance.load();
