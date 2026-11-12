@@ -1,0 +1,80 @@
+/* Padel On — read-only hour-proportional court timetable (09:00–01:00). */
+/* Booking/payment editing stays in the original ledger cards under the grid. */
+.cafe-timetable-hours{max-width:100%;min-width:0}
+.cafe-timeboard-scroll{width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:visible;
+ -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;border:1px solid #d7e5dc;
+ border-radius:12px;background:#fff;scrollbar-width:thin}
+.cafe-timeboard-scroll:focus-visible{outline:2px solid #238d60;outline-offset:2px}
+.cafe-timeboard{display:grid;grid-template-columns:72px repeat(3,minmax(215px,1fr));
+ grid-template-rows:48px 896px;min-width:744px;padding-bottom:19px}
+.cafe-timeboard-corner,.cafe-timeboard-court-head{box-sizing:border-box;display:flex;flex-direction:column;
+ justify-content:center;gap:2px;text-align:center;padding:8px 6px;background:#edf5f0;color:#355b44;
+ border-right:1px solid #d6e5dc;border-bottom:1px solid #d1e1d6}
+.cafe-timeboard-corner{position:sticky;left:0;z-index:5;font-size:10px;font-weight:800;letter-spacing:.9px}
+.cafe-timeboard-court-head strong{font-size:13px;color:#264d37}
+.cafe-timeboard-court-head small{font-size:10px;color:#779483}
+.cafe-timeboard-axis{height:896px;position:sticky;left:0;z-index:4;
+ background:#f6f9f7;border-right:1px solid #d6e5dc;
+ border-top:1px solid #d8e6dc}
+.cafe-timeboard-hour{position:absolute;left:0;right:0;display:block;
+ transform:translateY(-50%);font-size:10px;line-height:1.25;
+ padding-left:9px;font-weight:750;font-variant-numeric:tabular-nums;color:#547665;
+ white-space:nowrap;pointer-events:none}
+.cafe-timeboard-hour:first-child{transform:translateY(-12%)}
+.cafe-timeboard-hour:last-child{transform:translateY(-80%)}
+.cafe-timeboard-court{height:896px;min-width:0;position:relative;
+ border-right:1px solid #d6e5dc;border-top:1px solid #d8e6dc;
+ background-color:#fff;
+ background-image:repeating-linear-gradient(to bottom,
+  transparent 0px,transparent 27px,#f0f4f1 27px,#f0f4f1 28px,
+  transparent 28px,transparent 55px,#cbded1 55px,#cbded1 56px)}
+.cafe-timeboard-booking{box-sizing:border-box;position:absolute;z-index:1;display:flex;flex-direction:column;gap:2px;
+ min-width:0;min-height:0;overflow:hidden;padding:4px 6px;border:1px solid;border-left-width:4px;
+ border-radius:6px;font-size:10px;line-height:1.18;
+ box-shadow:0 1px 3px rgba(16,56,35,.09);cursor:default}
+.cafe-timeboard-booking:focus-visible{outline:2px solid #173f2d;outline-offset:1px;z-index:3}
+.cafe-timeboard-booking .cafe-timeboard-booking-time{display:block;font-size:10px;
+ font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cafe-timeboard-booking>strong{font-size:11px;font-weight:750;overflow:hidden;text-overflow:ellipsis;
+ display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.cafe-timeboard-booking>small{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.82}
+.cafe-timeboard-booking.status-all{background:#deefff;border-color:#76addc;color:#18507d}
+.cafe-timeboard-booking.status-some{background:#d8f5e8;border-color:#65b99a;color:#145c43}
+.cafe-timeboard-booking.status-none{background:#fae4ec;border-color:#d89bb6;color:#7b3553}
+.cafe-timeboard-booking.status-unknown{background:#edf0f2;border-color:#a6b4be;color:#455764}
+.cafe-timeboard-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:13px 0 4px}
+.cafe-timeboard-legend>span{display:inline-flex;align-items:center;gap:6px;font-size:10px;
+ font-weight:650;color:#5b7767;line-height:1.5}
+.cafe-timeboard-legend>span::before{content:'';width:11px;height:11px;
+ border:1px solid;border-radius:3px;flex:none}
+.cafe-timeboard-legend .status-all::before{background:#deefff;border-color:#76addc}
+.cafe-timeboard-legend .status-some::before{background:#d8f5e8;border-color:#65b99a}
+.cafe-timeboard-legend .status-none::before{background:#fae4ec;border-color:#d89bb6}
+.cafe-timeboard-legend .status-unknown::before{background:#edf0f2;border-color:#a6b4be}
+.cafe-timeboard-disclaimer{margin:12px 0 0;font-size:10px;line-height:1.6;color:#759082}
+.cafe-timeboard-unplaced{display:grid;gap:7px;margin-top:13px;padding:12px;
+ border:1px solid #e1e9e3;border-radius:10px;background:#fff}
+.cafe-timeboard-unplaced>strong{font-size:12px;color:#385940}
+.cafe-timeboard-unplaced>p{margin:0;font-size:10px;color:#728779}
+.cafe-timeboard-unplaced>div{display:flex;justify-content:space-between;gap:8px;align-items:center;
+ border-top:1px solid #e7ede8;padding-top:7px;font-size:11px;min-width:0}
+.cafe-timeboard-unplaced>div span{min-width:0;overflow-wrap:anywhere;color:#3e6049}
+.cafe-timeboard-unplaced>div small{display:inline-block;color:#798d7c}
+.cafe-timeboard-unplaced>div b{white-space:nowrap;color:#245c3b}
+.cafe-hour-details{margin-top:12px}
+.cafe-hour-details>summary{cursor:pointer;color:#27784d;font-size:11px;font-weight:750;padding:8px 2px}
+.cafe-hour-details .cafe-hour-panel{margin-top:4px}
+@media(max-width:830px){
+ .cafe-timeboard-scroll::after{content:'Swipe sideways to see C2 and C3';display:block;
+  position:sticky;left:0;width:max-content;max-width:100%;font-size:10px;
+  background:#fff;color:#819789;padding:6px 10px;pointer-events:none}
+ .cafe-timeboard{grid-template-columns:63px repeat(3,minmax(195px,1fr));min-width:648px}
+ .cafe-timeboard-hour{font-size:9px;padding-left:6px}
+ .cafe-timeboard-booking{padding:4px 5px}
+}
+@media print{
+ .cafe-timeboard-scroll{overflow:visible;border:0}
+ .cafe-timeboard{min-width:0;grid-template-columns:60px repeat(3,minmax(0,1fr))}
+ .cafe-timeboard-scroll::after{display:none!important}
+ .cafe-timeboard-booking{box-shadow:none}
+}
