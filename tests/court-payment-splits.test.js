@@ -76,7 +76,7 @@ test('UI exposes separate Cash and Whish tables and linked reservation editor',(
  assert.match(finance,/Whish Court Payments/);
  assert.match(finance,/data-cafe-save="court-payment"/);
  assert.match(finance,/cafeReconciliation\(rows,closingCash,privatePayments,courtMovements\)/);
- assert.match(scheduler,/padel_reservation_save_with_split/);
+ assert.match(scheduler,/club_court_reservation_save/);
  assert.match(scheduler,/cafe-schedule-payment-editor/);
  assert.match(scheduler,/Payment breakdown/);
  assert.match(finance,/courtSplits=paymentSplits\.filter\(split=>!split\.voided_at\)/);
