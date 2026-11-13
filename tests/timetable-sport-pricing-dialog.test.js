@@ -157,3 +157,12 @@ test('Migration persists Pickleball counts and restricts private training to Pad
  assert.match(sql,/public\.is_staff\(\)/);
  assert.doesNotMatch(sql,/TRUNCATE|DROP TABLE|DELETE FROM public\.padel_court_reservations/);
 });
+
+test('List markers for Pickleball singles follow the new count and route through app change handling',()=>{
+ const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
+ const finance=readFileSync(new URL('../lib/cafeteria-finances.js',import.meta.url),'utf8');
+ assert.match(app,/e\.target\.dataset\?\.cafeReservationMarker/);
+ assert.match(finance,/const count=cafePlayerCount\(category\.id,e\.pickleball_player_count\)/);
+ assert.match(finance,/booking\.sport==='pickleball'&&booking\.pickleball_player_count===2\?2:4/);
+ assert.match(finance,/club_reservation_set_player_paid/);
+});
