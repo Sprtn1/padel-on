@@ -100,5 +100,7 @@ test('Database court split posting uses source sport, reuses linked row, protect
  assert.match(sql,/JOIN public\.court_payment_splits s ON s\.id=w\.source_court_split_id/);
  assert.match(sql,/INSERT INTO public\.audit_logs\(actor,action,entity,entity_id,before_data,after_data\)/);
  assert.match(sql,/auth\.uid\(\) IS NULL OR NOT public\.is_staff\(\)/);
+ assert.match(sql,/Edit this court payment using its booking payment split/);
+ assert.match(sql,/REVOKE ALL ON FUNCTION public\.whish_protect_court_split\(\)/);
  assert.doesNotMatch(sql,/TRUNCATE|DROP TABLE|DELETE FROM public\.whish_ledger_entries/i);
 });
