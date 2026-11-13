@@ -163,3 +163,45 @@ REVOKE EXECUTE ON FUNCTION public.court_payment_split_save(
  text,uuid,bigint,bigint,bigint,bigint,integer,bigint) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.court_payment_split_save(
  text,uuid,bigint,bigint,bigint,bigint,integer,bigint) TO authenticated;
+
+-- Cash-default reservations must remain cancellable on their payment date.
+-- Reverse Cash and Whish atomically before the status change; never lose
+-- historic receipts or silently adjust already closed accounting periods.
+CREATE OR REPLACE FUNCTION public.court_split_guard_reservation()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $court_cancel$
+DECLARE v_split public.court_payment_splits%rowtype;
+ v_today date:=(now() AT TIME ZONE 'Asia/Beirut')::date;
+BEGIN
+ IF NEW.status='cancelled' AND OLD.status<>'cancelled' THEN
+  IF auth.uid() IS NULL OR NOT public.is_staff()
+  THEN RAISE EXCEPTION 'Only staff may cancel court reservations'; END IF;
+  SELECT * INTO v_split FROM public.court_payment_splits
+   WHERE source_kind='reservation' AND source_id=OLD.id AND voided_at IS NULL FOR UPDATE;
+  IF FOUND THEN
+   IF v_split.payment_date<>v_today
+    THEN RAISE EXCEPTION 'Payment was allocated on a previous date. Request a dated refund correction from an administrator'; END IF;
+   IF EXISTS(SELECT 1 FROM public.cafeteria_day_closings
+      WHERE day_date=v_today AND status IN ('closed','approved'))
+    THEN RAISE EXCEPTION 'This cashbook day is closed. Reopen it before reversing a court payment'; END IF;
+   IF v_split.cash_cents<>0 THEN
+    INSERT INTO public.court_payment_cash_movements
+     (split_id,entry_date,cash_delta_cents,created_by)
+    VALUES(v_split.id,v_today,-v_split.cash_cents,auth.uid());
+   END IF;
+   PERFORM set_config('app.court_split_internal','yes',true);
+   UPDATE public.whish_ledger_entries
+    SET voided_at=now(),voided_by=auth.uid(),
+     void_reason='Court reservation cancelled: payment allocation reversed'
+    WHERE source_court_split_id=v_split.id AND voided_at IS NULL;
+   PERFORM set_config('app.court_split_internal','no',true);
+   UPDATE public.court_payment_splits
+    SET voided_at=now(),updated_at=now(),revision=revision+1 WHERE id=v_split.id;
+   INSERT INTO public.audit_logs(actor,action,entity,entity_id,before_data,after_data)
+    VALUES(auth.uid(),'CANCEL_REVERSE','court_payment_splits',v_split.id::text,
+     to_jsonb(v_split),jsonb_build_object('date',v_today,'reservation_id',OLD.id,
+      'cash_reversed_cents',v_split.cash_cents,'whish_reversed_cents',v_split.whish_cents));
+  END IF;
+ END IF;
+ RETURN NEW;
+END $court_cancel$;
+REVOKE ALL ON FUNCTION public.court_split_guard_reservation() FROM PUBLIC,anon,authenticated;
