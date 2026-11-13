@@ -3,7 +3,7 @@
 .cafe-payment-splits-heading{margin:0 0 13px}
 .cafe-payment-splits-heading h3{font-size:15px;margin:0 0 5px;color:#23543c}
 .cafe-payment-splits-heading p{margin:0;color:#6c8677;font-size:11px;line-height:1.5}
-.cafe-payment-split-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:13px}
+.cafe-payment-split-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:13px}
 .cafe-payment-split-totals span{display:flex;flex-direction:column;gap:6px;padding:13px;background:#f4f9f5;border:1px solid #ddebe0;border-radius:11px;font-size:11px;color:#607966}
 .cafe-payment-split-totals b{font-size:19px;color:#215638;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .cafe-payment-splits-section>.cafe-category-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;min-width:0}
