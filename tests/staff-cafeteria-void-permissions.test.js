@@ -9,7 +9,7 @@ const migration=readFileSync(new URL('../supabase/migrations/20261113070000_staf
 test('staff void capability is scoped to the Cafeteria Finances controller',()=>{
  assert.match(app,/canVoid:\(\)=>\['admin','staff'\]\.includes\(state\.staff\?\.role\)/);
  assert.match(finance,/canVoid=\(\)=>isAdmin\(\)/);
- assert.equal((finance.match(/canVoid\(\)\&\&canEdit\(\)/g)||[]).length,4);
+ assert.equal((finance.match(/canVoid\(\)\&\&canEdit\(\)/g)||[]).length,5); // includes reservation cancellation
  assert.match(finance,/if\(!canVoid\(\)\)throw Error\('Only authorized staff can void financial entries\.'/);
  assert.match(finance,/if\(!canVoid\(\)\)throw Error\('Only authorized staff can void Whish transactions\.'/);
 });
