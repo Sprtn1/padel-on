@@ -50,6 +50,16 @@ test('Current cash-default migration preserves history and enforces no active Un
  assert.match(sql,/d.status IN \('closed','approved'\)/);
  assert.match(sql,/REVOKE EXECUTE ON FUNCTION public\.court_payment_split_save/);
 });
+test('Same-day cancellations reverse the assumed Cash and linked Whish deposit',()=>{
+ const sql=read('../supabase/migrations/20261113061500_court_cash_default_without_debt.sql');
+ assert.match(sql,/CREATE OR REPLACE FUNCTION public\.court_split_guard_reservation\(\)/);
+ assert.match(sql,/cash_delta_cents,created_by/);
+ assert.match(sql,/VALUES\(v_split\.id,v_today,-v_split\.cash_cents,auth\.uid\(\)\)/);
+ assert.match(sql,/source_court_split_id=v_split\.id AND voided_at IS NULL/);
+ assert.match(sql,/CANCEL_REVERSE/);
+ assert.match(sql,/v_split\.payment_date<>v_today/);
+ assert.match(sql,/REVOKE ALL ON FUNCTION public\.court_split_guard_reservation\(\)/);
+});
 test('Legacy amounts remain cash-classified until explicitly split',()=>{
  assert.deepEqual(courtSplitDisplay(3200,null,true),{
   amount_cents:3200,cash_cents:3200,whish_cents:0,unpaid_cents:0,legacy:true
