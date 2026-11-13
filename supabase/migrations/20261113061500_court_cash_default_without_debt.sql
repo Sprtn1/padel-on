@@ -205,3 +205,9 @@ BEGIN
  RETURN NEW;
 END $court_cancel$;
 REVOKE ALL ON FUNCTION public.court_split_guard_reservation() FROM PUBLIC,anon,authenticated;
+
+-- These are trigger-only helpers, not public RPC endpoints.
+-- Trigger execution still works without direct EXECUTE privileges.
+REVOKE EXECUTE ON FUNCTION public.court_split_guard_ledger() FROM PUBLIC,anon,authenticated;
+REVOKE EXECUTE ON FUNCTION public.court_split_sync_void_finance() FROM PUBLIC,anon,authenticated;
+REVOKE EXECUTE ON FUNCTION public.whish_protect_court_split() FROM PUBLIC,anon,authenticated;
