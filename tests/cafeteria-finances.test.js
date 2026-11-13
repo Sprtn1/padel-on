@@ -477,7 +477,7 @@ test('Whish payments can be added repeatedly and update balance with ledger date
 });
 
 test('Whish preset names are correct and offered only in their own sections',async()=>{
- assert.deepEqual(WHISH_DESCRIPTION_PRESETS.deposit,['Goods Sold','Padel Courts']);
+ assert.deepEqual(WHISH_DESCRIPTION_PRESETS.deposit,['Goods Sold','Padel Courts','Basketball Courts','Pickleball Courts']);
  assert.deepEqual(WHISH_DESCRIPTION_PRESETS.withdrawal,['Transfer from Whish to Miscellaneous Cash Box']);
  const widget=createCafeteriaFinances({
   api:{getSession:()=>({access_token:'token'}),listAll:async(table)=>table==='whish_wallet_settings'?[{opening_balance_cents:60}]:[]},
@@ -490,6 +490,8 @@ test('Whish preset names are correct and offered only in their own sections',asy
  const withdrawal=page.split('<h3>Whish Withdrawals</h3>')[1].split('</section>')[0];
  assert.match(deposit,/Goods Sold/);
  assert.match(deposit,/Padel Courts/);
+ assert.match(deposit,/Basketball Courts/);
+ assert.match(deposit,/Pickleball Courts/);
  assert.doesNotMatch(deposit,/Miscellaneous Cash Box/);
  assert.match(withdrawal,/Transfer from Whish to Miscellaneous Cash Box/);
  assert.doesNotMatch(withdrawal,/Goods Sold/);
@@ -515,6 +517,10 @@ test('Whish preset fills name but allows custom editing and never saves on click
  assert.equal(input.value,'Goods Sold');
  await widget.action(button('deposit',1));
  assert.equal(input.value,'Padel Courts');
+ await widget.action(button('deposit',2));
+ assert.equal(input.value,'Basketball Courts');
+ await widget.action(button('deposit',3));
+ assert.equal(input.value,'Pickleball Courts');
  input.value='Custom client transfer';
  assert.equal(input.value,'Custom client transfer');
  form.dataset.whishType='withdrawal';
