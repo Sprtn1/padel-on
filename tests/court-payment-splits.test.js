@@ -10,15 +10,12 @@ const read=path=>readFileSync(new URL(path,import.meta.url),'utf8');
 const court=(amount_cents=3200)=>({id:'s1',category:'padel_courts',name:'Test court',
  entry_date:'2026-11-12',amount_cents,checkmarks:[true,true,false,false]});
 
-test('The exact-cent invariant enforces Cash + Whish + Unpaid equals the original court price',()=>{
- assert.deepEqual(courtAllocation(3200,1200,2000,0),{
+test('The exact-cent invariant requires Cash + Whish equal price and rejects court debt',()=>{
+ assert.deepEqual(courtAllocation(3200,1200,2000),{
   amount_cents:3200,cash_cents:1200,whish_cents:2000,unpaid_cents:0
  });
- assert.deepEqual(courtAllocation(3200,1000,1000,1200),{
-  amount_cents:3200,cash_cents:1000,whish_cents:1000,unpaid_cents:1200
- });
- for(const [a,b,c,d] of [[3200,3200,2000,0],[3200,1200,1000,0],[3200,-1,0,3201],[0,0,0,0]]){
-  assert.throws(()=>courtAllocation(a,b,c,d),/Cash \+ Whish \+ Unpaid/);
+ for(const [a,b,c,d] of [[3200,1000,1000,1200],[3200,3200,2000,0],[3200,1200,1000,0],[3200,-1,0,3201],[0,0,0,0]]){
+  assert.throws(()=>courtAllocation(a,b,c,d),/Cash \+ Whish/);
  }
 });
 test('Legacy amounts remain cash-classified until explicitly split',()=>{
@@ -28,7 +25,7 @@ test('Legacy amounts remain cash-classified until explicitly split',()=>{
  assert.equal(cafeTotals([court()]).income,3200);
  assert.equal(cafeReconciliation([court()],3200).goodsSold,0);
 });
-test('Cash correction excludes Whish and Unpaid without changing court fee or player markers',()=>{
+test('Cash corrections exclude Whish without changing court fee or player markers',()=>{
  const entry=court(),markers=structuredClone(entry.checkmarks);
  const movement=[{cash_delta_cents:-2000,entry_date:'2026-11-12'}];
  assert.equal(courtCashAdjustment(movement),-2000);
