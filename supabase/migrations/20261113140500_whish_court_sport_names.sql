@@ -130,6 +130,21 @@ REVOKE ALL ON FUNCTION public.court_payment_split_save(
 GRANT EXECUTE ON FUNCTION public.court_payment_split_save(
  text,uuid,bigint,bigint,bigint,bigint,integer,bigint) TO authenticated;
 
+
+-- This trigger covers all three sports; avoid a misleading Padel-only message.
+CREATE OR REPLACE FUNCTION public.whish_protect_court_split()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp
+AS $guard$
+BEGIN
+ IF OLD.source_court_split_id IS NOT NULL
+  AND current_setting('app.court_split_internal',true) IS DISTINCT FROM 'yes' THEN
+  RAISE EXCEPTION 'Edit this court payment using its booking payment split.';
+ END IF;
+ RETURN NEW;
+END $guard$;
+REVOKE ALL ON FUNCTION public.whish_protect_court_split() FROM PUBLIC,anon,authenticated;
+
+
 -- Correct only previously mislabeled source-linked deposits, never manual entries.
 -- Preserve every ID, amount, source ID and date; write an audit trail for relabels.
 DO $linked_whish_names$
