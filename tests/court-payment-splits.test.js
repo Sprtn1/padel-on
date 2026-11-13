@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
-import {courtAllocation,courtCashAdjustment,courtSplitDisplay,courtSplitFormFields,courtCashWhishRemainder} from '../lib/court-payment-splits.js';
+import {courtAllocation,courtCashAdjustment,courtSplitDisplay,courtSplitFormFields,courtCashWhishRemainder,categorizeCourtCashMovements} from '../lib/court-payment-splits.js';
 import {cafeTotals,cafeReconciliation} from '../lib/cafeteria-finances.js';
 import {prepareArabicDailySheet} from '../lib/arabic-daily-pdf.js';
 
@@ -126,4 +126,35 @@ test('All changed JavaScript modules parse',()=>{
   const result=spawnSync(process.execPath,['--check',new URL('../'+file,import.meta.url).pathname],{encoding:'utf8'});
   assert.equal(result.status,0,file+': '+result.stderr);
  }
+});
+
+test('Cash adjustments and Arabic PDF attribute timetable bookings to the real sport',()=>{
+ const splits=[
+  {id:'sp1',source_kind:'reservation',source_id:'pad'},
+  {id:'sp2',source_kind:'reservation',source_id:'pick',voided_at:'2026-11-12'},
+  {id:'sp3',source_kind:'reservation',source_id:'basket'}
+ ];
+ const reservations=[
+  {id:'pad',sport:'padel',business_date:'2026-11-12'},
+  {id:'pick',sport:'pickleball',business_date:'2026-11-15'},
+  {id:'basket',sport:'basketball',business_date:'2026-11-11'}
+ ];
+ const movementRows=[
+  {split_id:'sp1',entry_date:'2026-11-12',cash_delta_cents:1200},
+  {split_id:'sp2',entry_date:'2026-11-12',cash_delta_cents:2400},
+  {split_id:'sp3',entry_date:'2026-11-12',cash_delta_cents:2000}
+ ];
+ const marked=categorizeCourtCashMovements(movementRows,splits,[],reservations);
+ assert.deepEqual(marked.map(m=>m.court_category),['padel_courts','pickleball_courts','basketball_courts']);
+ const sheet=prepareArabicDailySheet({
+  date:'2026-11-12',rows:[],privatePayments:[],privateSessions:[],
+  whishRows:[],whishOpening:60,courtMovements:marked,closingCash:5600
+ });
+ for(const [label,amount] of [['ملعب بادل',1200],['ملعب بيكل بول',2400],['ملعب باسكت',2000]]){
+  assert.equal(sheet.amountRows.find(row=>row[0]===label)?.[1],amount,label);
+ }
+ assert.equal(sheet.goodsSold,0);
+ assert.equal(sheet.receipts,5600);
+ assert.throws(()=>categorizeCourtCashMovements(movementRows,splits,[],reservations.slice(0,2)),/sport could not be verified/);
+ assert.throws(()=>categorizeCourtCashMovements(movementRows,[],[],reservations),/source is missing/);
 });
