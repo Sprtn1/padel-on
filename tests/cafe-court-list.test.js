@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createCafeteriaFinances,cafeCourtListEntries,cafeTotals} from '../lib/cafeteria-finances.js';
+import {createCafeteriaFinances,cafeCourtListEntries,cafeCourtBookingTotal,cafeTotals} from '../lib/cafeteria-finances.js';
 
 const booked=(id,sport,other={})=>({
  id,business_date:'2026-11-12',sport,booking_type:'reservation',status:'confirmed',
@@ -80,4 +80,59 @@ test('a reservation shows its Cash/Whish price without another ledger entry',()=
  assert.equal(reservation.__reservationSplit.id,'paid-split');
  assert.deepEqual(reservation.checkmarks,[true,false,true,false,false,false]);
  assert.equal(cafeTotals(ledger).income,2500,'no second receipt is added to the financial ledger');
+});
+
+test('Padel, Pickleball and Basketball booking card totals include timetable reservation prices',async()=>{
+ const reservations=[
+  booked('pad','padel',{court_number:'C2'}),
+  booked('pickle','pickleball',{court_number:'P1'}),
+  booked('basket','basketball',{court_number:'B1'}),
+  booked('blocked','padel',{booking_type:'block'}),
+  booked('training','padel',{private_client_id:'client'}),
+  booked('cancelled','pickleball',{status:'cancelled'}),
+  booked('unsplit','basketball'),
+  booked('voided','basketball')
+ ];
+ const splits=[
+  {id:'split-pad',source_kind:'reservation',source_id:'pad',amount_cents:3200,cash_cents:1200,whish_cents:2000,payment_date:'2026-11-12'},
+  {id:'split-pickle',source_kind:'reservation',source_id:'pickle',amount_cents:2400,cash_cents:2400,whish_cents:0,payment_date:'2026-11-11'},
+  {id:'split-basket',source_kind:'reservation',source_id:'basket',amount_cents:2000,cash_cents:2000,whish_cents:0,payment_date:'2026-11-12'},
+  {id:'split-cancel',source_kind:'reservation',source_id:'cancelled',amount_cents:9000,voided_at:'2026-11-11'},
+  {id:'split-voided',source_kind:'reservation',source_id:'voided',amount_cents:9000,voided_at:'2026-11-12'}
+ ];
+ const ledger=[
+  {id:'entry-pad',category:'padel_courts',name:'Recorded Padel',amount_cents:2500},
+  {id:'entry-pickle',category:'pickleball_courts',name:'Recorded Pickleball',amount_cents:1800, pickleball_player_count:2},
+  {id:'entry-basket',category:'basketball_courts',name:'Recorded Basketball',amount_cents:2000},
+  {id:'entry-voided',category:'padel_courts',amount_cents:7000,voided_at:'2026-11-12'}
+ ];
+ const expected=[
+  ['padel_courts','padel',5700],
+  ['pickleball_courts','pickleball',4200],
+  ['basketball_courts','basketball',4000]
+ ];
+ for(const [category,sport,amount] of expected){
+  assert.equal(cafeCourtBookingTotal(ledger,reservations,category,sport,splits),amount,category);
+ }
+ assert.equal(cafeTotals(ledger).income,6300,'daily cashbook stays separate from booking-date value');
+
+ const api={
+  getSession:()=>({access_token:'test'}),
+  listAll:async(table,filter)=>{
+   if(table==='padel_court_reservations')return reservations;
+   if(table==='cafeteria_finance_entries')return ledger;
+   if(table==='court_payment_splits')return splits;
+   if(table==='cafeteria_finance_days')return [];
+   if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
+   return [];
+  }
+ };
+ const finance=createCafeteriaFinances({api,heading:()=>'',icon:()=>'',amount:v=>'$'+(v/100).toFixed(2),
+  today:()=> '2026-11-12',addDays:()=> '2026-11-11',rerender:()=>{},toast:()=>{},isAdmin:()=>false});
+ await finance.load();
+ const html=finance.page();
+ assert.match(html,/<h3>Padel Courts<\/h3><strong>\$57\.00<\/strong>/);
+ assert.match(html,/<h3>Pickleball Courts<\/h3><strong>\$42\.00<\/strong>/);
+ assert.match(html,/<h3>Basketball Courts<\/h3><strong>\$40\.00<\/strong>/);
+ assert.match(html,/Recorded income \(including private payments\)<\/span><strong>\$63\.00<\/strong>/);
 });
