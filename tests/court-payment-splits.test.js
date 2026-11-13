@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
-import {courtAllocation,courtCashAdjustment,courtSplitDisplay} from '../lib/court-payment-splits.js';
+import {courtAllocation,courtCashAdjustment,courtSplitDisplay,courtSplitFormFields,courtCashWhishRemainder} from '../lib/court-payment-splits.js';
 import {cafeTotals,cafeReconciliation} from '../lib/cafeteria-finances.js';
 import {prepareArabicDailySheet} from '../lib/arabic-daily-pdf.js';
 
@@ -17,6 +17,38 @@ test('The exact-cent invariant requires Cash + Whish equal price and rejects cou
  for(const [a,b,c,d] of [[3200,1000,1000,1200],[3200,3200,2000,0],[3200,1200,1000,0],[3200,-1,0,3201],[0,0,0,0]]){
   assert.throws(()=>courtAllocation(a,b,c,d),/Cash \+ Whish/);
  }
+});
+test('Court forms default the full price to Cash and have no Unpaid field',()=>{
+ const fields=courtSplitFormFields({total:3200,split:null,legacy:true});
+ assert.deepEqual(fields.map(f=>f.name),['total_amount','cash_amount','whish_amount']);
+ assert.deepEqual(fields.map(f=>f.value),['32.00','32.00','0.00']);
+ assert.deepEqual(courtCashWhishRemainder(3200,1200),{cash_cents:2000,whish_cents:1200});
+ assert.deepEqual(courtCashWhishRemainder(3200,2000,'cash'),{cash_cents:2000,whish_cents:1200});
+ assert.throws(()=>courtCashWhishRemainder(3200,4500),/price/);
+ const olderUnpaid=courtSplitDisplay(2500,{amount_cents:2500,cash_cents:0,
+  whish_cents:0,unpaid_cents:2500});
+ assert.equal(olderUnpaid.cash_cents,2500);
+ assert.equal(olderUnpaid.unpaid_cents,0);
+});
+test('UI exposes only Cash and Whish, with default Cash on new reservations',()=>{
+ const scheduler=read('../lib/court-scheduler-ui.js');
+ const finance=read('../lib/cafeteria-finances.js');
+ assert.doesNotMatch(scheduler,/\['unpaid_amount','Still unpaid/);
+ assert.doesNotMatch(finance,/Unpaid <b>/);
+ assert.doesNotMatch(finance,/Remaining unpaid \(\$\)/);
+ assert.match(scheduler,/editor\.cash=editor\.fee;editor\.whish=0/);
+ assert.match(scheduler,/field\('cash_amount'\)\.value=paymentText\(total-whish\)/);
+ assert.match(finance,/field\('cash_amount'\)\.value=\(\(total-whish\)\/100\)\.toFixed\(2\)/);
+ assert.match(finance,/p_unpaid_cents:allocation\.unpaid_cents/);
+});
+test('Current cash-default migration preserves history and enforces no active Unpaid',()=>{
+ const sql=read('../supabase/migrations/20261113061500_court_cash_default_without_debt.sql');
+ assert.match(sql,/court_split_no_unpaid_active/);
+ assert.match(sql,/p_unpaid_cents<>0/);
+ assert.match(sql,/court_payment_cash_movements/);
+ assert.match(sql,/MIGRATE/);
+ assert.match(sql,/d.status IN \('closed','approved'\)/);
+ assert.match(sql,/REVOKE EXECUTE ON FUNCTION public\.court_payment_split_save/);
 });
 test('Legacy amounts remain cash-classified until explicitly split',()=>{
  assert.deepEqual(courtSplitDisplay(3200,null,true),{
