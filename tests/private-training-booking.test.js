@@ -92,7 +92,7 @@ test('Closing a day with a Whish court split no longer falsely reports negative 
  const {createCafeteriaFinances}=await import('../lib/cafeteria-finances.js');
  const day='2026-11-12',calls=[];
  const entries=[
-  {category:'padel_courts',amount_cents:35500,entry_date:day},
+  {id:'court-booking',category:'padel_courts',amount_cents:35500,entry_date:day},
   {category:'classes',amount_cents:13000,entry_date:day},
   {category:'gymnastics',amount_cents:4000,entry_date:day},
   {category:'grips',amount_cents:2900,entry_date:day},
@@ -110,6 +110,7 @@ test('Closing a day with a Whish court split no longer falsely reports negative 
    if(table==='cafeteria_finance_days')return [{day_date:day,closing_cash_cents:42000}];
    if(table==='private_clients')return [{id:'client',name:'Client',active:true}];
    if(table==='private_ledger_entries')return [{id:'deposit',client_id:'client',entry_date:day,entry_type:'deposit',deposit_cents:8000,payment_channel:'cash',created_at:day+'T01:00:00Z'}];
+   if(table==='court_payment_splits')return [{id:'split',source_kind:'ledger',source_id:'court-booking',payment_date:day,amount_cents:35500,cash_cents:31400,whish_cents:4100,unpaid_cents:0}];
    if(table==='court_payment_cash_movements')return [{split_id:'split',entry_date:day,cash_delta_cents:-4100}];
    if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
    return [];
