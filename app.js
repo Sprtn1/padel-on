@@ -65,6 +65,7 @@ const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
  api,heading,icon,amount,today,addDays,
  rerender:()=>{if(state.tab==='cafeteria-finances'&&api.getSession()?.access_token)render()},
  toast,isAdmin:()=>state.staff?.role==='admin',
+ canVoid:()=>['admin','staff'].includes(state.staff?.role),
  exportArabicPdf:data=>arabicDailyPdf.previewArabicDailySheet(data),
  renderShiftHandover:(day,editable)=>shiftHandover.page(day,editable),
  onShiftDateChanged:day=>{void shiftHandover.load(day)},
