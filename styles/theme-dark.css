@@ -46,7 +46,7 @@ html[data-theme="dark"] .player-avatar{background:#24453b;color:#85e9b3;border-c
 html[data-theme="dark"] .sidebar,
 html[data-theme="dark"] .sidebar-panel,
 html[data-theme="dark"] .sidebar-collapsed .sidebar:is(:hover,
-html[data-theme="dark"] :has(.nav-item:focus-visible))>.sidebar-panel{background:#14232d!important;border-color:var(--dm-border);box-shadow:3px 0 16px #030b0f55}
+:has(.nav-item:focus-visible))>.sidebar-panel{background:#14232d!important;border-color:var(--dm-border);box-shadow:3px 0 16px #030b0f55}
 
 html[data-theme="dark"] .sidebar .brand-sub,
 html[data-theme="dark"] .sidebar .sidebar-bottom,
@@ -141,57 +141,57 @@ html[data-theme="dark"] .inv-editor,
 html[data-theme="dark"] .inv-table-panel{background:var(--dm-card);border-color:var(--dm-border);box-shadow:var(--ck-shadow)}
 
 html[data-theme="dark"] .workspace[data-page] :where(.panel,
-html[data-theme="dark"] .summary-card,
-html[data-theme="dark"] .member-card,
-html[data-theme="dark"] .other-card,
-html[data-theme="dark"] .settings-box,
-html[data-theme="dark"] .cpay-card,
-html[data-theme="dark"] .inv-editor){background:var(--dm-card);border-color:var(--dm-border);box-shadow:var(--ck-shadow)}
+.summary-card,
+.member-card,
+.other-card,
+.settings-box,
+.cpay-card,
+.inv-editor){background:var(--dm-card);border-color:var(--dm-border);box-shadow:var(--ck-shadow)}
 
 html[data-theme="dark"] .workspace[data-page] :where(.panel,
-html[data-theme="dark"] .member-card,
-html[data-theme="dark"] .other-card,
-html[data-theme="dark"] .settings-box):hover{border-color:#4b6d69;box-shadow:var(--ck-shadow-hover)}
+.member-card,
+.other-card,
+.settings-box):hover{border-color:#4b6d69;box-shadow:var(--ck-shadow-hover)}
 
 html[data-theme="dark"] .workspace[data-page] :where(h1,
-html[data-theme="dark"] h2,
-html[data-theme="dark"] h3,
-html[data-theme="dark"] h4,
-html[data-theme="dark"] h5,
-html[data-theme="dark"] h6,
-html[data-theme="dark"] strong,
-html[data-theme="dark"] b){color:var(--dm-text)}
+h2,
+h3,
+h4,
+h5,
+h6,
+strong,
+b){color:var(--dm-text)}
 
 html[data-theme="dark"] .workspace[data-page] :where(p,
-html[data-theme="dark"] small,
-html[data-theme="dark"] label,
-html[data-theme="dark"] .label,
-html[data-theme="dark"] .submetric,
-html[data-theme="dark"] .tiny,
-html[data-theme="dark"] .eyebrow){color:var(--dm-muted)}
+small,
+label,
+.label,
+.submetric,
+.tiny,
+.eyebrow){color:var(--dm-muted)}
 
 html[data-theme="dark"] .workspace[data-page] :where(span,
-html[data-theme="dark"] td,
-html[data-theme="dark"] th){color:inherit}
+td,
+th){color:inherit}
 
 html[data-theme="dark"] .workspace[data-page] :where(.metric,
-html[data-theme="dark"] .game-number,
-html[data-theme="dark"] .debt-total,
-html[data-theme="dark"] .other-count,
-html[data-theme="dark"] .private-client-balance,
-html[data-theme="dark"] .cafe-category-top>strong,
-html[data-theme="dark"] .cpay-amounts strong,
-html[data-theme="dark"] .tm-browser-card h3){color:var(--dm-text)}
+.game-number,
+.debt-total,
+.other-count,
+.private-client-balance,
+.cafe-category-top>strong,
+.cpay-amounts strong,
+.tm-browser-card h3){color:var(--dm-text)}
 
 html[data-theme="dark"] .workspace[data-page] .summary-card.feature,
 html[data-theme="dark"] .summary-card.feature{background:linear-gradient(128deg,#145f49,#117652);border-color:#399270;color:#fff}
 
 html[data-theme="dark"] .summary-card.feature :is(.metric,
-html[data-theme="dark"] .label,
-html[data-theme="dark"] .submetric,
-html[data-theme="dark"] strong,
-html[data-theme="dark"] span,
-html[data-theme="dark"] small){color:#fff}
+.label,
+.submetric,
+strong,
+span,
+small){color:#fff}
 
 html[data-theme="dark"] .metric-icon,
 html[data-theme="dark"] .player-avatar,
@@ -215,8 +215,8 @@ html[data-theme="dark"] .search,
 html[data-theme="dark"] .toolbar button:not(.btn-primary){background:var(--dm-card2);color:var(--dm-text);border-color:var(--dm-border)}
 
 html[data-theme="dark"] .workspace[data-page] :where(.select,
-html[data-theme="dark"] .search,
-html[data-theme="dark"] .form-input){background:var(--dm-input);color:var(--dm-text);border-color:var(--dm-border)}
+.search,
+.form-input){background:var(--dm-input);color:var(--dm-text);border-color:var(--dm-border)}
 
 html[data-theme="dark"] .btn-light:hover,
 html[data-theme="dark"] .btn-soft:hover,
@@ -323,8 +323,8 @@ html[data-theme="dark"] .data-table td b,
 html[data-theme="dark"] .data-table td small{color:#d8e9e9}
 
 html[data-theme="dark"] .data-table :is(input,
-html[data-theme="dark"] select,
-html[data-theme="dark"] textarea){background:var(--dm-input);color:var(--dm-text)}
+select,
+textarea){background:var(--dm-input);color:var(--dm-text)}
 
 html[data-theme="dark"] .workspace .data-table-wrap:not(:has(>.po-mobile-card-table)){border-color:var(--dm-border)}
 
@@ -378,8 +378,8 @@ html[data-theme="dark"] .cafe-quick-category-menu{background:var(--dm-card2);col
 html[data-theme="dark"] .cafe-view-toggle button:not(.active){background:transparent;color:var(--dm-muted)}
 
 html[data-theme="dark"] .cafe-quick-entry :is(button,
-html[data-theme="dark"] input,
-html[data-theme="dark"] select){border-color:var(--dm-border)}
+input,
+select){border-color:var(--dm-border)}
 
 html[data-theme="dark"] .whish-section,
 html[data-theme="dark"] .whish-section .panel,
@@ -389,9 +389,9 @@ html[data-theme="dark"] .whish-ledger,
 html[data-theme="dark"] .whish-balance-card{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
 
 html[data-theme="dark"] .whish-section :is(h2,
-html[data-theme="dark"] h3,
-html[data-theme="dark"] strong,
-html[data-theme="dark"] b){color:var(--dm-text)}
+h3,
+strong,
+b){color:var(--dm-text)}
 
 html[data-theme="dark"] .cafe-payment-split-totals span,
 html[data-theme="dark"] .cafe-court-payment-form,
