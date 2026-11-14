@@ -1,6 +1,7 @@
 // Each page load uses a fresh module graph to avoid stale GitHub Pages assets.
 const assetVersion = new URL(import.meta.url).searchParams.get('v') || Date.now().toString(36);
 const {readTheme,writeTheme,nextTheme,themeActionLabel} = await import(`./lib/theme-preference.js?v=${assetVersion}`);
+const {noteAppReadyInThisTab} = await import(`./lib/startup-readiness.js?v=${assetVersion}`);
 const {icon} = await import(`./lib/icons.js?v=${assetVersion}`);
 const {tabs,renderNavigation,navSectionForTab} = await import(`./lib/navigation.js?v=${assetVersion}`);
 const {readSidebarCollapsed,storeSidebarCollapsed,sidebarToggleLabel} = await import(`./lib/sidebar-layout.js?v=${assetVersion}`);
@@ -25,6 +26,12 @@ const arabicDailyPdf = await import(`./lib/arabic-daily-pdf.js?v=${assetVersion}
 const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus,getMatchmakingFinance,getMatchmakingStreakLedger,getMatchmakingCurrentStreak} = await import(`./lib/logic.js?v=${assetVersion}`);
 const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = await import(`./lib/date.js?v=${assetVersion}`);
 const app=document.getElementById('app');
+let initialViewRendered=false;
+function noteInitialViewRendered(){
+ if(initialViewRendered)return;
+ initialViewRendered=true;
+ try{noteAppReadyInThisTab(window.sessionStorage)}catch{}
+}
 let sidebarCollapsed=false;
 let mobileMenuOpen=false;
 let themeStorage=null;
@@ -1147,6 +1154,7 @@ function render(){
  const scroll=lastRenderedTab===state.tab?
   scrollPreservation.captureScrollPosition(app,window):null;
  app.innerHTML=html;
+ noteInitialViewRendered();
  enhanceResponsiveTables(app);
  document.body.classList.toggle('mobile-menu-open',mobileMenuOpen);
  lastRenderedMarkup=html;lastRenderedTab=state.tab;
@@ -1344,6 +1352,7 @@ function renderAuth(message=''){
  mobileMenuOpen=false;document.body.classList.remove('mobile-menu-open');
  lastRenderedMarkup=null;lastRenderedTab=null;
  app.innerHTML=`<main class="auth-wrap"><section class="auth-lead"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><h1>The team.<br/><em>All in one place.</em></h1><p>Weekly padel benefits, special players, and matchmaking revenue—securely tracked together.</p></section><section class="auth-card"><div class="auth-top-actions"><div class="eyebrow">Private club workspace</div>${themeButton()}</div><h2>Welcome back</h2><p class="sub">Sign in with your PADEL ON staff account.</p>${!api.configured?'<div class="auth-error">Unable to connect. Please contact an administrator.</div>':''}${message?`<div class="auth-error">${esc(message)}</div>`:''}<form id="login-form">${field('email','Email address','','email','required autocomplete="email"')}${field('password','Password','','password','required autocomplete="current-password"')}<button class="btn btn-primary" ${!api.configured?'disabled':''} type="submit">Sign In ${icon('arrow')}</button></form><div class="auth-foot">Authorized PADEL ON staff only · Staff access only</div></section></main>`;
+ noteInitialViewRendered();
 }
 async function loadDebtData({background=false}={}){
  if(!api.getSession()?.access_token||!state.staff||state.debtLoading)return;

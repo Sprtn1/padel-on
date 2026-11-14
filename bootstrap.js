@@ -1,5 +1,13 @@
 // PADEL ON bootstrap: keep executable JavaScript out of HTML so CSP can block inline scripts.
 const v = Date.now().toString(36);
+// Previous successful rendering in this tab allows a longer splash-free grace period.
+// The splash still appears if initialization actually takes longer.
+const {wasAppReadyInThisTab} = await import(`./lib/startup-readiness.js?v=${v}`);
+try {
+  if(wasAppReadyInThisTab(window.sessionStorage))
+    document.documentElement.classList.add('po-startup-warm');
+} catch {}
+
 // Resolve the saved theme before dynamically loading the application styles.
 const {readTheme} = await import(`./lib/theme-preference.js?v=${v}`);
 let startupStorage=null;
