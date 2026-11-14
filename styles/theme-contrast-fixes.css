@@ -713,3 +713,38 @@ html[data-theme="dark"] .workspace[data-page="consignment"] .inv-removal>label{
 }
 
 }
+
+
+/* Overview quick actions: Court Kinetic has a dashboard-specific white rule
+   more specific than the generic .quick-link dark palette. Keep buttons,
+   iconography and labels readable in dark mode without touching light mode. */
+@media screen {
+ html[data-theme="dark"] .workspace[data-page="dashboard"] .quick-list .quick-link {
+  background:#213640;
+  border:1px solid #405a60;
+  color:#e8f3ef;
+ }
+ html[data-theme="dark"] .workspace[data-page="dashboard"] .quick-list .quick-link :is(strong,span) {
+  color:#e8f3ef;
+ }
+ html[data-theme="dark"] .workspace[data-page="dashboard"] .quick-list .quick-link small {
+  color:#bbceca;
+ }
+ html[data-theme="dark"] .workspace[data-page="dashboard"] .quick-list .quick-link svg {
+  color:#87e3b6;
+ }
+ html[data-theme="dark"] .workspace[data-page="dashboard"] .quick-list .quick-link:is(:hover,:focus-visible) {
+  background:#2b4946;
+  border-color:#628d7b;
+  color:#f4fff8;
+ }
+ html[data-theme="dark"] .workspace[data-page="dashboard"] .quick-list .quick-link:is(:hover,:focus-visible) :is(strong,span) {
+  color:#f4fff8;
+ }
+ html[data-theme="dark"] .workspace[data-page="dashboard"] .quick-list .quick-link:is(:hover,:focus-visible) small {
+  color:#d4e8e1;
+ }
+ html[data-theme="dark"] .workspace[data-page="dashboard"] .quick-list .quick-link:is(:hover,:focus-visible) svg {
+  color:#a4f1cc;
+ }
+}
