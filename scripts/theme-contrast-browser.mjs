@@ -101,6 +101,19 @@ try{
     }
     return data;
    },tests.map(([id])=>id));
+   // Navigation is a fixed brand surface and must not change with the dashboard theme.
+   const nav=await page.evaluate(mobile=>{
+    const panel=document.querySelector(mobile?'.mobile-drawer-panel':'.sidebar-panel');
+    const active=document.querySelector(mobile?'.mobile-drawer-links .nav-item.active':'.sidebar .nav-item.active');
+    const heading=document.querySelector(mobile?'.mobile-drawer-links .po-nav-heading':'.sidebar .po-nav-heading');
+    return {panel:getComputedStyle(panel).backgroundColor,
+      active:getComputedStyle(active).backgroundColor,
+      text:getComputedStyle(heading).color};
+   },width===390);
+   if(nav.panel!=='rgb(21, 36, 29)')
+    failures.push({width,theme,component:'navigation',error:'Sidebar color must match screenshot #15241D',actual:nav.panel});
+   if(nav.active!=='rgb(49, 76, 60)')
+    failures.push({width,theme,component:'active navigation',error:'Active item must remain #314C3C',actual:nav.active});
    for(const [id,min] of tests){
     const value=values[id];
     if(value.error||value.contrast<min){
@@ -122,6 +135,14 @@ try{
     }
    }
    const label=width===390?'mobile':'desktop';
+   if(theme==='dark'){
+    if(width===1366)await page.locator('.sidebar-panel').screenshot({path:join(screenshotDir,'sidebar-desktop-dark.png')});
+    if(width===390){
+     await page.locator('#mobile-drawer').evaluate(el=>el.classList.add('is-open'));
+     await page.locator('.mobile-drawer-panel').screenshot({path:join(screenshotDir,'sidebar-mobile-dark.png')});
+     await page.locator('#mobile-drawer').evaluate(el=>el.classList.remove('is-open'));
+    }
+   }
    if(theme==='dark'){
     await page.locator('[data-page="cafeteria-finances"]').screenshot({path:join(screenshotDir,label+'-finances-dark.png')});
     await page.locator('[data-page="court-timetable"]').screenshot({path:join(screenshotDir,label+'-timetable-dark.png')});
