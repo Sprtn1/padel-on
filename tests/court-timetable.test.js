@@ -38,3 +38,19 @@ test('Original court entry and payment checkmark forms remain available in eithe
  assert.match(src,/const courtCards=/);
  assert.match(src,/data-action="cafe-court-view"/);
 });
+
+test('existing court overlaps are flagged, but consecutive and other-court bookings are not',async()=>{
+ const {padelCourtTimeGrid}=await import('../lib/court-timetable.js');
+ const rows=[
+  ['first','C3','18:30','19:30'],
+  ['second','C3','19:30','21:00'],
+  ['third','C3','20:00','21:30'],
+  ['other-court','C2','20:00','21:30'],
+  ['next','C3','21:30','22:30']
+ ].map(([id,court,start,end])=>({id,name:id,category:'padel_courts',court_number:court,
+  booking_start_time:start+':00',booking_end_time:end+':00'}));
+ const grid=padelCourtTimeGrid(rows,'padel');
+ assert.equal(grid.conflicts.length,1);
+ assert.equal(grid.conflicts[0].court,'C3');
+ assert.deepEqual(new Set([grid.conflicts[0].first.id,grid.conflicts[0].second.id]),new Set(['second','third']));
+});
