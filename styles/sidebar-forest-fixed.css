@@ -1,0 +1,124 @@
+/* PADEL ON sidebar color lock.
+   The forest-green navigation is brand identity, not an app theme surface.
+   Identical in light and dark mode, on desktop and on the mobile drawer. */
+:root{
+ --po-nav-forest:#15241d;
+ --po-nav-forest-accent:#314c3c;
+ --po-nav-forest-hover:#263e31;
+ --po-nav-forest-border:#30483a;
+ --po-nav-forest-text:#c8d9cd;
+ --po-nav-forest-muted:#a4baab;
+}
+html[data-theme] .sidebar,
+html[data-theme] .sidebar-panel,
+html[data-theme] .sidebar-collapsed .sidebar:is(:hover,:has(.nav-item:focus-visible))>.sidebar-panel{
+ background:var(--po-nav-forest)!important;
+ color:var(--po-nav-forest-text);
+ border-color:var(--po-nav-forest-border);
+ box-shadow:3px 0 18px rgba(3,19,11,.12);
+}
+html[data-theme] .sidebar .nav-item,
+html[data-theme] .sidebar .nav-item svg{
+ color:var(--po-nav-forest-text);
+}
+html[data-theme] .sidebar .nav-item.active,
+html[data-theme] .sidebar .nav-item.active:hover{
+ background:var(--po-nav-forest-accent);
+ color:#f5fff6;
+ box-shadow:inset 0 0 0 1px rgba(169,226,182,.10);
+}
+html[data-theme] .sidebar .nav-item.active svg,
+html[data-theme] .sidebar .nav-item.active:hover svg{
+ color:#8fe3ae;
+}
+html[data-theme] .sidebar .nav-item.active::before{
+ background:#6fe29b;
+}
+html[data-theme] .sidebar .nav-item:hover:not(.active){
+ background:var(--po-nav-forest-hover);
+ color:#f2fff7;
+}
+html[data-theme] .sidebar .nav-item:hover:not(.active) svg{
+ color:#c2f0d0;
+}
+html[data-theme] .sidebar .po-nav-heading,
+html[data-theme] .sidebar .brand-sub,
+html[data-theme] .sidebar .sidebar-bottom{
+ color:var(--po-nav-forest-muted);
+}
+html[data-theme] .sidebar .po-nav-section-active>.po-nav-heading{
+ color:#a4dfbc;
+}
+html[data-theme] .sidebar .po-nav-section+.po-nav-section,
+html[data-theme] .sidebar .menu-footer{
+ border-color:var(--po-nav-forest-border);
+}
+html[data-theme] .sidebar .brand-compact{
+ background:#2a4937;color:#d5ffe3;border-color:#4a785b;
+}
+html[data-theme] .sidebar-toggle{
+ background:#21382b;color:#e8f8ed;border-color:#466a52;
+}
+html[data-theme] .sidebar-toggle:hover{
+ background:#2d4d3a;color:#fff;border-color:#62936e;
+}
+html[data-theme] .sidebar .menu{
+ scrollbar-color:#3d5a46 transparent;
+}
+@media(max-width:830px){
+ html[data-theme] .mobile-drawer-panel{
+  background:var(--po-nav-forest)!important;
+  color:var(--po-nav-forest-text);
+  border-color:var(--po-nav-forest-border);
+  box-shadow:14px 0 40px rgba(0,14,7,.28);
+ }
+ html[data-theme] .mobile-drawer-header,
+ html[data-theme] .mobile-drawer-account,
+ html[data-theme] .mobile-drawer-links .po-nav-section+.po-nav-section{
+  border-color:var(--po-nav-forest-border);
+ }
+ html[data-theme] .mobile-drawer-title,
+ html[data-theme] .mobile-drawer-links .po-nav-heading,
+ html[data-theme] .mobile-drawer-account small{
+  color:var(--po-nav-forest-muted);
+ }
+ html[data-theme] .mobile-drawer-links .po-nav-section-active>.po-nav-heading{
+  color:#b0e6c3;
+ }
+ html[data-theme] .mobile-drawer-links .nav-item,
+ html[data-theme] .mobile-drawer-links .nav-item svg{
+  color:var(--po-nav-forest-text);
+ }
+ html[data-theme] .mobile-drawer-links .nav-item.active,
+ html[data-theme] .mobile-drawer-links .nav-item.active:hover{
+  background:var(--po-nav-forest-accent);
+  color:#f5fff6;
+  border-color:rgba(170,229,188,.12);
+  box-shadow:inset 0 0 0 1px rgba(170,229,188,.11);
+ }
+ html[data-theme] .mobile-drawer-links .nav-item.active svg{
+  color:#8fe3ae;
+ }
+ html[data-theme] .mobile-drawer-links .nav-item.active::before{
+  background:#6fe29b;
+ }
+ html[data-theme] .mobile-drawer-links .nav-item:hover:not(.active){
+  background:var(--po-nav-forest-hover);
+  color:#f5fff8;
+ }
+ html[data-theme] .mobile-drawer-links .nav-item:hover:not(.active) svg{
+  color:#c2f0d0;
+ }
+ html[data-theme] .mobile-drawer-account strong{
+  color:#e6f4e9;
+ }
+ html[data-theme] .mobile-drawer-account .avatar{
+  background:#ecf6ee;color:#276d49;border-color:#d8e6dc;
+ }
+ html[data-theme] .mobile-menu-close{
+  background:#21382b;color:#effff2;border:1px solid #456550;
+ }
+ html[data-theme] .mobile-menu-close:hover{
+  background:#2d4d3a;color:#fff;
+ }
+}
