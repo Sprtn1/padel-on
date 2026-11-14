@@ -77,15 +77,16 @@ try{
   const timetableGeometry=await page.evaluate(()=>{
    const node=document.createElement('section');
    node.className='cafe-scheduler';
+   node.dataset.selectedCourt='C1';
    node.innerHTML='<div class="cafe-timeboard-scroll"><div class="cafe-timeboard">'+
     '<div class="cafe-timeboard-corner">TIME</div>'+
-    '<div class="cafe-timeboard-court-head">C1</div>'+
-    '<div class="cafe-timeboard-court-head">C2</div>'+
-    '<div class="cafe-timeboard-court-head">C3</div>'+
+    '<div class="cafe-timeboard-court-head" data-court="C1">C1</div>'+
+    '<div class="cafe-timeboard-court-head" data-court="C2">C2</div>'+
+    '<div class="cafe-timeboard-court-head" data-court="C3">C3</div>'+
     '<div class="cafe-timeboard-axis">09:00</div>'+
-    '<div class="cafe-timeboard-court cafe-scheduler-lane">C1</div>'+
-    '<div class="cafe-timeboard-court cafe-scheduler-lane">C2</div>'+
-    '<div class="cafe-timeboard-court cafe-scheduler-lane">C3</div>'+
+    '<div class="cafe-timeboard-court cafe-scheduler-lane" data-court="C1">C1</div>'+
+    '<div class="cafe-timeboard-court cafe-scheduler-lane" data-court="C2">C2</div>'+
+    '<div class="cafe-timeboard-court cafe-scheduler-lane" data-court="C3">C3</div>'+
     '<div class="ck-schedule-now" style="top:280px"><span>14:00</span></div></div></div>';
    document.body.append(node);
    const board=node.querySelector('.cafe-timeboard').getBoundingClientRect();
@@ -97,7 +98,6 @@ try{
    node.remove();
    return result;
   });
-  console.info('Court timetable layout geometry',width,timetableGeometry);
   assert.ok(Math.abs(timetableGeometry.axisTop-56)<3,'Time axis must start immediately below court headers');
   assert.ok(Math.abs(timetableGeometry.laneTop-56)<3,'Court lanes must align with the hour axis');
   assert.ok(Math.abs(timetableGeometry.lineTop-(56+280))<3,'Live line must overlay the correct hour');
