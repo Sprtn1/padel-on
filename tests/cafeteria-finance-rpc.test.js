@@ -35,7 +35,7 @@ function assertRpc(entry,name){
 }
 test('Pickleball doubles uses only its 9 database parameters and retains players, dates and price',()=>{
  const entry=cafeEntryFromForm('pickleball_courts',{
-  name:'Test doubles',start_time:'18:00',duration_minutes:'60',amount:'24',
+  name:'Test doubles',booking_start_time:'18:00',booking_duration_minutes:'60',amount:'24',
   pickleball_player_count:'4',check0:'on',check3:'on',court_notes:'Bring balls'
  });
  const args=assertRpc(entry,'cafeteria_finance_record_pickleball_booking');
@@ -50,7 +50,7 @@ test('Pickleball doubles uses only its 9 database parameters and retains players
 });
 test('Pickleball singles keeps a four-element legacy marker array with P3/P4 false',()=>{
  const entry=cafeEntryFromForm('pickleball_courts',{
-  name:'Test singles',start_time:'19:00',duration_minutes:'90',amount:'20',
+  name:'Test singles',booking_start_time:'19:00',booking_duration_minutes:'90',amount:'20',
   pickleball_player_count:'2',check0:'on',check2:'on',check3:'on'
  });
  const args=assertRpc(entry,'cafeteria_finance_record_pickleball_booking');
@@ -61,8 +61,8 @@ test('Pickleball singles keeps a four-element legacy marker array with P3/P4 fal
 test('Padel and Basketball use the generic 12-parameter court RPC',()=>{
  for(const category of ['padel_courts','basketball_courts']){
   const entry=cafeEntryFromForm(category,{
-   name:'Court test',court_number:'C2',start_time:'18:00',
-   duration_minutes:'90',amount:'32',check0:'on',check5:'on'
+   name:'Court test',court_number:category==='padel_courts'?'C2':'',booking_start_time:'18:00',
+   booking_duration_minutes:'90',amount:'32',check0:'on',check5:'on'
   });
   const args=assertRpc(entry,'cafeteria_finance_record_court_booking');
   assert.equal(args.p_category,category);
