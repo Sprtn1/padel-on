@@ -114,6 +114,25 @@ try{
   assert.ok(Math.abs(timetableGeometry.bookingHeight-84)<3,'90-minute booking must occupy 1.5 grid hours');
   if(width===390)assert.ok(timetableGeometry.bookingLayer>timetableGeometry.liveLineLayer,
    'Mobile booking labels must remain above the live red line');
+  if(width===390){
+   // The legacy bottom navigation is hidden: keep the quick action near Safari's bottom.
+   const fab=await page.evaluate(()=>{
+    const host=document.createElement('div');
+    host.className='workspace';host.style.minHeight='1750px';
+    host.innerHTML='<div class="cafe-quick-entry"><button class="cafe-quick-fab btn btn-primary" data-action="cafe-quick-toggle">New Transaction</button></div>';
+    document.body.append(host);
+    window.scrollTo(0,320);
+    const container=host.querySelector('.cafe-quick-entry');
+    const rect=host.querySelector('.cafe-quick-fab').getBoundingClientRect();
+    const info={position:getComputedStyle(container).position,
+     gap:window.innerHeight-rect.bottom,right:window.innerWidth-rect.right};
+    host.remove();window.scrollTo(0,0);
+    return info;
+   });
+   assert.equal(fab.position,'fixed','Mobile New Transaction must remain fixed while scrolling');
+   assert.ok(fab.gap>=8&&fab.gap<=38,'Mobile quick action must sit just above browser bottom, not the old 82px offset');
+   assert.ok(fab.right>=10&&fab.right<=30,'Mobile quick action must remain inset from the right');
+  }
   const originals=new Map();
   for(const theme of ['light','dark','light']){
    await page.evaluate(theme=>{

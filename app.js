@@ -1,30 +1,46 @@
-// Each page load uses a fresh module graph to avoid stale GitHub Pages assets.
+// Start independent module fetches together. On slower mobile connections, serial
+// top-level await imports unnecessarily multiplied network round-trip time.
 const assetVersion = new URL(import.meta.url).searchParams.get('v') || Date.now().toString(36);
-const {readTheme,writeTheme,nextTheme,themeActionLabel} = await import(`./lib/theme-preference.js?v=${assetVersion}`);
-const {noteAppReadyInThisTab} = await import(`./lib/startup-readiness.js?v=${assetVersion}`);
-const {icon} = await import(`./lib/icons.js?v=${assetVersion}`);
-const {tabs,renderNavigation,navSectionForTab} = await import(`./lib/navigation.js?v=${assetVersion}`);
-const {readSidebarCollapsed,storeSidebarCollapsed,sidebarToggleLabel} = await import(`./lib/sidebar-layout.js?v=${assetVersion}`);
-const {hashForTab,canAccessTab,resolveTabFromHash} = await import(`./lib/hash-routing.js?v=${assetVersion}`);
-const api = await import(`./lib/api.js?v=${assetVersion}`);
-const orderCounter = await import(`./lib/order-counter-ui.js?v=${assetVersion}`);
-const reemItems = await import(`./lib/reem-items-ui.js?v=${assetVersion}`);
-const cafeteriaFinanceModule = await import(`./lib/cafeteria-finances.js?v=${assetVersion}`);
-const cafeteriaPaymentsModule = await import(`./lib/cafeteria-payments.js?v=${assetVersion}`);
-const cafeteriaTodoModule = await import(`./lib/cafeteria-todo.js?v=${assetVersion}`);
-const shiftHandoverModule = await import(`./lib/cafeteria-shift-handover.js?v=${assetVersion}`);
-const consignmentModule = await import(`./lib/consignment-inventory.js?v=${assetVersion}`);
-const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
-const {sevenDayActivity} = await import(`./lib/activity-visualizations.js?v=${assetVersion}`);
-const reportComparison = await import(`./lib/report-comparison.js?v=${assetVersion}`);
-const {getDebtDayEntries,summarizeDebtDay} = await import(`./lib/cafeteria-debt-daily.js?v=${assetVersion}`);
-const {visiblePrivateClientSelection} = await import(`./lib/private-client-selection.js?v=${assetVersion}`);
-const refreshPolicy = await import(`./lib/refresh-policy.js?v=${assetVersion}`);
-const scrollPreservation = await import(`./lib/scroll-preservation.js?v=${assetVersion}`);
-const tournamentModule = await import(`./lib/tournament-management.js?v=${assetVersion}`);
-const arabicDailyPdf = await import(`./lib/arabic-daily-pdf.js?v=${assetVersion}`);
-const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus,getMatchmakingFinance,getMatchmakingStreakLedger,getMatchmakingCurrentStreak} = await import(`./lib/logic.js?v=${assetVersion}`);
-const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = await import(`./lib/date.js?v=${assetVersion}`);
+const [
+ themePreference, startupReadiness, iconsModule, navigationModule, sidebarModule, routeModule, api, orderCounter, reemItems, cafeteriaFinanceModule, cafeteriaPaymentsModule, cafeteriaTodoModule, shiftHandoverModule, consignmentModule, clubInsightsModule, activityModule, reportComparison, debtDailyModule, privateSelectionModule, refreshPolicy, scrollPreservation, tournamentModule, arabicDailyPdf, logicModule, dateModule
+] = await Promise.all([
+ import(`./lib/theme-preference.js?v=${assetVersion}`),
+ import(`./lib/startup-readiness.js?v=${assetVersion}`),
+ import(`./lib/icons.js?v=${assetVersion}`),
+ import(`./lib/navigation.js?v=${assetVersion}`),
+ import(`./lib/sidebar-layout.js?v=${assetVersion}`),
+ import(`./lib/hash-routing.js?v=${assetVersion}`),
+ import(`./lib/api.js?v=${assetVersion}`),
+ import(`./lib/order-counter-ui.js?v=${assetVersion}`),
+ import(`./lib/reem-items-ui.js?v=${assetVersion}`),
+ import(`./lib/cafeteria-finances.js?v=${assetVersion}`),
+ import(`./lib/cafeteria-payments.js?v=${assetVersion}`),
+ import(`./lib/cafeteria-todo.js?v=${assetVersion}`),
+ import(`./lib/cafeteria-shift-handover.js?v=${assetVersion}`),
+ import(`./lib/consignment-inventory.js?v=${assetVersion}`),
+ import(`./lib/club-finance-insights.js?v=${assetVersion}`),
+ import(`./lib/activity-visualizations.js?v=${assetVersion}`),
+ import(`./lib/report-comparison.js?v=${assetVersion}`),
+ import(`./lib/cafeteria-debt-daily.js?v=${assetVersion}`),
+ import(`./lib/private-client-selection.js?v=${assetVersion}`),
+ import(`./lib/refresh-policy.js?v=${assetVersion}`),
+ import(`./lib/scroll-preservation.js?v=${assetVersion}`),
+ import(`./lib/tournament-management.js?v=${assetVersion}`),
+ import(`./lib/arabic-daily-pdf.js?v=${assetVersion}`),
+ import(`./lib/logic.js?v=${assetVersion}`),
+ import(`./lib/date.js?v=${assetVersion}`)
+]);
+const {readTheme,writeTheme,nextTheme,themeActionLabel} = themePreference;
+const {noteAppReadyInThisTab} = startupReadiness;
+const {icon} = iconsModule;
+const {tabs,renderNavigation,navSectionForTab} = navigationModule;
+const {readSidebarCollapsed,storeSidebarCollapsed,sidebarToggleLabel} = sidebarModule;
+const {hashForTab,canAccessTab,resolveTabFromHash} = routeModule;
+const {sevenDayActivity} = activityModule;
+const {getDebtDayEntries,summarizeDebtDay} = debtDailyModule;
+const {visiblePrivateClientSelection} = privateSelectionModule;
+const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus,getMatchmakingFinance,getMatchmakingStreakLedger,getMatchmakingCurrentStreak} = logicModule;
+const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = dateModule;
 const app=document.getElementById('app');
 let initialViewRendered=false;
 function noteInitialViewRendered(){
@@ -1032,7 +1048,14 @@ function settingsPage(){
  const orderListsCard=listsEnabled?'<article class="panel settings-box order-lists-box"><h3>Order Lists</h3><div class="order-list-options"><section class="order-list-option"><h4>Order Counter</h4><p>Count stock items, prepare a complete restocking message, and copy it for WhatsApp.</p>'+btn(icon('list')+' Open Order Counter','open-order-counter','btn-primary')+'</section><section class="order-list-option"><h4>Reem’s Items List</h4><p>Prepare Reem’s delivery order separately from the original supplier list. Copy the complete message for WhatsApp.</p>'+btn(icon('list')+' Open Reem’s Items List','open-reem-items','btn-light')+'</section></div></article>':'';
  return `${heading('Club tools','Settings',admin?'Manage club settings and member accounts.':'Ordering tools.',btn(`${icon('logout')} Sign out`,'signout','btn-light'))}${admin?`<div class="settings-grid">${adminTools}</div>`:''}${admin||listsEnabled?`<div class="settings-followup-grid ${admin?'':'single-column'}">${admin?'<div class="settings-followup-column">'+matchmakerCommissionSettings()+adminAccountManagementCards('private')+'</div>':''}<div class="settings-followup-column">${orderListsCard}${admin?adminAccountManagementCards('cafeteria'):''}</div></div>`:''}`;
 }
-function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'court-timetable':return heading('Facility schedule','Court Timetable','Reservations, blocked slots and private training — 09:00 to 01:00 Beirut business day.')+'<div class="ck-timetable-page">'+cafeteriaFinances.schedulerPage()+'</div>';case'cafeteria-finances':return cafeteriaFinances.page();case'cafeteria-payments':return state.staff?.role==='admin'?cafeteriaPayments.page()+cafeteriaTodo.page():dashboard();case'debts':return debtPage();case'consignment':return consignmentInventory.page();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
+// Show the authenticated navigation as soon as staff access is confirmed.
+// Slow unrelated team/report feeds should not hold the workspace behind a splash.
+let initialSharedDataReady=false,initialSharedDataError='';
+function renderPage(){
+ if(!initialSharedDataReady&&['dashboard','team','other','finance','activity','reports','settings','order-counter','reem-items'].includes(state.tab))
+  return '<div class="heading-row"><div><div class="eyebrow">Club workspace</div><h1>'+esc(titleFor())+'</h1></div></div>'+
+   '<section class="panel" role="status" style="padding:20px">'+esc(initialSharedDataError||'Loading current club records…')+'</section>';
+ switch(state.tab){case'dashboard':return dashboard();case'court-timetable':return heading('Facility schedule','Court Timetable','Reservations, blocked slots and private training — 09:00 to 01:00 Beirut business day.')+'<div class="ck-timetable-page">'+cafeteriaFinances.schedulerPage()+'</div>';case'cafeteria-finances':return cafeteriaFinances.page();case'cafeteria-payments':return state.staff?.role==='admin'?cafeteriaPayments.page()+cafeteriaTodo.page():dashboard();case'debts':return debtPage();case'consignment':return consignmentInventory.page();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
 let lastRenderedMarkup=null,lastRenderedTab=null;
 // Mobile card conversion is presentation-only. Preserve every DOM node, form and action.
 function enhanceResponsiveTables(root){
@@ -1303,39 +1326,75 @@ async function loadPrivateClients({background=false}={}){
   if(!background&&(state.tab==='private-clients'||state.tab==='dashboard'||state.tab==='reports')&&!state.modal&&api.getSession()?.access_token)render();updateGlobalSearchResults();
  }
 }
-async function loadData(resetTab=false,{background=false}={}){if(state.loading)return;state.loading=true;try{
- const auth=api.getSession();if(!auth?.access_token)throw Error('Sign in required');
- const profiles=await api.list('staff_profiles',`id=eq.${auth.user.id}`);
- if(!profiles.length){await api.signOut();throw Error('This account does not have staff access. Contact an administrator.');}
- state.staff=profiles[0];
- const since=addDays(today(),-30);
- const [members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers]=await Promise.all([
-  api.listAll('team_members'),api.listAll('initial_balances'),api.listAll('team_matches',`played_on=gte.${since}`),api.listAll('team_games',`played_on=gte.${since}`),api.listAll('reset_events',`week_start=gte.${since}`),api.listAll('other_players'),api.listAll('other_games',`played_on=gte.${addDays(today(),-36)}`),api.listAll('nazih_games'),api.listAll('nazih_settlements'),api.listAll('matchmakers').then(list=>list.sort((a,b)=>a.id.localeCompare(b.id))).catch(()=>[])
- ]);
- // Do not redraw private data if this tab was signed out while requests were pending.
- if(!api.getSession()?.access_token || idleLogoutStarted)return;
- Object.assign(state,{members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers});
- if(matchmakers.length&&!matchmakers.some(p=>p.id===state.matchmakerId))state.matchmakerId=matchmakers[0].id;
- if(resetTab||!routeInitialized){
-  // Deep links survive login and session restoration; forbidden pages do not.
-  state.tab=resolveTabFromHash(window.location.hash,state.staff?.role);
-  routeInitialized=true;
-  syncBrowserRoute(state.tab,{replace:true});
+// Fetch only the data needed by the visible page as soon as its staff profile
+// is verified. The shared team feeds continue in parallel, not ahead of rendering.
+function loadVisiblePageFeeds(){
+ if(state.tab==='reports'){void loadReport();loadClubSources();}
+ if(state.tab==='private-clients')void loadPrivateClients();
+ if(state.tab==='debts')void loadDebtData();
+ if(state.tab==='consignment')void consignmentInventory.load();
+ if(state.tab==='cafeteria-finances'){
+  void cafeteriaFinances.load(true);
+  void shiftHandover.load(cafeteriaFinances.getDate());
  }
- if(!background){
-  render();
-  if(state.tab==='reports'&&!state.reportLoading)void loadReport();
-  if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients();
-  if(state.tab==='debts'&&!state.debtLoading)void loadDebtData();
-   if(state.tab==='consignment')void consignmentInventory.load();
-  if(state.tab==='cafeteria-finances'){void cafeteriaFinances.load(true);void shiftHandover.load(cafeteriaFinances.getDate());}
-  if(state.tab==='court-timetable')void cafeteriaFinances.schedulerLoad(true);
-  if(state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){void cafeteriaPayments.load();void cafeteriaTodo.load();}
-  if(state.tab==='tournament')void tournamentManagement.load(true);
-  if(state.tab==='dashboard'||state.tab==='reports')loadClubSources();
-  if(state.tab==='dashboard')void clubInsights.loadOverview(true);
+ if(state.tab==='court-timetable')void cafeteriaFinances.schedulerLoad(true);
+ if(state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){
+  void cafeteriaPayments.load();void cafeteriaTodo.load();
  }
- }catch(e){if((idleLogoutStarted || !api.getSession()?.access_token) && !e.message.includes('no PADEL ON staff access'))return;if(e.message.includes('sign in')||e.message.includes('JWT')||e.message.includes('refresh token')){clearStaffActivity();await api.signOut();renderAuth(e.message)}else if(state.staff){toast(e.message,true)}else renderAuth(e.message)}finally{state.loading=false;}}
+ if(state.tab==='tournament')void tournamentManagement.load(true);
+ if(state.tab==='dashboard'){
+  loadClubSources();void clubInsights.loadOverview(true);
+ }
+}
+async function loadData(resetTab=false,{background=false}={}){
+ if(state.loading)return;
+ state.loading=true;
+ try{
+  const auth=api.getSession();if(!auth?.access_token)throw Error('Sign in required');
+  const profiles=await api.list('staff_profiles',`id=eq.${auth.user.id}`);
+  if(!profiles.length){await api.signOut();throw Error('This account does not have staff access. Contact an administrator.');}
+  state.staff=profiles[0];
+  if(resetTab||!routeInitialized){
+   state.tab=resolveTabFromHash(window.location.hash,state.staff?.role);
+   routeInitialized=true;
+   syncBrowserRoute(state.tab,{replace:true});
+  }
+  const earlyPaint=!background&&!initialSharedDataReady;
+  if(earlyPaint){
+   render();
+   loadVisiblePageFeeds();
+  }
+  const since=addDays(today(),-30);
+  const [members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers]=await Promise.all([
+   api.listAll('team_members'),api.listAll('initial_balances'),
+   api.listAll('team_matches',`played_on=gte.${since}`),
+   api.listAll('team_games',`played_on=gte.${since}`),
+   api.listAll('reset_events',`week_start=gte.${since}`),
+   api.listAll('other_players'),api.listAll('other_games',`played_on=gte.${addDays(today(),-36)}`),
+   api.listAll('nazih_games'),api.listAll('nazih_settlements'),
+   api.listAll('matchmakers').then(list=>list.sort((a,b)=>a.id.localeCompare(b.id))).catch(()=>[])
+  ]);
+  if(!api.getSession()?.access_token||idleLogoutStarted)return;
+  Object.assign(state,{members,balances,matches,games,resets,special,specialGames,finance,settlements,matchmakers});
+  initialSharedDataReady=true;initialSharedDataError='';
+  if(matchmakers.length&&!matchmakers.some(p=>p.id===state.matchmakerId))state.matchmakerId=matchmakers[0].id;
+  if(!background){
+   if(!earlyPaint){render();loadVisiblePageFeeds();}
+   // Data-dependent pages now replace their lightweight in-page loading state.
+   // Preserve an in-progress form or scroll gesture on pages that are already usable.
+   else if(canAutoRender())render();
+  }
+ }catch(e){
+  if((idleLogoutStarted||!api.getSession()?.access_token)&&!e.message.includes('no PADEL ON staff access'))return;
+  if(e.message.includes('sign in')||e.message.includes('JWT')||e.message.includes('refresh token')){
+   clearStaffActivity();await api.signOut();renderAuth(e.message);
+  }else if(state.staff){
+   initialSharedDataError='Could not load the shared club records. Use Refresh to retry.';
+   if(!initialSharedDataReady&&!background)render();
+   toast(e.message,true);
+  }else renderAuth(e.message);
+ }finally{state.loading=false;}
+}
 let working=false;
 async function runMutation(task,success='Saved successfully'){if(working)return;working=true;const b=document.getElementById('save-button');if(b){b.disabled=true;b.textContent='Saving…'}try{await task();state.modal=null;await loadData();toast(success)}catch(e){toast(e?.message||'Could not save. Try again.',true)}finally{working=false;if(b&&b.isConnected){b.disabled=false;b.textContent='Try again'}}}
 function slugify(x){return x.trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Math.random().toString(36).slice(2,6)}
