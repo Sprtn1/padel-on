@@ -1,0 +1,85 @@
+/* PADEL ON — Stitch-inspired court timetable. Presentation only: no financial/booking changes. */
+.cafe-scheduler-toolbar{background:#fff;border:1px solid #dee8e5;border-radius:15px;gap:15px;padding:16px 18px;box-shadow:0 3px 16px rgba(21,47,42,.035)}
+.cafe-scheduler-toolbar>div:first-child{gap:11px}
+.cafe-scheduler-toolbar>div:first-child>strong{font-size:18px;color:#163c30}
+.cafe-scheduler-sports{display:flex;gap:8px;padding:0;background:transparent;border:0;flex-wrap:wrap;width:auto}
+.cafe-scheduler-sports button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:43px;padding:8px 13px;border:1px solid #e2e8ed;border-radius:10px;background:#f6f8fc;color:#273946;font-size:12px;box-shadow:none;transition:background .15s ease,border-color .15s ease}
+.cafe-scheduler-sports button:hover:not(.active){background:#eaf1ed;color:#1c5840;border-color:#d4e5dc}
+.cafe-scheduler-sports button.active,.cafe-scheduler-sports button[aria-pressed="true"]{background:#006842;color:#fff;border-color:#006842;box-shadow:0 2px 9px rgba(0,97,60,.15)}
+.cafe-scheduler-sports .ck-sport-icon{display:block;flex:0 0 19px;width:19px;height:19px}
+.cafe-scheduler-sports .ck-sport-label{font-weight:750}
+.cafe-scheduler-sports .ck-sport-count{font-size:10px;font-weight:650;padding:4px 7px;border-radius:6px;color:#475a70;background:#e9edf6;white-space:nowrap}
+.cafe-scheduler-sports button.active .ck-sport-count{background:#e3f4e9;color:#15513b}
+.cafe-scheduler .cafe-timetable-summary{padding:13px 0 10px}
+.cafe-scheduler .cafe-timetable-summary h3{font-size:15px;color:#173a2d}
+.cafe-scheduler-stats>div{background:#f7f9fc;border-color:#e2e9ef;border-radius:11px}
+.cafe-scheduler-stats b{color:#1b4f3b}
+.cafe-scheduler .cafe-timeboard-scroll{border:1px solid #dfe7ee;border-radius:12px;background:#fff;box-shadow:0 2px 12px rgba(16,45,48,.025)}
+.cafe-scheduler .cafe-timeboard{grid-template-rows:56px 896px}
+.cafe-scheduler .cafe-timeboard-corner,.cafe-scheduler .cafe-timeboard-court-head{background:#f7f9fc;color:#3b5265;border-color:#e2e9f1}
+.cafe-scheduler .cafe-timeboard-corner{font-size:9px;line-height:1.35;letter-spacing:.5px}
+.cafe-scheduler .cafe-timeboard-court-head{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;text-align:left;padding:9px 12px;gap:9px}
+.cafe-scheduler .cafe-timeboard-court-head .ck-court-token{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;flex:none;border:1px solid #c8d6e4;border-radius:6px;background:#edf2fa;color:#29466d;font-weight:800;font-size:11px}
+.cafe-scheduler .cafe-timeboard-court-head[data-court="C1"] .ck-court-token{background:#e2f5e9;border-color:#a5dac0;color:#086e4c}
+.cafe-scheduler .cafe-timeboard-court-head .ck-court-heading{display:flex;flex-direction:column;min-width:0;gap:3px}
+.cafe-scheduler .cafe-timeboard-court-head strong{font-size:12px;color:#203a50;font-weight:800;white-space:nowrap}
+.cafe-scheduler .cafe-timeboard-court-head small{color:#708398;font-size:10px;white-space:nowrap}
+.cafe-scheduler .cafe-timeboard-axis{background-color:#f9fbfd;border-color:#e4eaf1;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 27px,#edf1f6 27px,#edf1f6 28px,transparent 28px,transparent 55px,#dde5ee 55px,#dde5ee 56px)}
+.cafe-scheduler .cafe-timeboard-hour{color:#617388;font-size:10px;font-weight:700;padding-left:8px;background:#f9fbfd}
+.cafe-scheduler .cafe-timeboard-court{border-top:1px solid #e2e9f1;border-right:1px solid #e2e9f1;background-color:#fff;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 27px,#f1f4f7 27px,#f1f4f7 28px,transparent 28px,transparent 55px,#dfe7ee 55px,#dfe7ee 56px)}
+.cafe-scheduler .cafe-timeboard-booking{display:flex;flex-direction:column;gap:3px;justify-content:flex-start;align-items:stretch;text-align:left;padding:5px 7px;border:1px solid;border-left-width:2px;border-radius:7px;box-shadow:0 1px 3px rgba(20,54,58,.06);font-size:11px;line-height:1.17;color:#23445b;overflow:hidden}
+.cafe-scheduler .cafe-timeboard-booking .ck-booking-top{display:flex;align-items:center;justify-content:space-between;gap:3px;min-width:0;width:100%}
+.cafe-scheduler .cafe-timeboard-booking .cafe-timeboard-booking-time{min-width:0;font-size:9px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cafe-scheduler .cafe-timeboard-booking .ck-booking-badge{font-size:8px;line-height:1.1;font-weight:800;letter-spacing:.12px;padding:3px 4px;border-radius:4px;background:rgba(50,98,147,.12);white-space:nowrap;max-width:60%;overflow:hidden;text-overflow:ellipsis;flex:none}
+.cafe-scheduler .cafe-timeboard-booking>strong{font-size:11px;line-height:1.16;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:inherit}
+.cafe-scheduler .cafe-timeboard-booking>.ck-booking-bottom{display:flex;align-items:center;justify-content:space-between;gap:4px;font-size:9px;font-weight:700;line-height:1.15;min-width:0;opacity:1;white-space:nowrap;overflow:hidden;color:inherit}
+.cafe-scheduler .cafe-timeboard-booking .ck-booking-price{overflow:hidden;text-overflow:ellipsis}
+.cafe-scheduler .cafe-timeboard-booking .ck-booking-payment{font-weight:650;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85}
+.cafe-scheduler .cafe-timeboard-booking.ck-short-event{gap:1px;padding-top:3px;padding-bottom:2px}
+.cafe-scheduler .cafe-timeboard-booking.ck-short-event .ck-booking-bottom{display:none}
+.cafe-scheduler .cafe-timeboard-booking.ck-short-event .ck-booking-badge{font-size:7px}
+.cafe-scheduler .cafe-timeboard-booking.schedule-confirmed,.cafe-scheduler .cafe-timeboard-booking.status-some{background:#e8f7ee;border-color:#a5dec1;color:#185c42}
+.cafe-scheduler .cafe-timeboard-booking.schedule-confirmed .ck-booking-badge,.cafe-scheduler .cafe-timeboard-booking.status-some .ck-booking-badge{background:#c2edd3;color:#155d3f}
+.cafe-scheduler .cafe-timeboard-booking.status-all,.cafe-scheduler .cafe-timeboard-booking.status-none,.cafe-scheduler .cafe-timeboard-booking.status-unknown{background:#ebf1fc;border-color:#cbdaf1;color:#23466b}
+.cafe-scheduler .cafe-timeboard-booking.schedule-tentative{background:#fff2db;border-color:#eecb94;color:#77521c}
+.cafe-scheduler .cafe-timeboard-booking.schedule-training{background:#e8f3fb;border-color:#bdd8ef;color:#245078}
+.cafe-scheduler .cafe-timeboard-booking.schedule-block{background:#eef1f6;border-color:#cad5e2;color:#4a5c72}
+.cafe-scheduler .cafe-timeboard-booking:hover:not(.cafe-scheduler-dragging){box-shadow:0 5px 12px rgba(13,54,48,.13);filter:brightness(.99)}
+.cafe-scheduler .cafe-timeboard .ck-schedule-now{grid-column:1/-1;grid-row:2;align-self:start;position:relative;z-index:7;height:0;min-width:0;border-top:2px solid #ef333f;pointer-events:none;isolation:isolate}
+.cafe-scheduler .cafe-timeboard .ck-schedule-now[hidden]{display:none!important}
+.cafe-scheduler .cafe-timeboard .ck-schedule-now>span{position:absolute;left:5px;top:-11px;background:#e82f3d;color:#fff;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1.35}
+.cafe-scheduler .cafe-timeboard .ck-schedule-now:after{content:"";position:absolute;top:-5px;left:70px;width:8px;height:8px;background:#e82f3d;border:2px solid #fff;border-radius:50%}
+@media(max-width:830px){
+ .cafe-scheduler-sports{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;width:100%}
+ .cafe-scheduler-sports button{min-width:0;padding:7px 4px;min-height:42px;gap:4px;flex-wrap:wrap}
+ .cafe-scheduler-sports .ck-sport-icon{width:16px;height:16px;flex-basis:16px}
+ .cafe-scheduler-sports .ck-sport-label{font-size:10px}
+ .cafe-scheduler-sports .ck-sport-count{font-size:8px;padding:2px 4px}
+ .cafe-scheduler .cafe-timeboard-court-head{padding:8px 9px}
+ .cafe-scheduler .cafe-timeboard-booking{padding:4px 5px}
+ .cafe-scheduler .cafe-timeboard-booking .ck-booking-badge{font-size:7px}
+ .cafe-scheduler .cafe-timeboard-booking .ck-booking-payment{display:none}
+ .cafe-scheduler .cafe-timeboard .ck-schedule-now:after{left:60px}
+}
+html[data-theme="dark"] .cafe-scheduler-toolbar{background:#192e37;border-color:#38515a}
+html[data-theme="dark"] .cafe-scheduler-toolbar>div:first-child>strong{color:#edf8f3}
+html[data-theme="dark"] .cafe-scheduler-sports button:not(.active){background:#253b48;color:#e1edf1;border-color:#405767}
+html[data-theme="dark"] .cafe-scheduler-sports button.active{background:#08734e;color:#fff;border-color:#3bb98a}
+html[data-theme="dark"] .cafe-scheduler-sports button:not(.active) .ck-sport-count{background:#344b5b;color:#dcebf2}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-scroll{background:#172a35;border-color:#3a535f}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-corner,html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-court-head{background:#20353f;color:#dcebf0;border-color:#3c5563}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-court-head strong{color:#edf5f8}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-court-head small{color:#b4c8cf}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-court-head .ck-court-token{background:#30485a;border-color:#536e83;color:#dbeeff}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-court-head[data-court="C1"] .ck-court-token{background:#184936;border-color:#41896a;color:#adf3c9}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-axis{background-color:#1e333e;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 27px,#2c4451 27px,#2c4451 28px,transparent 28px,transparent 55px,#39515c 55px,#39515c 56px);border-color:#405562}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-hour{background:#1e333e;color:#bccfd6}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-court{background-color:#1b303b;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 27px,#2b414b 27px,#2b414b 28px,transparent 28px,transparent 55px,#39505b 55px,#39505b 56px);border-color:#3c5360}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.schedule-confirmed,html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.status-some{background:#21483a;border-color:#4b9b76;color:#dcffe9}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.status-all,html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.status-none,html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.status-unknown{background:#263e54;border-color:#557593;color:#e2f1ff}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.schedule-training{background:#253f58;border-color:#5e8eb4;color:#e0f0ff}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.schedule-block{background:#34424e;border-color:#6a7c8b;color:#e6edf4}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.schedule-tentative{background:#51412b;border-color:#a88549;color:#fff0ca}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking .ck-booking-badge{background:rgba(255,255,255,.16);color:inherit}
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard .ck-schedule-now:after{border-color:#1e333e}
+@media print{.cafe-scheduler .cafe-timeboard .ck-schedule-now{display:none!important}}
