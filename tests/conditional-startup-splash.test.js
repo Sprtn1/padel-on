@@ -24,16 +24,19 @@ test('Blocked session storage never prevents the app from opening',()=>{
 });
 test('Returning tab applies warm-start policy before dynamic styles and the application start',()=>{
  const boot=read('bootstrap.js');
+ const parallel=boot.indexOf('Promise.all([');
  const warm=boot.indexOf("classList.add('po-startup-warm')");
- const theme=boot.indexOf("const {readTheme}");
+ const cssStart=boot.indexOf('for (const path of [');
  const app=boot.indexOf("await import(`./app.js?v=");
- assert.ok(warm>=0&&theme>warm&&app>theme);
+ assert.ok(parallel>=0&&warm>parallel&&cssStart>warm&&app>cssStart);
+ assert.match(boot,/import\(`\.\/lib\/theme-preference\.js\?v=/);
  const css=read('styles/startup-splash.css');
  assert.match(css,/#app > \.startup\{/);
  assert.match(css,/visibility:hidden/);
  assert.match(css,/animation:po-splash-reveal \.18s ease 650ms both/);
  assert.match(css,/html\.po-startup-warm #app > \.startup/);
- assert.match(css,/animation-delay:1650ms/);
+ assert.match(css,/html\.po-startup-warm #app > \.startup\{[\s\S]*?min-height:3px/);
+ assert.match(css,/html\.po-startup-warm #app > \.startup > \*\{display:none!important\}/);
  assert.match(css,/@keyframes po-splash-reveal/);
  assert.match(css,/body:has\(#app > \.startup\)/);
 });
