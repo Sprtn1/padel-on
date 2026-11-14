@@ -1,0 +1,808 @@
+/* PADEL ON — global dark mode. Loaded LAST after all module styles.
+   All finance, booking, tournament, permission and PDF JavaScript remains unchanged.
+   Light mode has zero style overrides: every selector below is gated to data-theme="dark". */
+html[data-theme="dark"]{
+ --green:#6bdda5;--darkgreen:#44b889;--ink:#e4eff0;--muted:#a8b7bd;
+ --stroke:#344750;--card:#172630;--soft:#101d26;--sidebar:#14232d;
+ --po-border:#344650;--po-ui-border:#31444c;
+ --ck-page:#0d1821;--ck-panel:#172630;--ck-text:#e6eff1;--ck-subtext:#a0b2b9;
+ --ck-line:#344650;--ck-highlight:#193b30;--ck-brand:#70e3a8;
+ --ck-shadow:0 5px 22px rgba(0,0,0,.19);--ck-shadow-hover:0 9px 28px rgba(0,0,0,.26);
+ --ck-surface:#0d1821;--ck-border:#344650;--ck-ink:#e6eff1;--ck-muted:#a8b7bd;
+ --ck-accent:#64dba0;--ck-green-soft:#16392e;
+ --dm-page:#0d1821;--dm-card:#172630;--dm-card2:#1c2c36;
+ --dm-input:#21323d;--dm-border:#344650;--dm-soft-border:#2b3d47;
+ --dm-text:#e8f1f1;--dm-muted:#9db1b9;--dm-accent:#6be7ad;
+ --dm-muted-green:#83c7a6;--dm-success:#133c31;--dm-warn:#483820;
+ --dm-danger:#442c31;--dm-blue:#21394e;--dm-purple:#302c48;
+ background:var(--dm-page);color:var(--dm-text);color-scheme:dark;
+}}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] #app,
+html[data-theme="dark"] .app-layout,
+html[data-theme="dark"] .main,
+html[data-theme="dark"] .workspace{background:var(--dm-page);color:var(--dm-text)}
+
+html[data-theme="dark"] .workspace[data-page]{color:var(--dm-text)}
+
+html[data-theme="dark"] .topbar{background:rgba(21,35,45,.97);border-color:var(--dm-border);box-shadow:0 1px 12px #060d11bb}
+
+html[data-theme="dark"] .topbar-main,
+html[data-theme="dark"] .heading-row h1,
+html[data-theme="dark"] .page-title,
+html[data-theme="dark"] .brand,
+html[data-theme="dark"] .user-meta strong{color:var(--dm-text)}
+
+html[data-theme="dark"] .topbar .crumb,
+html[data-theme="dark"] .user-meta small,
+html[data-theme="dark"] .heading-row p,
+html[data-theme="dark"] .page-footer{color:var(--dm-muted)}
+
+html[data-theme="dark"] .topbar .avatar,
+html[data-theme="dark"] .avatar,
+html[data-theme="dark"] .player-avatar{background:#24453b;color:#85e9b3;border-color:#375950}
+
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .sidebar-panel,
+html[data-theme="dark"] .sidebar-collapsed .sidebar:is(:hover,
+html[data-theme="dark"] :has(.nav-item:focus-visible))>.sidebar-panel{background:#14232d!important;border-color:var(--dm-border);box-shadow:3px 0 16px #030b0f55}
+
+html[data-theme="dark"] .sidebar .brand-sub,
+html[data-theme="dark"] .sidebar .sidebar-bottom,
+html[data-theme="dark"] .sidebar .po-nav-heading,
+html[data-theme="dark"] .mobile-drawer-links .po-nav-heading{color:#98aeb7}
+
+html[data-theme="dark"] .sidebar .nav-item,
+html[data-theme="dark"] .mobile-drawer-links .nav-item{color:#c2d1d3}
+
+html[data-theme="dark"] .sidebar .nav-item svg,
+html[data-theme="dark"] .mobile-drawer-links .nav-item svg{color:#a2b9b7}
+
+html[data-theme="dark"] .sidebar .nav-item:hover,
+html[data-theme="dark"] .mobile-drawer-links .nav-item:hover{background:#203d38;color:#f0fff8}
+
+html[data-theme="dark"] .sidebar .nav-item.active,
+html[data-theme="dark"] .mobile-drawer-links .nav-item.active{background:#214b3d;color:#e8fff0;box-shadow:inset 0 0 0 1px #316e53}
+
+html[data-theme="dark"] .sidebar .nav-item.active svg,
+html[data-theme="dark"] .mobile-drawer-links .nav-item.active svg{color:#8bf0bb}
+
+html[data-theme="dark"] .sidebar .po-nav-section+.po-nav-section,
+html[data-theme="dark"] .mobile-drawer-links .po-nav-section+.po-nav-section,
+html[data-theme="dark"] .mobile-drawer-account{border-color:#2b4248}
+
+html[data-theme="dark"] .sidebar .po-nav-section-active>.po-nav-heading,
+html[data-theme="dark"] .mobile-drawer-links .po-nav-section-active>.po-nav-heading{color:#7bd9aa}
+
+html[data-theme="dark"] .sidebar-toggle,
+html[data-theme="dark"] .mobile-menu-toggle,
+html[data-theme="dark"] .mobile-menu-close,
+html[data-theme="dark"] .ck-detail-close{background:#24353f;color:#e4eff0;border-color:#3a5359}
+
+html[data-theme="dark"] .sidebar-toggle:hover,
+html[data-theme="dark"] .mobile-menu-toggle:hover,
+html[data-theme="dark"] .mobile-menu-close:hover{background:#305048;color:#a6f1ce}
+
+html[data-theme="dark"] .mobile-drawer-panel{background:#14232d;color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .mobile-drawer-header,
+html[data-theme="dark"] .mobile-drawer-account{border-color:var(--dm-border)}
+
+html[data-theme="dark"] .mobile-drawer-account strong,
+html[data-theme="dark"] .mobile-drawer-account small{color:var(--dm-text)}
+
+html[data-theme="dark"] .mobile-drawer-title{color:#9eb7bc}
+
+html[data-theme="dark"] .mobile-drawer-backdrop{background:#061016cc}
+
+html[data-theme="dark"] .mobile-bar{background:#152630;border-color:var(--dm-border)}
+
+html[data-theme="dark"] .mobile-nav{color:#a6bec2}
+
+html[data-theme="dark"] .mobile-nav.active{color:#84e8af}
+
+html[data-theme="dark"] .po-theme-toggle{background:#263b46!important;color:#9ae4c1!important;border:1px solid #3c555c!important}
+
+html[data-theme="dark"] .po-theme-toggle:hover{background:#31564a!important;color:#ccffdd!important}
+
+html[data-theme="dark"] .auth-wrap{background:radial-gradient(circle at 17% 15%,#1c3c31 0%,#0e201e 43%,#0b151f 100%);color:var(--dm-text)}
+
+html[data-theme="dark"] .auth-lead h1,
+html[data-theme="dark"] .auth-lead p,
+html[data-theme="dark"] .auth-lead em{color:#effbf4}
+
+html[data-theme="dark"] .auth-card,
+html[data-theme="dark"] .auth-card .auth-foot{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .auth-card h2,
+html[data-theme="dark"] .auth-card .form-field>span{color:var(--dm-text)}
+
+html[data-theme="dark"] .auth-card .sub,
+html[data-theme="dark"] .auth-foot{color:var(--dm-muted)}
+
+html[data-theme="dark"] .auth-error{background:var(--dm-danger);color:#ffb9b7;border-color:#8e5357}
+
+html[data-theme="dark"] .auth-top-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:15px}
+
+html[data-theme="dark"] .auth-top-actions .eyebrow{margin:0;color:#78dda7}
+
+html[data-theme="dark"] .auth-top-actions .po-theme-toggle{flex:none;width:40px;height:40px;min-height:40px;padding:8px}
+
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .summary-card,
+html[data-theme="dark"] .member-card,
+html[data-theme="dark"] .other-card,
+html[data-theme="dark"] .settings-box,
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .cpay-card,
+html[data-theme="dark"] .cpay-form,
+html[data-theme="dark"] .inv-editor,
+html[data-theme="dark"] .inv-table-panel{background:var(--dm-card);border-color:var(--dm-border);box-shadow:var(--ck-shadow)}
+
+html[data-theme="dark"] .workspace[data-page] :where(.panel,
+html[data-theme="dark"] .summary-card,
+html[data-theme="dark"] .member-card,
+html[data-theme="dark"] .other-card,
+html[data-theme="dark"] .settings-box,
+html[data-theme="dark"] .cpay-card,
+html[data-theme="dark"] .inv-editor){background:var(--dm-card);border-color:var(--dm-border);box-shadow:var(--ck-shadow)}
+
+html[data-theme="dark"] .workspace[data-page] :where(.panel,
+html[data-theme="dark"] .member-card,
+html[data-theme="dark"] .other-card,
+html[data-theme="dark"] .settings-box):hover{border-color:#4b6d69;box-shadow:var(--ck-shadow-hover)}
+
+html[data-theme="dark"] .workspace[data-page] :where(h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] h4,
+html[data-theme="dark"] h5,
+html[data-theme="dark"] h6,
+html[data-theme="dark"] strong,
+html[data-theme="dark"] b){color:var(--dm-text)}
+
+html[data-theme="dark"] .workspace[data-page] :where(p,
+html[data-theme="dark"] small,
+html[data-theme="dark"] label,
+html[data-theme="dark"] .label,
+html[data-theme="dark"] .submetric,
+html[data-theme="dark"] .tiny,
+html[data-theme="dark"] .eyebrow){color:var(--dm-muted)}
+
+html[data-theme="dark"] .workspace[data-page] :where(span,
+html[data-theme="dark"] td,
+html[data-theme="dark"] th){color:inherit}
+
+html[data-theme="dark"] .workspace[data-page] :where(.metric,
+html[data-theme="dark"] .game-number,
+html[data-theme="dark"] .debt-total,
+html[data-theme="dark"] .other-count,
+html[data-theme="dark"] .private-client-balance,
+html[data-theme="dark"] .cafe-category-top>strong,
+html[data-theme="dark"] .cpay-amounts strong,
+html[data-theme="dark"] .tm-browser-card h3){color:var(--dm-text)}
+
+html[data-theme="dark"] .workspace[data-page] .summary-card.feature,
+html[data-theme="dark"] .summary-card.feature{background:linear-gradient(128deg,#145f49,#117652);border-color:#399270;color:#fff}
+
+html[data-theme="dark"] .summary-card.feature :is(.metric,
+html[data-theme="dark"] .label,
+html[data-theme="dark"] .submetric,
+html[data-theme="dark"] strong,
+html[data-theme="dark"] span,
+html[data-theme="dark"] small){color:#fff}
+
+html[data-theme="dark"] .metric-icon,
+html[data-theme="dark"] .player-avatar,
+html[data-theme="dark"] .activity-avatar,
+html[data-theme="dark"] .ck-detail-pill{background:#1e4339;color:#9aeac0}
+
+html[data-theme="dark"] .panel-head,
+html[data-theme="dark"] .panel-body,
+html[data-theme="dark"] .panel-footer,
+html[data-theme="dark"] .card-header,
+html[data-theme="dark"] .card-footer{background:transparent;border-color:var(--dm-border)}
+
+html[data-theme="dark"] .btn-light,
+html[data-theme="dark"] .btn-soft,
+html[data-theme="dark"] .quick-link,
+html[data-theme="dark"] .quick-link:hover,
+html[data-theme="dark"] .tag-gray,
+html[data-theme="dark"] .select,
+html[data-theme="dark"] .form-input,
+html[data-theme="dark"] .search,
+html[data-theme="dark"] .toolbar button:not(.btn-primary){background:var(--dm-card2);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .workspace[data-page] :where(.select,
+html[data-theme="dark"] .search,
+html[data-theme="dark"] .form-input){background:var(--dm-input);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .btn-light:hover,
+html[data-theme="dark"] .btn-soft:hover,
+html[data-theme="dark"] .quick-link:hover{background:#2b444c;color:#e8fff3;border-color:#58746d}
+
+html[data-theme="dark"] .btn-primary{background:#087e56;color:#fff;border-color:#16815d}
+
+html[data-theme="dark"] .btn-primary:hover{background:#0b9768;color:#fff}
+
+html[data-theme="dark"] .btn-danger{background:var(--dm-danger);color:#ffb8b5;border-color:#7e494d}
+
+html[data-theme="dark"] .btn-danger:hover{background:#563336;color:#ffc8c4}
+
+html[data-theme="dark"] input:not([type=checkbox]):not([type=radio]):not([type=range]),
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea{background:var(--dm-input);color:var(--dm-text);border-color:var(--dm-border);caret-color:#90e4bb}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder{color:#8ba2ab;opacity:1}
+
+html[data-theme="dark"] input:disabled,
+html[data-theme="dark"] select:disabled,
+html[data-theme="dark"] textarea:disabled{background:#1b2a33;color:#8298a2;opacity:.8}
+
+html[data-theme="dark"] input[type=checkbox],
+html[data-theme="dark"] input[type=radio]{accent-color:#46c68d}
+
+html[data-theme="dark"] .modal,
+html[data-theme="dark"] .modal-head,
+html[data-theme="dark"] .modal-body,
+html[data-theme="dark"] .modal-actions,
+html[data-theme="dark"] .modal-card,
+html[data-theme="dark"] .cafe-scheduler-dialog,
+html[data-theme="dark"] .ck-detail-drawer,
+html[data-theme="dark"] .cafe-quick-sheet{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .modal-backdrop,
+html[data-theme="dark"] .cafe-scheduler-backdrop,
+html[data-theme="dark"] .ck-detail-scrim{background:rgba(3,11,16,.75)}
+
+html[data-theme="dark"] .modal-close{background:#2b434d;color:#d0e5e5;border-color:#45616a}
+
+html[data-theme="dark"] .modal-head h2,
+html[data-theme="dark"] .modal-body h3,
+html[data-theme="dark"] .cafe-scheduler-dialog-head h3,
+html[data-theme="dark"] .ck-detail-head h3{color:var(--dm-text)}
+
+html[data-theme="dark"] .form-field>span,
+html[data-theme="dark"] .cafe-entry-form label,
+html[data-theme="dark"] .cafe-scheduler-form label,
+html[data-theme="dark"] .form-cols label{color:var(--dm-muted)}
+
+html[data-theme="dark"] .notice,
+html[data-theme="dark"] .empty-prompt,
+html[data-theme="dark"] .cafe-empty,
+html[data-theme="dark"] .cafe-notice,
+html[data-theme="dark"] .cafe-scheduler-notice{background:#1b3631;color:#abd6c0;border-color:#335d4a}
+
+html[data-theme="dark"] .notice strong,
+html[data-theme="dark"] .empty-prompt strong{color:#d2f0df}
+
+html[data-theme="dark"] .tag-green,
+html[data-theme="dark"] .cafe-planned-pill,
+html[data-theme="dark"] .ck-detail-pill,
+html[data-theme="dark"] .cpay-paid,
+html[data-theme="dark"] .inv-quantity.in-stock{background:var(--dm-success);color:#94ecc0}
+
+html[data-theme="dark"] .tag-amber,
+html[data-theme="dark"] .cpay-partial,
+html[data-theme="dark"] .inv-quantity.out-of-stock{background:var(--dm-warn);color:#f8ce87}
+
+html[data-theme="dark"] .tag-red,
+html[data-theme="dark"] .cpay-unpaid,
+html[data-theme="dark"] .auth-error,
+html[data-theme="dark"] .inv-error,
+html[data-theme="dark"] .cpay-error,
+html[data-theme="dark"] .shift-error{background:var(--dm-danger);color:#ffb5ad;border-color:#76464b}
+
+html[data-theme="dark"] .tag-gray,
+html[data-theme="dark"] .tm-status-completed{background:#293642;color:#c1ced8}
+
+html[data-theme="dark"] .toast{background:#284239;color:#ebfff3;border:1px solid #416858}
+
+html[data-theme="dark"] .toast.bad{background:#60343a;color:#ffe8e5}
+
+html[data-theme="dark"] .data-table-wrap,
+html[data-theme="dark"] .data-table,
+html[data-theme="dark"] .data-table tbody,
+html[data-theme="dark"] .data-table thead{background:var(--dm-card);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .workspace[data-page] .data-table th,
+html[data-theme="dark"] .data-table th,
+html[data-theme="dark"] table th{background:#20323e;color:#afc3ca;border-color:var(--dm-border)}
+
+html[data-theme="dark"] .workspace[data-page] .data-table td,
+html[data-theme="dark"] .data-table td,
+html[data-theme="dark"] table td{background:transparent;color:#d9e6e7;border-color:var(--dm-soft-border)}
+
+html[data-theme="dark"] .workspace[data-page] .data-table tbody tr:hover td,
+html[data-theme="dark"] .data-table tbody tr:hover td{background:#223a40;color:#e9f7f3}
+
+html[data-theme="dark"] .data-table td strong,
+html[data-theme="dark"] .data-table td b,
+html[data-theme="dark"] .data-table td small{color:#d8e9e9}
+
+html[data-theme="dark"] .data-table :is(input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea){background:var(--dm-input);color:var(--dm-text)}
+
+html[data-theme="dark"] .workspace .data-table-wrap:not(:has(>.po-mobile-card-table)){border-color:var(--dm-border)}
+
+html[data-theme="dark"] .workspace .data-table-wrap:not(:has(>.po-mobile-card-table))::after{background:var(--dm-card);color:var(--dm-muted)}
+
+html[data-theme="dark"] .po-mobile-card-table tbody tr,
+html[data-theme="dark"] .po-mobile-card-table tbody td{background:var(--dm-card);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .po-mobile-card-table tbody td::before{color:var(--dm-muted)}
+
+html[data-theme="dark"] .cafe-summary article,
+html[data-theme="dark"] .cafe-category-card,
+html[data-theme="dark"] .cafe-court-payment-card,
+html[data-theme="dark"] .cafe-closing-box,
+html[data-theme="dark"] .cafe-day-status,
+html[data-theme="dark"] .cafe-goods-pending,
+html[data-theme="dark"] .cafe-fold,
+html[data-theme="dark"] .cafe-auto-payments-wrap,
+html[data-theme="dark"] .cafe-category-grid{background:var(--dm-card);border-color:var(--dm-border);box-shadow:none}
+
+html[data-theme="dark"] .cafe-summary article span,
+html[data-theme="dark"] .cafe-category-top h3,
+html[data-theme="dark"] .cafe-summary article strong,
+html[data-theme="dark"] .cafe-category-top>strong{color:var(--dm-text)}
+
+html[data-theme="dark"] .cafe-fold>summary,
+html[data-theme="dark"] .cafe-fold[open]>summary,
+html[data-theme="dark"] .cafe-fold>summary:hover,
+html[data-theme="dark"] .cafe-fold-body{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .cafe-fold>summary:hover{background:var(--dm-card2)}
+
+html[data-theme="dark"] .cafe-fold>summary::marker{color:var(--dm-accent)}
+
+html[data-theme="dark"] .cafe-entry-form,
+html[data-theme="dark"] .cafe-ledger-entry,
+html[data-theme="dark"] .cafe-ledger-row,
+html[data-theme="dark"] .cafe-court-grid,
+html[data-theme="dark"] .cafe-category-grid,
+html[data-theme="dark"] .cafe-day-reconciliation{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .cafe-quick-fab,
+html[data-theme="dark"] .cafe-view-toggle button.active{background:#087e56;color:#fff}
+
+html[data-theme="dark"] .cafe-quick-sheet,
+html[data-theme="dark"] .cafe-quick-entry,
+html[data-theme="dark"] .cafe-view-toggle,
+html[data-theme="dark"] .cafe-ledger-head,
+html[data-theme="dark"] .cafe-quick-category-menu{background:var(--dm-card2);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .cafe-view-toggle button:not(.active){background:transparent;color:var(--dm-muted)}
+
+html[data-theme="dark"] .cafe-quick-entry :is(button,
+html[data-theme="dark"] input,
+html[data-theme="dark"] select){border-color:var(--dm-border)}
+
+html[data-theme="dark"] .whish-section,
+html[data-theme="dark"] .whish-section .panel,
+html[data-theme="dark"] .whish-transaction-card,
+html[data-theme="dark"] .whish-transaction-row,
+html[data-theme="dark"] .whish-ledger,
+html[data-theme="dark"] .whish-balance-card{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .whish-section :is(h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] strong,
+html[data-theme="dark"] b){color:var(--dm-text)}
+
+html[data-theme="dark"] .cafe-payment-split-totals span,
+html[data-theme="dark"] .cafe-court-payment-form,
+html[data-theme="dark"] .cafe-scheduler-payment-fieldset{background:var(--dm-card2);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .cafe-payment-split-totals b,
+html[data-theme="dark"] .cafe-court-payment-fields input,
+html[data-theme="dark"] .cafe-payment-splits-heading h3{color:var(--dm-text)}
+
+html[data-theme="dark"] .cafe-scheduler-toolbar,
+html[data-theme="dark"] .cafe-scheduler-dialog,
+html[data-theme="dark"] .cafe-scheduler-dialog-head,
+html[data-theme="dark"] .cafe-scheduler-actions,
+html[data-theme="dark"] .cafe-timetable,
+html[data-theme="dark"] .cafe-scheduler .cafe-timetable{background:var(--dm-card)!important;color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .cafe-scheduler-toolbar strong,
+html[data-theme="dark"] .cafe-scheduler-toolbar>div:first-child>strong,
+html[data-theme="dark"] .cafe-scheduler .cafe-timetable-summary h3{color:var(--dm-text)}
+
+html[data-theme="dark"] .cafe-scheduler-toolbar small,
+html[data-theme="dark"] .cafe-scheduler .cafe-scheduler-hint,
+html[data-theme="dark"] .cafe-timetable-summary p{color:var(--dm-muted)}
+
+html[data-theme="dark"] .cafe-scheduler-sports,
+html[data-theme="dark"] .cafe-scheduler-sports button:not(.active),
+html[data-theme="dark"] .cafe-scheduler-sports button:hover:not(.active),
+html[data-theme="dark"] .cafe-scheduler-date-controls button:not(.btn-primary),
+html[data-theme="dark"] .cafe-scheduler-date-controls input{background:#20333d;color:#cededc;border-color:var(--dm-border)}
+
+html[data-theme="dark"] .cafe-scheduler-sports button.active,
+html[data-theme="dark"] .cafe-scheduler-sports button[aria-pressed=true]{background:#0a7b55;color:#f6fff9}
+
+html[data-theme="dark"] .cafe-scheduler-stats>div,
+html[data-theme="dark"] .cafe-scheduler-sync,
+html[data-theme="dark"] .cafe-scheduler .cafe-scheduler-stats>div{background:#1e313b;border-color:var(--dm-border);color:var(--dm-text)}
+
+html[data-theme="dark"] .cafe-scheduler-stats b,
+html[data-theme="dark"] .cafe-scheduler-stats span,
+html[data-theme="dark"] .cafe-scheduler .cafe-scheduler-stats b{color:var(--dm-text)}
+
+html[data-theme="dark"] .cafe-timeboard-scroll,
+html[data-theme="dark"] .cafe-timeboard,
+html[data-theme="dark"] .cafe-timeboard-court,
+html[data-theme="dark"] .cafe-timetable-lane,
+html[data-theme="dark"] .cafe-timetable-slot{background-color:#15242e;color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .cafe-timeboard-court{background-image:repeating-linear-gradient(to bottom,transparent 0px,transparent 27px,#223742 27px,#223742 28px,transparent 28px,transparent 55px,#35505a 55px,#35505a 56px)}
+
+html[data-theme="dark"] .cafe-timeboard-corner,
+html[data-theme="dark"] .cafe-timeboard-court-head,
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-court-head,
+html[data-theme="dark"] .cafe-timetable-lane-head{background:#213a3c;color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .cafe-timeboard-court-head strong,
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-court-head strong,
+html[data-theme="dark"] .cafe-timeboard-hour,
+html[data-theme="dark"] .cafe-timeboard-court-head small{color:#b1d4c7}
+
+html[data-theme="dark"] .cafe-timeboard-axis,
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-axis{background:#1c2e37;border-color:var(--dm-border)}
+
+html[data-theme="dark"] .cafe-timeboard-unplaced,
+html[data-theme="dark"] .cafe-scheduler-unplaced,
+html[data-theme="dark"] .cafe-hour-panel,
+html[data-theme="dark"] .cafe-scheduler-notice{background:var(--dm-card2);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.schedule-confirmed,
+html[data-theme="dark"] .cafe-timeboard-booking.status-some{background:#18513f;border-color:#3fae7a;color:#d7ffec}
+
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.schedule-tentative{background:#604923;border-color:#c2944e;color:#ffe8b7}
+
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.schedule-block{background:repeating-linear-gradient(135deg,#303d46,#303d46 9px,#26343f 9px,#26343f 18px);border-color:#7b8b99;color:#e2e9ef}
+
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.schedule-training{background:#383159;border-color:#8071bc;color:#e8dcff}
+
+html[data-theme="dark"] .cafe-timeboard-booking.status-all{background:#234359;border-color:#5393b8;color:#d6f2ff}
+
+html[data-theme="dark"] .cafe-timeboard-booking.status-none{background:#522e41;border-color:#bc7291;color:#ffcfdf}
+
+html[data-theme="dark"] .cafe-timeboard-booking.status-unknown{background:#334049;border-color:#70818c;color:#d9e0e5}
+
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking>strong,
+html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking>small{color:inherit}
+
+html[data-theme="dark"] .cafe-timeboard-legend>span,
+html[data-theme="dark"] .cafe-scheduler-legend span,
+html[data-theme="dark"] .cafe-timeboard-disclaimer{color:var(--dm-muted)}
+
+html[data-theme="dark"] .ck-detail-drawer,
+html[data-theme="dark"] .ck-detail-head,
+html[data-theme="dark"] .ck-detail-body,
+html[data-theme="dark"] .ck-detail-footer,
+html[data-theme="dark"] .ck-detail-box{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .ck-detail-box{background:var(--dm-card2)}
+
+html[data-theme="dark"] .ck-detail-head h3,
+html[data-theme="dark"] .ck-detail-box h4,
+html[data-theme="dark"] .ck-detail-value,
+html[data-theme="dark"] .ck-detail-split b{color:var(--dm-text)}
+
+html[data-theme="dark"] .ck-detail-label,
+html[data-theme="dark"] .ck-detail-note,
+html[data-theme="dark"] .ck-detail-head p,
+html[data-theme="dark"] .ck-detail-box small{color:var(--dm-muted)}
+
+html[data-theme="dark"] .ck-detail-money{color:var(--dm-accent)}
+
+html[data-theme="dark"] .ck-court-tab,
+html[data-theme="dark"] .ck-court-tab:not([aria-pressed=true]){background:var(--dm-card2);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .ck-court-tab[aria-pressed=true]{background:var(--dm-success);color:#a1efbf;border-color:#48866b}
+
+html[data-theme="dark"] .ck-finance-sync{background:var(--dm-success);color:#b3f1d1;border-color:#30644b}
+
+html[data-theme="dark"] .shift-section,
+html[data-theme="dark"] .shift-handover-form,
+html[data-theme="dark"] .shift-check-result,
+html[data-theme="dark"] .shift-record,
+html[data-theme="dark"] .shift-history,
+html[data-theme="dark"] .shift-prior{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .shift-check-result.shift-short{background:var(--dm-danger);color:#ffc6bb}
+
+html[data-theme="dark"] .shift-check-result.shift-extra{background:var(--dm-warn);color:#f7da9b}
+
+html[data-theme="dark"] .shift-head h3,
+html[data-theme="dark"] .shift-handover-form h3,
+html[data-theme="dark"] .shift-check-result h4,
+html[data-theme="dark"] .shift-breakdown>div strong,
+html[data-theme="dark"] .shift-prior strong{color:var(--dm-text)}
+
+html[data-theme="dark"] .private-directory,
+html[data-theme="dark"] .private-detail,
+html[data-theme="dark"] .private-daily-panel,
+html[data-theme="dark"] .private-scheduled-bookings,
+html[data-theme="dark"] .private-scheduled-head,
+html[data-theme="dark"] .private-training-item,
+html[data-theme="dark"] .private-balance-box{background:var(--dm-card);border-color:var(--dm-border);color:var(--dm-text)}
+
+html[data-theme="dark"] .private-client-row,
+html[data-theme="dark"] .private-calendar-day,
+html[data-theme="dark"] .private-directory-selects,
+html[data-theme="dark"] .private-ledger-head,
+html[data-theme="dark"] .private-ledger-table,
+html[data-theme="dark"] .private-client-notes{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .private-client-row:hover,
+html[data-theme="dark"] .private-calendar-day:hover{background:var(--dm-card2)}
+
+html[data-theme="dark"] .private-client-row.active,
+html[data-theme="dark"] .private-calendar-day.active{background:var(--dm-success);color:#d4f4e3}
+
+html[data-theme="dark"] .private-training-fee,
+html[data-theme="dark"] .private-client-heading,
+html[data-theme="dark"] .private-client-balance,
+html[data-theme="dark"] .private-balance-box strong{color:var(--dm-text)}
+
+html[data-theme="dark"] .debt-directory,
+html[data-theme="dark"] .debt-details,
+html[data-theme="dark"] .debt-daily-panel,
+html[data-theme="dark"] .debt-person-item,
+html[data-theme="dark"] .debt-person-header,
+html[data-theme="dark"] .debt-transactions,
+html[data-theme="dark"] .debt-daily-summary>div{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .debt-person-item:hover,
+html[data-theme="dark"] .debt-person-item.active{background:var(--dm-card2)}
+
+html[data-theme="dark"] .debt-total,
+html[data-theme="dark"] .debt-person-header strong,
+html[data-theme="dark"] .debt-person-item strong{color:var(--dm-text)}
+
+html[data-theme="dark"] .debt-owing,
+html[data-theme="dark"] .private-negative{color:#ffb8a8}
+
+html[data-theme="dark"] .debt-clear{color:#8ee7b2}
+
+html[data-theme="dark"] .training-panel,
+html[data-theme="dark"] .training-members,
+html[data-theme="dark"] .training-member,
+html[data-theme="dark"] .other-grid,
+html[data-theme="dark"] .other-card,
+html[data-theme="dark"] .member-card{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .training-member strong,
+html[data-theme="dark"] .member-card strong,
+html[data-theme="dark"] .other-card strong{color:var(--dm-text)}
+
+html[data-theme="dark"] .progress,
+html[data-theme="dark"] .po-chart-track,
+html[data-theme="dark"] .po-chart-bar{background:#263b43;border-color:var(--dm-border)}
+
+html[data-theme="dark"] .progress-bar,
+html[data-theme="dark"] .po-chart-team{background:#39b983}
+
+html[data-theme="dark"] .po-chart-special{background:#5aabb0}
+
+html[data-theme="dark"] .po-chart-matchmaking{background:#ca985d}
+
+html[data-theme="dark"] .po-chart-sessions{background:#7c91d0}
+
+html[data-theme="dark"] .po-chart-total,
+html[data-theme="dark"] .management-section-label,
+html[data-theme="dark"] .management-summary,
+html[data-theme="dark"] .po-chart-legend{background:transparent;color:var(--dm-text)}
+
+html[data-theme="dark"] .po-chart-day>span,
+html[data-theme="dark"] .po-chart-count,
+html[data-theme="dark"] .po-chart-note,
+html[data-theme="dark"] .po-chart-legend span{color:var(--dm-muted)}
+
+html[data-theme="dark"] .matchmaker-tabs,
+html[data-theme="dark"] .matchmaker-switch,
+html[data-theme="dark"] .matchmaker-tab,
+html[data-theme="dark"] .matchmaking-breakdown,
+html[data-theme="dark"] .matchmaking-streak-grid,
+html[data-theme="dark"] .consolidated-finance-panel,
+html[data-theme="dark"] .consolidated-finance-grid{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .matchmaker-tab.active,
+html[data-theme="dark"] .matchmaker-switch.active{background:var(--dm-success);color:#8df0c2;border-color:#458d73}
+
+html[data-theme="dark"] .finance-grid,
+html[data-theme="dark"] .consolidated-finance-row,
+html[data-theme="dark"] .finance-loading,
+html[data-theme="dark"] .report-comparison-panel,
+html[data-theme="dark"] .report-comparison-table,
+html[data-theme="dark"] .report-compare-toolbar{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .report-difference,
+html[data-theme="dark"] .report-mode,
+html[data-theme="dark"] .report-compare-control,
+html[data-theme="dark"] .report-compare-picker{background:var(--dm-card2);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .settings-grid,
+html[data-theme="dark"] .settings-box,
+html[data-theme="dark"] .settings-followup-grid,
+html[data-theme="dark"] .settings-followup-column,
+html[data-theme="dark"] .order-lists-box,
+html[data-theme="dark"] .order-list-option{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .settings-box h3,
+html[data-theme="dark"] .order-lists-box h3{color:var(--dm-text)}
+
+html[data-theme="dark"] .cpay-summary .summary-card,
+html[data-theme="dark"] .cpay-form,
+html[data-theme="dark"] .cpay-payment-form,
+html[data-theme="dark"] .cpay-card,
+html[data-theme="dark"] .cpay-history,
+html[data-theme="dark"] .cpay-amounts>div,
+html[data-theme="dark"] .cpay-removal-form,
+html[data-theme="dark"] .ctodo-table{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .cpay-paid{background:var(--dm-success);color:#8ce9b8}
+
+html[data-theme="dark"] .cpay-partial{background:var(--dm-warn);color:#f5ca80}
+
+html[data-theme="dark"] .cpay-unpaid{background:var(--dm-danger);color:#ffc0ba}
+
+html[data-theme="dark"] .cpay-card-head h3,
+html[data-theme="dark"] .cpay-amounts strong,
+html[data-theme="dark"] .cpay-form h3,
+html[data-theme="dark"] .ctodo-heading h2{color:var(--dm-text)}
+
+html[data-theme="dark"] .inv-summary,
+html[data-theme="dark"] .inv-table-panel,
+html[data-theme="dark"] .inv-editor,
+html[data-theme="dark"] .inv-history,
+html[data-theme="dark"] .inv-fields,
+html[data-theme="dark"] .inv-history-row{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .inv-history-row td{background:var(--dm-card2)!important}
+
+html[data-theme="dark"] .inv-table td strong,
+html[data-theme="dark"] .inv-editor h3,
+html[data-theme="dark"] .inv-history>strong{color:var(--dm-text)}
+
+html[data-theme="dark"] .tm-browser,
+html[data-theme="dark"] .tm-browser-card,
+html[data-theme="dark"] .tm-browser-stats article,
+html[data-theme="dark"] .tm-overview-stat,
+html[data-theme="dark"] .tm-overview-panel,
+html[data-theme="dark"] .tm-workspace-panel,
+html[data-theme="dark"] .tm-create-grid,
+html[data-theme="dark"] .tm-team-input,
+html[data-theme="dark"] .tm-team-player-option{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .tm-browser-card h3,
+html[data-theme="dark"] .tm-browser-heading h2,
+html[data-theme="dark"] .tm-tournament-info h2,
+html[data-theme="dark"] .tm-head h2,
+html[data-theme="dark"] .tm-overview-stat strong{color:var(--dm-text)}
+
+html[data-theme="dark"] .tm-browser-top small,
+html[data-theme="dark"] .tm-browser-card p,
+html[data-theme="dark"] .tm-browser-metrics,
+html[data-theme="dark"] .tm-empty p,
+html[data-theme="dark"] .tm-muted{color:var(--dm-muted)}
+
+html[data-theme="dark"] .tm-tournament-tab,
+html[data-theme="dark"] .tm-workspace-tab,
+html[data-theme="dark"] .tm-browser-filters input,
+html[data-theme="dark"] .tm-browser-filters select{background:var(--dm-card2);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .tm-tournament-tab.active,
+html[data-theme="dark"] .tm-workspace-tab.active{background:var(--dm-success);color:#9bffc8;border-color:#3f926d}
+
+html[data-theme="dark"] .tm-stats article,
+html[data-theme="dark"] .tm-v2-rule,
+html[data-theme="dark"] .tm-v2-courts,
+html[data-theme="dark"] .tm-v2-participant,
+html[data-theme="dark"] .tm-v2-participant-note,
+html[data-theme="dark"] .tm-v2-payment-figures>div,
+html[data-theme="dark"] .tm-v2-paychart,
+html[data-theme="dark"] .tm-v2-ranking,
+html[data-theme="dark"] .tm-v2-activity,
+html[data-theme="dark"] .tm-v2-settings,
+html[data-theme="dark"] .tm-v2-exports{background:var(--dm-card2);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .tm-v2-participant-head strong,
+html[data-theme="dark"] .tm-v2-payment-figures strong,
+html[data-theme="dark"] .tm-v2-courts strong,
+html[data-theme="dark"] .tm-v2-settings h2,
+html[data-theme="dark"] .tm-v2-ranking h2,
+html[data-theme="dark"] .tm-v2-activity h2{color:var(--dm-text)}
+
+html[data-theme="dark"] .tm-v2-status-pending{background:var(--dm-warn);color:#f2d9a0}
+
+html[data-theme="dark"] .tm-v2-status-waitlisted,
+html[data-theme="dark"] .tm-status-upcoming{background:var(--dm-blue);color:#acd8ff}
+
+html[data-theme="dark"] .tm-v2-status-disqualified,
+html[data-theme="dark"] .tm-v2-status-cancelled{background:var(--dm-danger);color:#ffb9b6}
+
+html[data-theme="dark"] .tm-status-ongoing{background:var(--dm-success);color:#a0edc6}
+
+html[data-theme="dark"] .tm-v2-filterbar input,
+html[data-theme="dark"] .tm-v2-filterbar select,
+html[data-theme="dark"] .tm-v2-rule textarea,
+html[data-theme="dark"] .tm-v2-settings input,
+html[data-theme="dark"] .tm-v2-settings select,
+html[data-theme="dark"] .tm-v2-settings textarea{background:var(--dm-input);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .tm-v2-paychart,
+html[data-theme="dark"] .tm-v2-chart-track,
+html[data-theme="dark"] .tm-browser-progress,
+html[data-theme="dark"] .tm-v2-progress{background:#253b44;border-color:var(--dm-border)}
+
+html[data-theme="dark"] .tm-v2-chart-track span,
+html[data-theme="dark"] .tm-v2-progress span{background:#38b783}
+
+html[data-theme="dark"] .tm-bracket,
+html[data-theme="dark"] .tm-round,
+html[data-theme="dark"] .tm-match,
+html[data-theme="dark"] .tm-match-card,
+html[data-theme="dark"] .tm-pair-card,
+html[data-theme="dark"] .tm-knockout-wait,
+html[data-theme="dark"] .tm-stage-badge,
+html[data-theme="dark"] .tm-bracket-team{background:var(--dm-card2);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .tm-bracket strong,
+html[data-theme="dark"] .tm-match strong,
+html[data-theme="dark"] .tm-bracket-team strong{color:var(--dm-text)}
+
+html[data-theme="dark"] .tm-close-confirm,
+html[data-theme="dark"] .tm-danger-confirm,
+html[data-theme="dark"] .tm-removal,
+html[data-theme="dark"] .cpay-removal-form,
+html[data-theme="dark"] .inv-removal{background:var(--dm-danger);color:#f5c2bd;border-color:#86515a}
+
+html[data-theme="dark"] .tm-close-confirm h3,
+html[data-theme="dark"] .tm-danger-confirm h3,
+html[data-theme="dark"] .tm-removal h3,
+html[data-theme="dark"] .inv-removal h3{color:#ffc2bc}
+
+html[data-theme="dark"] .global-search-overlay,
+html[data-theme="dark"] .global-search-dialog,
+html[data-theme="dark"] .global-search-results,
+html[data-theme="dark"] .global-search-hint{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .global-search-results button,
+html[data-theme="dark"] .global-search-results .search-result{background:var(--dm-card2);color:var(--dm-text);border-color:var(--dm-border)}
+
+html[data-theme="dark"] .global-search-results button:hover,
+html[data-theme="dark"] .global-search-results .search-result:hover{background:#25493d}
+
+html[data-theme="dark"] .ck-finance-sync{background:var(--dm-success);color:#a5ebc7}
+
+html[data-theme="dark"] .po-overview-sessions,
+html[data-theme="dark"] .po-activity-panel,
+html[data-theme="dark"] .management-panels>.panel,
+html[data-theme="dark"] .management-summary .summary-card{background:var(--dm-card);border-color:var(--dm-border)}
+
+@media (max-width:830px){
+ html[data-theme="dark"] .topbar{background:rgba(21,35,45,.98)}
+ html[data-theme="dark"] .workspace .data-table-wrap:not(:has(>.po-mobile-card-table)){border-color:var(--dm-border)}
+ html[data-theme="dark"] .mobile-drawer-panel{background:#14232d}
+ html[data-theme="dark"] .mobile-drawer-links .nav-item{color:#c2d5d6}
+ html[data-theme="dark"] .mobile-drawer-links .nav-item.active{background:#1c493b;color:#caffdf}
+ html[data-theme="dark"] .modal{background:var(--dm-card)}
+ html[data-theme="dark"] .po-mobile-card-table tbody tr{background:var(--dm-card);border-color:var(--dm-border)}
+}
+
+@media print{
+ html[data-theme="dark"]{color-scheme:light!important}
+ html[data-theme="dark"] body,html[data-theme="dark"] .workspace,html[data-theme="dark"] .main,html[data-theme="dark"] .app-layout{background:#fff!important;color:#111!important}
+ html[data-theme="dark"] .po-theme-toggle{display:none!important}
+}
+
+@media (prefers-reduced-motion:reduce){
+ html[data-theme="dark"] .po-theme-toggle{transition:none!important}
+}
