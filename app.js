@@ -1812,7 +1812,7 @@ async function handleAction(target,event){const act=target.dataset.action,id=tar
  }
  case 'private-void-entry':if(state.staff?.role!=='admin')throw Error('Only admins can correct financial entries.');if(!state.privateEntries.some(e=>e.id===id))throw Error('Entry not found.');openModal('private-void',id);break;
  case 'private-export':exportPrivateClientCSV();break;
- case 'refresh':if(state.tab==='consignment'){await consignmentInventory.load();toast('Inventory refreshed');break;}if(state.tab==='cafeteria-payments'){if(state.staff?.role!=='admin')throw Error('Administrator access required.');await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);toast('Payments and tasks refreshed');break;}if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await Promise.all([cafeteriaFinances.load(true),shiftHandover.load(cafeteriaFinances.getDate())]);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
+ case 'refresh':if(state.tab==='court-timetable'){await cafeteriaFinances.schedulerLoad(true);toast('Timetable refreshed');break;}if(state.tab==='consignment'){await consignmentInventory.load();toast('Inventory refreshed');break;}if(state.tab==='cafeteria-payments'){if(state.staff?.role!=='admin')throw Error('Administrator access required.');await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);toast('Payments and tasks refreshed');break;}if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await Promise.all([cafeteriaFinances.load(true),shiftHandover.load(cafeteriaFinances.getDate())]);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
  case 'training-prev-month':
   state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
  case 'training-next-month':
@@ -2087,7 +2087,7 @@ document.addEventListener('toggle',e=>{
   cafeteriaFinances.rememberNote(e.target.dataset.cafeNote,e.target.open);
 },true);
 document.addEventListener('change',e=>{
- if(state.tab==='cafeteria-finances'&&cafeteriaFinances.schedulerPreviewEnd(e.target))return;
+ if(['cafeteria-finances','court-timetable'].includes(state.tab)&&cafeteriaFinances.schedulerPreviewEnd(e.target))return;
  if(state.tab==='cafeteria-finances'&&cafeteriaFinances.courtPricePreview(e.target))return;
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-list-status'){
   try{tournamentManagement.searchList(e.target)}catch(err){toast(err.message||'Unable to filter tournaments.',true)}
