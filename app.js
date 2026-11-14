@@ -27,7 +27,9 @@ const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLab
 const app=document.getElementById('app');
 let sidebarCollapsed=false;
 let mobileMenuOpen=false;
-let currentTheme=readTheme(window.localStorage);
+let themeStorage=null;
+try{themeStorage=window.localStorage;}catch{}
+let currentTheme=readTheme(themeStorage);
 // The theme changes in place: do not rerender forms, scroll positions or open dialogs.
 let routeInitialized=false;
 try{sidebarCollapsed=readSidebarCollapsed(window.localStorage)}catch{}
@@ -37,7 +39,7 @@ function themeButton(){
   'aria-label="'+label+'" title="'+label+'" aria-pressed="'+(currentTheme==='dark')+'"');
 }
 function applyTheme(theme){
- currentTheme=writeTheme(window.localStorage,theme);
+ currentTheme=writeTheme(themeStorage,theme);
  document.documentElement.dataset.theme=currentTheme;
  document.documentElement.style.colorScheme=currentTheme;
  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',currentTheme==='dark'?'#101922':'#f8f9fc');
