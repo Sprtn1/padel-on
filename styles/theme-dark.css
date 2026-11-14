@@ -1,6 +1,15 @@
 /* PADEL ON — global dark mode. Loaded LAST after all module styles.
    All finance, booking, tournament, permission and PDF JavaScript remains unchanged.
    Light mode has zero style overrides: every selector below is gated to data-theme="dark". */
+/* Controls also need a deliberate layout in LIGHT mode. */
+.auth-top-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+.auth-top-actions .eyebrow{margin:0}
+.auth-top-actions .po-theme-toggle{width:40px;height:40px;min-height:40px;flex:none;padding:8px}
+.top-right .po-theme-toggle{flex:none}
+@media(max-width:390px){
+ .top-right{gap:4px}
+ .top-right .po-theme-toggle{width:35px;min-width:35px;height:39px;padding:7px}
+}
 html[data-theme="dark"]{
  --green:#6bdda5;--darkgreen:#44b889;--ink:#e4eff0;--muted:#a8b7bd;
  --stroke:#344750;--card:#172630;--soft:#101d26;--sidebar:#14232d;
