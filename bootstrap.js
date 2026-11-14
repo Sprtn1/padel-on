@@ -2,14 +2,17 @@
 const v = Date.now().toString(36);
 // Previous successful rendering in this tab allows a longer splash-free grace period.
 // The splash still appears if initialization actually takes longer.
-const {wasAppReadyInThisTab} = await import(`./lib/startup-readiness.js?v=${v}`);
+const [{wasAppReadyInThisTab},{readTheme}] = await Promise.all([
+  import(`./lib/startup-readiness.js?v=${v}`),
+  import(`./lib/theme-preference.js?v=${v}`)
+]);
 try {
   if(wasAppReadyInThisTab(window.sessionStorage))
     document.documentElement.classList.add('po-startup-warm');
 } catch {}
 
 // Resolve the saved theme before dynamically loading the application styles.
-const {readTheme} = await import(`./lib/theme-preference.js?v=${v}`);
+// Theme and startup preferences are downloaded in parallel above.
 let startupStorage=null;
 try{startupStorage=window.localStorage;}catch{}
 const initialTheme=readTheme(startupStorage);
