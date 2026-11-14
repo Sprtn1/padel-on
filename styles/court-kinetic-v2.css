@@ -200,3 +200,8 @@ button,input,select,textarea{font-family:Inter,system-ui,-apple-system,sans-seri
  .ck-detail-drawer,.cafe-scheduler .cafe-timeboard-booking{animation:none!important;transition:none!important}
 }
 @media print{.ck-detail-overlay,.ck-court-tabs{display:none!important}}
+/* Verified backend refresh timestamp; never show a simulated live state. */
+.ck-finance-sync{display:inline-flex;align-items:center;gap:8px;margin:0 0 12px;padding:6px 10px;border-radius:99px;border:1px solid #deebe5;background:#eef8f2;font-size:10px;font-weight:700;color:#356b55}
+.ck-sync-dot{width:7px;height:7px;background:#0d9965;border-radius:50%;flex:none}
+@media(min-width:1170px){.cafe-summary{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(min-width:831px) and (max-width:1169px){.cafe-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
