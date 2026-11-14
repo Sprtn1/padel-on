@@ -1,0 +1,218 @@
+/* PADEL ON | Court Kinetic sitewide refinement.
+   Works with existing vanilla-JS modules; visual layout only, no business logic.
+   Stitch-inspired categorized navigation and unified admin dashboard treatment. */
+:root{
+ --ck-page:#f8f9fc;--ck-panel:#fff;--ck-text:#132b37;--ck-subtext:#657682;
+ --ck-line:#e0e8e9;--ck-highlight:#e7f4ec;--ck-brand:#006948;
+ --ck-shadow:0 3px 16px rgba(22,45,58,.042);
+ --ck-shadow-hover:0 10px 26px rgba(14,51,42,.074);
+ --ck-rad:14px;
+}
+body{background:var(--ck-page)}
+.workspace[data-page]{min-width:0}
+.workspace[data-page] :where(.panel,.summary-card,.member-card,.other-card,.settings-box,.cpay-card,.inv-editor){
+ border-radius:var(--ck-rad);border-color:var(--ck-line);
+ box-shadow:var(--ck-shadow);
+}
+.workspace[data-page] :where(.panel,.member-card,.other-card,.settings-box){
+ transition:border-color .16s ease,box-shadow .16s ease;
+}
+@media(hover:hover) and (pointer:fine){
+ .workspace[data-page] :where(.panel,.member-card,.other-card,.settings-box):hover{
+  border-color:#c9ddd4;box-shadow:var(--ck-shadow-hover);transform:none;
+ }
+}
+.workspace[data-page] .heading-row{margin-bottom:24px}
+.workspace[data-page] .heading-row h1{color:var(--ck-text);font-family:'Space Grotesk',Inter,sans-serif;font-weight:700;letter-spacing:-.9px}
+.workspace[data-page] .eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.95px;color:#007452}
+.workspace[data-page] :where(.panel-head,.toolbar,.heading-actions){min-width:0}
+.workspace[data-page] :where(.panel-head h2,.settings-box h3){font-weight:700;letter-spacing:-.35px}
+.workspace[data-page] .panel-head{padding:19px 21px 16px}
+.workspace[data-page] .panel-body{padding:0 21px 20px}
+.workspace[data-page] .panel-head p{color:var(--ck-subtext)}
+.workspace[data-page] :where(.toolbar,.heading-actions){gap:10px}
+.workspace[data-page] :where(.select,.search,.form-input){
+ border-color:#dce5e6;border-radius:10px;background:#fff;color:#25404c;
+}
+.workspace[data-page] :where(.select,.form-input):focus-visible{
+ border-color:#007d55;box-shadow:0 0 0 3px rgba(0,105,72,.1)
+}
+.workspace[data-page] :where(.btn-soft,.tag-green){background:#e7f5ed;color:#006948}
+.workspace[data-page] :where(.tag-amber){background:#fff3dc;color:#996515}
+.workspace[data-page] :where(.notice){border-radius:12px}
+.workspace[data-page] .data-table-wrap{border-radius:10px}
+.workspace[data-page] .data-table th{
+ background:#f6f8fa;color:#637681;font-size:10px;
+ font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:.45px;
+ border-bottom:1px solid #e4ebee
+}
+.workspace[data-page] .data-table td{color:#3e5760;border-bottom-color:#edf1f2}
+.workspace[data-page] .data-table tr:hover td{background:#f8fbfa}
+.workspace[data-page] :where(.num,.metric,.game-number,.other-count,.debt-total,.private-client-balance,.cpay-amounts strong,.inv-quantity){
+ font-variant-numeric:tabular-nums;
+}
+.workspace[data-page] :where(.summary-card .metric,.game-number,.other-count,.debt-total){
+ font-family:'Space Grotesk',Inter,sans-serif;letter-spacing:-.65px
+}
+/* Category navigation: renderNavigation retains every route and active role gate. */
+.po-nav-section{display:grid;gap:4px;min-width:0;width:100%}
+.po-nav-section+.po-nav-section{border-top:1px solid #e8edee;padding-top:12px;margin-top:10px}
+.po-nav-heading{margin:0;padding:8px 11px 6px;line-height:1.35;
+ font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
+ letter-spacing:1.02px;text-transform:uppercase;color:#8796a1;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.po-nav-items{display:grid;gap:3px;min-width:0;width:100%}
+.sidebar .menu{gap:0}
+.sidebar .po-nav-items>.nav-item{display:flex;width:100%;min-width:0;min-height:40px}
+.sidebar .po-nav-section-active>.po-nav-heading{color:#00734f}
+.sidebar .nav-item.active{border-radius:10px}
+.sidebar .nav-item.active::before{left:0}
+.sidebar .brand{justify-content:center}
+@media(min-width:831px){
+ .sidebar .brand img{background:#142d24;border:1px solid #193e2e;
+  padding:8px;width:120px;height:62px;border-radius:12px;object-fit:contain}
+ .sidebar .menu{padding-top:0;padding-bottom:8px}
+ .sidebar-panel{overflow:hidden}
+ .sidebar-collapsed .po-nav-heading{font-size:0;padding:7px 8px 2px;line-height:0;min-height:8px}
+ .sidebar-collapsed .po-nav-section+.po-nav-section{margin-top:6px;padding-top:7px}
+ .sidebar-collapsed .po-nav-items{gap:2px}
+ .sidebar-collapsed .po-nav-items .nav-item{justify-content:center}
+ .sidebar-collapsed .sidebar:is(:hover,:has(.nav-item:focus-visible)) .po-nav-heading{
+  font-size:10px;line-height:1.35;padding:8px 11px 6px
+ }
+ .sidebar-collapsed .sidebar:is(:hover,:has(.nav-item:focus-visible)) .po-nav-items .nav-item{
+  justify-content:flex-start
+ }
+}
+/* The full mobile nav from the screenshot becomes a light, category-based drawer. */
+@media(max-width:830px){
+ .mobile-drawer{z-index:90}
+ .mobile-drawer-backdrop{background:rgba(12,28,33,.44);backdrop-filter:blur(3px)}
+ .mobile-drawer-panel{width:min(88vw,350px);padding:max(14px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));
+  background:#fff;color:#19313a;box-shadow:13px 0 42px rgba(7,28,37,.24)
+ }
+ .mobile-drawer-header{margin-bottom:3px;padding:4px 2px 13px;border-bottom:1px solid #e7edee}
+ .mobile-drawer-header img{width:96px;height:54px;object-fit:contain;object-position:center;
+  padding:8px;background:#142d24;border-radius:11px;border:1px solid #1d4632}
+ .mobile-menu-close{width:40px;height:40px;background:#f1f5f5;color:#35565d;border-color:#dce6e6;border-radius:11px}
+ .mobile-drawer-title{font-family:'JetBrains Mono',monospace;color:#84939d;font-size:9px;
+  margin:12px 10px 5px;letter-spacing:1px}
+ .mobile-drawer-links{gap:0;padding:0 1px 15px;scrollbar-width:thin;scrollbar-color:#d2ddde transparent}
+ .mobile-drawer-links .po-nav-section{gap:2px}
+ .mobile-drawer-links .po-nav-section+.po-nav-section{margin-top:6px;padding-top:8px}
+ .mobile-drawer-links .po-nav-heading{padding:8px 10px 5px;font-size:9px;color:#8a98a1}
+ .mobile-drawer-links .po-nav-section-active>.po-nav-heading{color:#00734f}
+ .mobile-drawer-links .po-nav-items{gap:2px}
+ .mobile-drawer-links .nav-item{display:flex;align-items:center;gap:11px;width:100%;
+  min-height:42px;padding:10px 11px;border-radius:10px;background:transparent;
+  color:#536a74;font-size:12px;font-weight:600;line-height:1.35}
+ .mobile-drawer-links .nav-item svg{width:18px;height:18px;color:#66818a}
+ .mobile-drawer-links .nav-item.active{background:#e8f5ee;color:#005d42;box-shadow:inset 0 0 0 1px #d8ebdf;font-weight:750}
+ .mobile-drawer-links .nav-item.active svg{color:#006948}
+ .mobile-drawer-links .nav-item.active:before{left:0;background:#006948}
+ .mobile-drawer-links .nav-item:hover{background:#f1f7f4;color:#005e44}
+ .mobile-drawer-links .nav-item span{min-width:0;overflow-wrap:anywhere;white-space:normal}
+ .mobile-drawer-account{border-top:1px solid #e1e8e8;padding:13px 8px 2px;gap:11px}
+ .mobile-drawer-account strong{color:#1c3540;font-size:12px}
+ .mobile-drawer-account small{color:#798e92}
+ .mobile-drawer-account .avatar{background:#e8f6ef;color:#006948;border-color:#d2e9da}
+ .mobile-menu-toggle{background:#fff;color:#174f39;border-color:#dce7e4}
+ .topbar{background:rgba(255,255,255,.98)}
+ .topbar .crumb{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .topbar .topbar-main{color:#173542}
+ .workspace[data-page] .heading-row{margin-bottom:17px}
+ .workspace[data-page] .panel-head{padding:16px 15px 12px}
+ .workspace[data-page] .panel-body{padding:0 15px 16px}
+ .workspace[data-page] :where(.panel,.summary-card,.member-card,.other-card){border-radius:13px}
+ .workspace[data-page] .toolbar{flex-wrap:wrap}
+ .workspace[data-page] .toolbar-left{min-width:0;width:100%}
+ .workspace[data-page] .heading-actions{width:100%;flex-wrap:wrap}
+}
+@media(max-width:370px){.mobile-drawer-panel{width:min(93vw,340px)}.mobile-drawer-links .nav-item{font-size:11px}}
+/* Overview: compact editorial KPIs, consistent activity visualization. */
+.workspace[data-page="dashboard"] .summary{gap:13px}
+.workspace[data-page="dashboard"] .summary-card{padding:21px;border-radius:15px}
+.workspace[data-page="dashboard"] .summary-card .metric{font-size:clamp(23px,2vw,30px)}
+.workspace[data-page="dashboard"] .po-activity-panel{overflow:hidden}
+.workspace[data-page="dashboard"] .quick-link{background:#fff;border-color:#e1e9e9;border-radius:11px;min-height:60px}
+.workspace[data-page="dashboard"] .activity-line{padding:13px 0}
+.workspace[data-page="dashboard"] .activity-avatar{background:#e8f5ed;color:#006948}
+.workspace[data-page="dashboard"] .po-chart-total{background:#e8f5ed;color:#006948}
+/* Financial and stock operations. */
+.workspace[data-page="cafeteria-payments"] :where(.cpay-card,.cpay-form){border-radius:14px;border-color:var(--ck-line);background:#fff;box-shadow:var(--ck-shadow)}
+.workspace[data-page="cafeteria-payments"] .cpay-card-head h3{font-family:'Space Grotesk',Inter,sans-serif;color:#1d3943}
+.workspace[data-page="cafeteria-payments"] .cpay-amounts>div{background:#f8fafb;border-color:#e1e9eb}
+.workspace[data-page="cafeteria-payments"] .cpay-amounts strong{color:#153f34}
+.workspace[data-page="cafeteria-payments"] .cpay-form{padding:20px}
+.workspace[data-page="debts"] :where(.debt-directory,.debt-details,.debt-daily-panel){border-radius:14px;background:#fff;border-color:#e0e8e9;box-shadow:var(--ck-shadow)}
+.workspace[data-page="debts"] .debt-person-item{border-radius:10px;transition:background .15s,border-color .15s}
+.workspace[data-page="debts"] .debt-person-item:hover{background:#eff8f4}
+.workspace[data-page="debts"] :where(.debt-daily-summary>div,.debt-total){background:#f5f9f7;border-color:#dfeae4;border-radius:10px}
+.workspace[data-page="debts"] .debt-daily-heading h2{font-family:'Space Grotesk',Inter,sans-serif}
+.workspace[data-page="consignment"] :where(.inv-editor,.inv-table-panel){border-radius:14px;background:#fff;border-color:#e0e8e9}
+.workspace[data-page="consignment"] .inv-summary .summary-card{background:#fff}
+.workspace[data-page="consignment"] .inv-quantity.in-stock{background:#e5f5ed;color:#006948}
+.workspace[data-page="consignment"] .inv-table th{background:#f7f9fa}
+/* Members and coaching workflows. */
+.workspace[data-page="private-clients"] :where(.private-directory,.private-detail,.private-daily-panel){
+ border-radius:14px;border-color:#e0e8e9;background:#fff;box-shadow:var(--ck-shadow)
+}
+.workspace[data-page="private-clients"] :where(.private-client-row,.private-calendar-day){transition:background .13s,border-color .13s}
+.workspace[data-page="private-clients"] .private-client-row:hover{background:#f0f8f3}
+.workspace[data-page="private-clients"] .private-balance-box{background:#f4faf6;border-color:#dcece1;border-radius:12px}
+.workspace[data-page="private-clients"] .private-client-heading{color:#1a3d35}
+.workspace[data-page="private-clients"] .private-calendar-day:focus-visible{outline:2px solid #006948}
+.workspace[data-page="team"] .member-grid{gap:14px}
+.workspace[data-page="team"] .member-card{padding:19px 20px;border-radius:14px}
+.workspace[data-page="team"] .member-card:hover{transform:none}
+.workspace[data-page="team"] .player-avatar{border-radius:11px;background:#e9f6ed;color:#006948}
+.workspace[data-page="team"] .progress{background:#e9eff0}
+.workspace[data-page="team"] .progress-bar{background:#007d57}
+.workspace[data-page="training"] .training-panel{border-radius:14px}
+.workspace[data-page="training"] .training-member{border-color:#e8edef}
+.workspace[data-page="training"] .training-actions{display:flex;flex-wrap:wrap;gap:10px}
+.workspace[data-page="other"] .other-grid{gap:14px}
+.workspace[data-page="other"] .other-card{padding:20px;border-radius:14px}
+.workspace[data-page="other"] .other-card:hover{transform:none}
+.workspace[data-page="other"] .other-count{font-size:27px;color:#006948}
+/* Matchmaking and competition: preserve all counters, calculations, brackets and forms. */
+.workspace[data-page="finance"] :where(.matchmaker-tabs,.matchmaker-switch){gap:8px}
+.workspace[data-page="finance"] .matchmaker-tab{border-radius:10px}
+.workspace[data-page="finance"] .matchmaker-tab.active{border-color:#81c6a1;background:#e9f5ee;color:#006948}
+.workspace[data-page="finance"] .matchmaking-streak-grid .summary-card{min-height:120px}
+.workspace[data-page="finance"] .matchmaking-breakdown{background:#fff}
+.workspace[data-page="tournament"] :where(.tm-browser-card,.tm-overview-stat,.tm-workspace-panel,.tm-v2-participant){
+ border-radius:14px;border-color:#e0e8e9;box-shadow:var(--ck-shadow)
+}
+.workspace[data-page="tournament"] :where(.tm-browser-heading h2,.tm-browser-card h3){font-family:'Space Grotesk',Inter,sans-serif}
+.workspace[data-page="tournament"] .tm-browser-card:hover{border-color:#a8d8bd;transform:none}
+.workspace[data-page="tournament"] .tm-workspace-tabs{border-color:#e0e8e9}
+.workspace[data-page="tournament"] .tm-workspace-tab.active{color:#006948}
+.workspace[data-page="tournament"] .tm-v2-paychart{border-color:#e0e8e9}
+/* Activity, reporting, configuration and supplementary lists. */
+.workspace[data-page="activity"] .activity-line{padding:14px 0}
+.workspace[data-page="reports"] :where(.report-comparison-panel,.consolidated-finance-panel){border-radius:14px;border-color:var(--ck-line)}
+.workspace[data-page="reports"] .report-compare-toolbar{background:#fff;border-radius:12px}
+.workspace[data-page="reports"] .finance-grid{gap:13px}
+.workspace[data-page="settings"] .settings-grid{gap:16px}
+.workspace[data-page="settings"] .settings-box{border-radius:14px;background:#fff}
+.workspace[data-page="settings"] .settings-box h3{color:#1d3841}
+.workspace[data-page="settings"] .settings-followup-grid{gap:15px}
+.workspace[data-page="order-counter"] :where(.order-lists-box,.order-list-option),
+.workspace[data-page="reem-items"] :where(.order-lists-box,.order-list-option){
+ border-radius:14px;border-color:var(--ck-line)
+}
+@media(max-width:830px){
+ .workspace[data-page="dashboard"] .summary-card{padding:15px}
+ .workspace[data-page="team"] .member-grid{gap:10px}
+ .workspace[data-page="team"] .member-card{padding:15px}
+ .workspace[data-page="other"] .other-card{padding:15px}
+ .workspace[data-page="cafeteria-payments"] .cpay-form{padding:15px}
+ .workspace[data-page="training"] .training-actions .btn{max-width:100%}
+ .workspace[data-page="settings"] .settings-grid{grid-template-columns:minmax(0,1fr)}
+ .workspace[data-page="finance"] .matchmaker-tabs{max-width:100%;overflow-x:auto;scrollbar-width:thin}
+}
+@media(prefers-reduced-motion:reduce){
+ .workspace[data-page] *{scroll-behavior:auto}
+ .mobile-drawer-panel,.mobile-drawer-backdrop{transition:none!important}
+}
