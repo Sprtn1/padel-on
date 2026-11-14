@@ -24,7 +24,8 @@ test('Bootstrap version-loads both stylesheets and the app from same origin',()=
 test('Mobile labels distinguish cafeteria finances and debts',()=>{
  assert.equal(MOBILE_NAV_LABELS['cafeteria-finances'],'Finances');
  assert.equal(MOBILE_NAV_LABELS.debts,'Debts');
- assert.equal(tabs.length,14);
+ assert.ok(tabs.some(([key])=>key==='court-timetable'));
+ assert.equal(new Set(tabs.map(([key])=>key)).size,tabs.length);
  const html=renderNavigation('debts',()=>'<svg></svg>',true);
  assert.match(html,/aria-label="Cafeteria Finances"[^>]*><svg><\/svg><span>Finances<\/span>/);
  assert.match(html,/aria-label="Cafeteria Debts"[^>]*><svg><\/svg><span>Debts<\/span>/);
