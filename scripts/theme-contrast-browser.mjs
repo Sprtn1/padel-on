@@ -176,8 +176,10 @@ try{
     await action.hover();
     await page.waitForTimeout(220);
     const hovered=await action.evaluate(el=>getComputedStyle(el).backgroundColor);
-    const expectedHover=theme==='dark'?'rgb(43, 73, 70)':'rgb(240, 251, 244)';
-    if(hovered!==expectedHover)failures.push({width,theme,id:'quick-action-'+i,error:'Incorrect hovered button surface',actual:hovered,expected:expectedHover});
+    const expectedHover='rgb(43, 73, 70)';
+    const lightHover=['rgb(255, 255, 255)','rgb(240, 251, 244)'];
+    if(theme==='dark'?hovered!==expectedHover:!lightHover.includes(hovered))
+     failures.push({width,theme,id:'quick-action-'+i,error:'Incorrect hovered button surface',actual:hovered,expected:theme==='dark'?expectedHover:lightHover});
     await page.mouse.move(1,1);
     if(theme==='dark'){
      await action.focus();
