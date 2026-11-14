@@ -5,7 +5,7 @@ const src=p=>readFileSync(new URL(p,import.meta.url),'utf8');
 test('Mobile drawer replaces the scrolling bottom bar and retains role-filtered navigation',()=>{
  const app=src('../app.js'),styles=src('../styles/mobile-experience.css'),nav=src('../lib/navigation.js');
  assert.match(app,/id="mobile-drawer"/);
- assert.match(app,/navMarkup\(false\)/);
+ assert.match(app,/navMarkup\(false,'drawer'\)/);
  assert.match(app,/data-action="mobile-menu-toggle"/);
  assert.match(app,/if\(mobileMenuOpen\)setMobileMenuOpen\(false/);
  assert.match(nav,/isAdmin\|\|key!=='cafeteria-payments'/);
