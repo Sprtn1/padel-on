@@ -47,8 +47,8 @@
 .cafe-scheduler .cafe-timeboard-booking:hover:not(.cafe-scheduler-dragging){box-shadow:0 5px 12px rgba(13,54,48,.13);filter:brightness(.99)}
 .cafe-scheduler .cafe-timeboard .ck-schedule-now{grid-column:1/-1;grid-row:2;align-self:start;position:relative;z-index:7;height:0;min-width:0;border-top:2px solid #ef333f;pointer-events:none;isolation:isolate}
 .cafe-scheduler .cafe-timeboard .ck-schedule-now[hidden]{display:none!important}
-.cafe-scheduler .cafe-timeboard .ck-schedule-now>span{position:absolute;right:calc(100% - 2px);top:-11px;background:#e82f3d;color:#fff;border-radius:4px 0 0 4px;padding:3px 5px;font-size:10px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1.35}
-.cafe-scheduler .cafe-timeboard .ck-schedule-now:after{content:"";position:absolute;top:-5px;left:0;width:8px;height:8px;background:#e82f3d;border:2px solid #fff;border-radius:50%}
+.cafe-scheduler .cafe-timeboard .ck-schedule-now>span{position:absolute;left:5px;top:-11px;background:#e82f3d;color:#fff;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1.35}
+.cafe-scheduler .cafe-timeboard .ck-schedule-now:after{content:"";position:absolute;top:-5px;left:70px;width:8px;height:8px;background:#e82f3d;border:2px solid #fff;border-radius:50%}
 @media(max-width:830px){
  .cafe-scheduler-sports{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;width:100%}
  .cafe-scheduler-sports button{min-width:0;padding:7px 4px;min-height:42px;gap:4px;flex-wrap:wrap}
@@ -59,6 +59,7 @@
  .cafe-scheduler .cafe-timeboard-booking{padding:4px 5px}
  .cafe-scheduler .cafe-timeboard-booking .ck-booking-badge{font-size:7px}
  .cafe-scheduler .cafe-timeboard-booking .ck-booking-payment{display:none}
+ .cafe-scheduler .cafe-timeboard .ck-schedule-now:after{left:60px}
 }
 html[data-theme="dark"] .cafe-scheduler-toolbar{background:#192e37;border-color:#38515a}
 html[data-theme="dark"] .cafe-scheduler-toolbar>div:first-child>strong{color:#edf8f3}
