@@ -529,3 +529,17 @@ html[data-theme="dark"] .workspace[data-page="debts"] .debt-total.cleared{
 html[data-theme="dark"] .workspace[data-page="debts"] .debt-total.cleared :is(strong,small){
  color:#aaf2cd;
 }
+
+/* Private-session balance boxes used a sitewide pale surface with higher specificity. */
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-balance-box{
+ background:#21433a;border-color:#386a59;color:#e8f3ee;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-balance-box :is(strong,small){
+ color:#b9f5d2;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-balance-box.negative{
+ background:#472e35;border-color:#76515a;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-balance-box.negative :is(strong,small){
+ color:#ffd0c5;
+}
