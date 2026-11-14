@@ -545,6 +545,8 @@ html[data-theme="dark"] .workspace[data-page="private-clients"] .private-balance
 }
 
 
+/* Screen-only contrast repair: preserve light print/PDF layouts. */
+@media screen {
 /* Deep-component contrast audit: Overview, Private Sessions, Reports, Consignment.
    Keep every correction scoped to dark mode and to the affected page; light mode,
    navigation identity, business logic, exports and print styling are unchanged. */
@@ -708,4 +710,6 @@ html[data-theme="dark"] .workspace[data-page="consignment"] .inv-removal h3{
 }
 html[data-theme="dark"] .workspace[data-page="consignment"] .inv-removal>label{
  color:#f2c6bd;
+}
+
 }
