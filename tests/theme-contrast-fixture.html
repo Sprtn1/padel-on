@@ -29,7 +29,7 @@
   </section>
   <div class="management-panels"><article class="panel"><div class="panel-body">
    <div class="management-alert warning" data-audit="overview-alert"><span class="management-alert-icon">!</span><span><strong data-audit="overview-warning">High unpaid balance</strong><small data-audit="overview-alert-note">Overdue session balance</small></span></div>
-   <div class="club-insight-metrics"><article><small data-audit="overview-kpi-label">Revenue breakdown</small><strong data-audit="overview-kpi-total">$340</strong></article></div>
+   <div class="club-insight-metrics"><article data-audit-box="overview-kpi-box"><small data-audit="overview-kpi-label">Revenue breakdown</small><strong data-audit="overview-kpi-total">$340</strong></article></div>
    <div class="management-commission-total" data-audit="overview-commission">$55<small>Unsettled commissions</small></div>
    <div class="po-chart-total" data-audit="overview-chart-total">$250 total</div>
   </div></article></div>
@@ -71,7 +71,7 @@
   <section class="panel inv-table-panel"><div class="data-table-wrap"><table class="data-table inv-table">
    <thead><tr><th data-audit="inventory-table-head">Product</th></tr></thead><tbody>
     <tr><td><strong data-audit="inventory-stock-name">Running shoes</strong><small data-audit="inventory-stock-brand">NOX</small><p class="inv-notes-display" data-audit="inventory-notes">Size 42, white</p></td></tr>
-    <tr class="inv-history-row"><td><div class="inv-history"><strong data-audit="inventory-history-title">Stock history</strong><p data-audit="inventory-history-description">Item adjusted yesterday</p></div></td></tr>
+    <tr class="inv-history-row"><td><div class="inv-history" data-audit-box="inventory-history-box"><strong data-audit="inventory-history-title">Stock history</strong><p data-audit="inventory-history-description">Item adjusted yesterday</p></div></td></tr>
    </tbody></table></div></section>
  </div>
  <div class="workspace" data-page="private-clients">
@@ -84,7 +84,7 @@
     <button class="private-calendar-day has-sessions" data-audit="private-calendar-active-day">13<small>2</small></button>
     <button class="private-calendar-day selected has-sessions" data-audit="private-calendar-selected">14<small data-audit="private-calendar-selected-small">3</small></button>
    </div>
-   <div class="private-day-summary"><div><span data-audit="private-summary-label">Sessions</span><strong data-audit="private-summary-value">3</strong></div></div>
+   <div class="private-day-summary" data-audit-box="private-summary-box"><div><span data-audit="private-summary-label">Sessions</span><strong data-audit="private-summary-value">3</strong></div></div>
   </section>
   <section class="panel private-directory">
    <div class="private-client-row selected"><div class="private-client-heading"><strong data-audit="private-name">Private client</strong><span class="private-client-balance" data-audit="private-client-amount">$75</span></div><small>Client #14</small></div>
@@ -112,7 +112,7 @@
   </section>
   <section class="panel consolidated-finance-panel">
    <div class="consolidated-finance-grid">
-    <div class="consolidated-finance-total"><small data-audit="reports-cash-label">Cash collected</small><strong data-audit="reports-cash-total">$320</strong><p data-audit="reports-cash-note">Session receipts and top-ups</p></div>
+    <div class="consolidated-finance-total" data-audit-box="report-cash-box"><small data-audit="reports-cash-label">Cash collected</small><strong data-audit="reports-cash-total">$320</strong><p data-audit="reports-cash-note">Session receipts and top-ups</p></div>
     <div class="consolidated-finance-total secondary"><small>Matchmaking</small><strong data-audit="reports-commission">$70</strong><p>Undeducted commissions</p></div>
    </div>
    <div class="consolidated-finance-current"><h3 data-audit="reports-account-heading">Current account balances</h3></div>
