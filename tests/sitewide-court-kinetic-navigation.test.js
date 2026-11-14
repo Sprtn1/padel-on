@@ -58,3 +58,15 @@ test('Sitewide theme is loaded after module CSS, with mobile drawer and per-page
  assert.match(app,/navSectionForTab\(state\.tab\)/);
  assert.doesNotMatch(style,/<script|@tailwind/i);
 });
+
+test('Desktop sidebar and mobile drawer section labels have independent IDs',()=>{
+ const desktop=renderNavigation('dashboard',icon,false,true);
+ const drawer=renderNavigation('dashboard',icon,false,true,'drawer');
+ const collect=html=>[...html.matchAll(/id="(po-nav-[^"]+)"/g)].map(m=>m[1]);
+ const desktopIds=collect(desktop),drawerIds=collect(drawer);
+ assert.equal(desktopIds.length,NAV_SECTIONS.length);
+ assert.equal(drawerIds.length,NAV_SECTIONS.length);
+ assert.equal(new Set([...desktopIds,...drawerIds]).size,2*NAV_SECTIONS.length);
+ assert.match(drawer,/aria-labelledby="po-nav-core-drawer"/);
+ assert.match(source('app.js'),/navMarkup\(false,'drawer'\)/);
+});
