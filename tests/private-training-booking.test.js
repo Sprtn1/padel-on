@@ -59,6 +59,11 @@ test('Training selection remains separate from regular Reservations and Block Co
  await calendar.action({dataset:{
   action:'cafe-schedule-open',cafeScheduleSource:'reservation',cafeScheduleId:'reservation-1'
  }});
+ const details=calendar.page();
+ assert.match(details,/class="ck-detail-drawer"/);
+ assert.match(details,/Private Client Training/);
+ assert.match(details,/45\.00/);
+ await calendar.action({dataset:{action:'cafe-schedule-details-edit'}});
  const editor=calendar.page();
  assert.match(editor,/option value="reservation"/);
  assert.match(editor,/option value="block"/);

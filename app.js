@@ -63,7 +63,7 @@ const shiftHandover=shiftHandoverModule.createCafeteriaShiftHandover({
 });
 const cafeteriaFinances=cafeteriaFinanceModule.createCafeteriaFinances({
  api,heading,icon,amount,today,addDays,
- rerender:()=>{if(state.tab==='cafeteria-finances'&&api.getSession()?.access_token)render()},
+ rerender:()=>{if(['cafeteria-finances','court-timetable'].includes(state.tab)&&api.getSession()?.access_token)render()},
  toast,isAdmin:()=>state.staff?.role==='admin',
  canVoid:()=>['admin','staff'].includes(state.staff?.role),
  exportArabicPdf:data=>arabicDailyPdf.previewArabicDailySheet(data),
@@ -198,6 +198,7 @@ async function navigateToTab(tab){
  if(tab==='training')await loadTrainingMonth();
  if(tab==='private-clients')await loadPrivateClients();
  if(tab==='cafeteria-finances')await Promise.all([cafeteriaFinances.load(true),shiftHandover.load(cafeteriaFinances.getDate())]);
+ if(tab==='court-timetable')await cafeteriaFinances.schedulerLoad(true);
  if(tab==='cafeteria-payments')await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);
  if(tab==='tournament')await tournamentManagement.load(true);
  if(tab==='settings'&&state.staff?.role==='admin'){
@@ -278,7 +279,7 @@ function globalSearchOverlay(){
 }
 function shell(){
  const name=state.staff?.email?.split('@')[0]||'Staff';
- return `<div class="app-layout ${sidebarCollapsed?'sidebar-collapsed':''}"><aside class="sidebar" aria-label="Primary navigation"><div class="sidebar-panel"><div class="sidebar-header"><div class="sidebar-brand"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><span class="brand-compact" aria-hidden="true">PO</span></div><button type="button" class="sidebar-toggle" data-action="sidebar-toggle" aria-controls="sidebar-menu" aria-label="${sidebarToggleLabel(sidebarCollapsed)}" title="${sidebarToggleLabel(sidebarCollapsed)}" aria-expanded="${!sidebarCollapsed}">${icon(sidebarCollapsed?'chevronRight':'chevronLeft')}</button></div><div class="brand-sub">Club management</div><nav class="menu" id="sidebar-menu" aria-label="Sections">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></div></aside><main class="main"><header class="topbar"><button type="button" class="mobile-menu-toggle" data-action="mobile-menu-toggle" aria-label="Open navigation menu" aria-controls="mobile-drawer" aria-expanded="${mobileMenuOpen}">${icon("menu")}</button><div class="topbar-identity"><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='consignment'||state.tab==='tournament'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><div id="mobile-drawer" class="mobile-drawer ${mobileMenuOpen?'is-open':''}" aria-hidden="${!mobileMenuOpen}" ${mobileMenuOpen?'':'inert'}><button type="button" class="mobile-drawer-backdrop" data-action="mobile-menu-close" aria-label="Close navigation menu"></button><aside class="mobile-drawer-panel" aria-label="Mobile sections"><div class="mobile-drawer-header"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><button class="mobile-menu-close" type="button" data-action="mobile-menu-close" aria-label="Close menu">${icon('close')}</button></div><div class="mobile-drawer-title">Club management</div><nav class="mobile-drawer-links" aria-label="All sections">${navMarkup(false)}</nav><div class="mobile-drawer-account"><span class="avatar">${esc(initials(name))}</span><div><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div></div></aside></div></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
+ return `<div class="app-layout ${sidebarCollapsed?'sidebar-collapsed':''}"><aside class="sidebar" aria-label="Primary navigation"><div class="sidebar-panel"><div class="sidebar-header"><div class="sidebar-brand"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><span class="brand-compact" aria-hidden="true">PO</span></div><button type="button" class="sidebar-toggle" data-action="sidebar-toggle" aria-controls="sidebar-menu" aria-label="${sidebarToggleLabel(sidebarCollapsed)}" title="${sidebarToggleLabel(sidebarCollapsed)}" aria-expanded="${!sidebarCollapsed}">${icon(sidebarCollapsed?'chevronRight':'chevronLeft')}</button></div><div class="brand-sub">Club management</div><nav class="menu" id="sidebar-menu" aria-label="Sections">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></div></aside><main class="main"><header class="topbar"><button type="button" class="mobile-menu-toggle" data-action="mobile-menu-toggle" aria-label="Open navigation menu" aria-controls="mobile-drawer" aria-expanded="${mobileMenuOpen}">${icon("menu")}</button><div class="topbar-identity"><div class="crumb">PADEL ON / MANAGEMENT</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='consignment'||state.tab==='tournament'||state.tab==='court-timetable'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><div id="mobile-drawer" class="mobile-drawer ${mobileMenuOpen?'is-open':''}" aria-hidden="${!mobileMenuOpen}" ${mobileMenuOpen?'':'inert'}><button type="button" class="mobile-drawer-backdrop" data-action="mobile-menu-close" aria-label="Close navigation menu"></button><aside class="mobile-drawer-panel" aria-label="Mobile sections"><div class="mobile-drawer-header"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><button class="mobile-menu-close" type="button" data-action="mobile-menu-close" aria-label="Close menu">${icon('close')}</button></div><div class="mobile-drawer-title">Club management</div><nav class="mobile-drawer-links" aria-label="All sections">${navMarkup(false)}</nav><div class="mobile-drawer-account"><span class="avatar">${esc(initials(name))}</span><div><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div></div></aside></div></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
 }
 function heading(eyebrow,title,desc,actions=''){return `<div class="heading-row"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${desc}</p></div>${actions?`<div class="heading-actions">${actions}</div>`:''}</div>`}
 function summaryCard(label,num,sub,ico,feature=false){return `<article class="summary-card ${feature?'feature':''}"><div class="card-top"><span class="label">${label}</span><span class="metric-icon">${icon(ico)}</span></div><div class="metric num">${num}</div><div class="submetric">${sub}</div></article>`}
@@ -1084,7 +1085,7 @@ function settingsPage(){
  const orderListsCard=listsEnabled?'<article class="panel settings-box order-lists-box"><h3>Order Lists</h3><div class="order-list-options"><section class="order-list-option"><h4>Order Counter</h4><p>Count stock items, prepare a complete restocking message, and copy it for WhatsApp.</p>'+btn(icon('list')+' Open Order Counter','open-order-counter','btn-primary')+'</section><section class="order-list-option"><h4>Reem’s Items List</h4><p>Prepare Reem’s delivery order separately from the original supplier list. Copy the complete message for WhatsApp.</p>'+btn(icon('list')+' Open Reem’s Items List','open-reem-items','btn-light')+'</section></div></article>':'';
  return `${heading('Club tools','Settings',admin?'Manage club settings and member accounts.':'Ordering tools.',btn(`${icon('logout')} Sign out`,'signout','btn-light'))}${admin?`<div class="settings-grid">${adminTools}</div>`:''}${admin||listsEnabled?`<div class="settings-followup-grid ${admin?'':'single-column'}">${admin?'<div class="settings-followup-column">'+matchmakerCommissionSettings()+adminAccountManagementCards('private')+'</div>':''}<div class="settings-followup-column">${orderListsCard}${admin?adminAccountManagementCards('cafeteria'):''}</div></div>`:''}`;
 }
-function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'cafeteria-finances':return cafeteriaFinances.page();case'cafeteria-payments':return state.staff?.role==='admin'?cafeteriaPayments.page()+cafeteriaTodo.page():dashboard();case'debts':return debtPage();case'consignment':return consignmentInventory.page();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
+function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'court-timetable':return heading('Facility schedule','Court Timetable','Reservations, blocked slots and private training — 09:00 to 01:00 Beirut business day.')+'<div class="ck-timetable-page">'+cafeteriaFinances.schedulerPage()+'</div>';case'cafeteria-finances':return cafeteriaFinances.page();case'cafeteria-payments':return state.staff?.role==='admin'?cafeteriaPayments.page()+cafeteriaTodo.page():dashboard();case'debts':return debtPage();case'consignment':return consignmentInventory.page();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
 let lastRenderedMarkup=null,lastRenderedTab=null;
 // Mobile card conversion is presentation-only. Preserve every DOM node, form and action.
 function enhanceResponsiveTables(root){
@@ -1112,8 +1113,9 @@ function render(){
  if(routeInitialized&&state.staff){syncBrowserRoute(state.tab);document.title='PADEL ON · '+titleFor();}
  // The scheduler patches booking nodes without remounting the static
  // 09:00–01:00 grid, date, sport switch, or horizontal scroll state.
- if(autoRefreshRunning&&state.tab==='cafeteria-finances'&&
-    lastRenderedTab===state.tab&&cafeteriaFinances.isTimetableMounted())return;
+ if(autoRefreshRunning&&lastRenderedTab===state.tab&&
+    ((state.tab==='cafeteria-finances'&&cafeteriaFinances.isTimetableMounted())||
+     (state.tab==='court-timetable'&&cafeteriaFinances.schedulerMounted())))return;
  const html=shell();
  // Ignore identical poll results rather than replacing the whole DOM.
  if(autoRefreshRunning&&lastRenderedTab===state.tab&&html===lastRenderedMarkup)return;
@@ -1420,6 +1422,7 @@ async function loadData(resetTab=false,{background=false}={}){if(state.loading)r
   if(state.tab==='debts'&&!state.debtLoading)void loadDebtData();
    if(state.tab==='consignment')void consignmentInventory.load();
   if(state.tab==='cafeteria-finances'){void cafeteriaFinances.load(true);void shiftHandover.load(cafeteriaFinances.getDate());}
+  if(state.tab==='court-timetable')void cafeteriaFinances.schedulerLoad(true);
   if(state.tab==='cafeteria-payments'&&state.staff?.role==='admin'){void cafeteriaPayments.load();void cafeteriaTodo.load();}
   if(state.tab==='tournament')void tournamentManagement.load(true);
   if(state.tab==='dashboard'||state.tab==='reports')loadClubSources();
@@ -1642,7 +1645,8 @@ async function handleAction(target,event){const act=target.dataset.action,id=tar
    if(cafeteriaPayments.action({dataset:{cpayAction:act.slice(5),id}}))return;
   }
   if(act?.startsWith('cafe-')){
-  if(state.tab!=='cafeteria-finances'||!state.staff)throw Error('Authorized staff only.');
+  if(!['cafeteria-finances','court-timetable'].includes(state.tab)||!state.staff)throw Error('Authorized staff only.');
+  if(state.tab==='court-timetable'&&!act.startsWith('cafe-schedule-'))throw Error('Use Cafeteria Finances for financial entries.');
   if(await cafeteriaFinances.action(target,event)){
     if(act==='cafe-reload')await shiftHandover.load(cafeteriaFinances.getDate());
     return;
@@ -1808,7 +1812,7 @@ async function handleAction(target,event){const act=target.dataset.action,id=tar
  }
  case 'private-void-entry':if(state.staff?.role!=='admin')throw Error('Only admins can correct financial entries.');if(!state.privateEntries.some(e=>e.id===id))throw Error('Entry not found.');openModal('private-void',id);break;
  case 'private-export':exportPrivateClientCSV();break;
- case 'refresh':if(state.tab==='consignment'){await consignmentInventory.load();toast('Inventory refreshed');break;}if(state.tab==='cafeteria-payments'){if(state.staff?.role!=='admin')throw Error('Administrator access required.');await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);toast('Payments and tasks refreshed');break;}if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await Promise.all([cafeteriaFinances.load(true),shiftHandover.load(cafeteriaFinances.getDate())]);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
+ case 'refresh':if(state.tab==='court-timetable'){await cafeteriaFinances.schedulerLoad(true);toast('Timetable refreshed');break;}if(state.tab==='consignment'){await consignmentInventory.load();toast('Inventory refreshed');break;}if(state.tab==='cafeteria-payments'){if(state.staff?.role!=='admin')throw Error('Administrator access required.');await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);toast('Payments and tasks refreshed');break;}if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await Promise.all([cafeteriaFinances.load(true),shiftHandover.load(cafeteriaFinances.getDate())]);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
  case 'training-prev-month':
   state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
  case 'training-next-month':
@@ -1891,18 +1895,18 @@ document.addEventListener('click',async e=>{
 // Booking pointer gestures. Native scrolling is retained outside booking blocks.
 // On phones, tapping a block opens the full accessible court/time editor.
 document.addEventListener('pointerdown',e=>{
- if(state.tab==='cafeteria-finances'&&state.staff)cafeteriaFinances.schedulerPointerDown(e);
+ if(['cafeteria-finances','court-timetable'].includes(state.tab)&&state.staff)cafeteriaFinances.schedulerPointerDown(e);
 });
 document.addEventListener('pointermove',e=>{
- if(state.tab==='cafeteria-finances'&&state.staff)cafeteriaFinances.schedulerPointerMove(e);
+ if(['cafeteria-finances','court-timetable'].includes(state.tab)&&state.staff)cafeteriaFinances.schedulerPointerMove(e);
 },{passive:false});
 document.addEventListener('pointerup',e=>{
- if(state.tab==='cafeteria-finances'&&state.staff)
+ if(['cafeteria-finances','court-timetable'].includes(state.tab)&&state.staff)
   void cafeteriaFinances.schedulerPointerUp(e).catch(error=>toast(error.message||'Move unsuccessful',true));
 });
 document.addEventListener('pointercancel',()=>cafeteriaFinances.schedulerCancelDrag());
 document.addEventListener('keydown',e=>{
- if(e.key==='Escape'&&state.tab==='cafeteria-finances'&&state.staff)
+ if(e.key==='Escape'&&['cafeteria-finances','court-timetable'].includes(state.tab)&&state.staff)
   cafeteriaFinances.schedulerCloseEditor();
 });
 document.addEventListener('submit',async e=>{
@@ -1940,7 +1944,8 @@ document.addEventListener('submit',async e=>{
  // The finance module validates individual actions and rejects unknown ones.
  if(e.target.dataset?.cafeSave){
   e.preventDefault();
-  if(state.tab!=='cafeteria-finances'||!state.staff){toast('Authorized staff only.',true);return;}
+  if(!['cafeteria-finances','court-timetable'].includes(state.tab)||!state.staff||
+   (state.tab==='court-timetable'&&e.target.dataset.cafeSave!=='schedule-reservation')){toast('Authorized staff only.',true);return;}
   try{await cafeteriaFinances.submit(e.target)}catch(err){toast(err.message||'Unable to save entry.',true)}
   return;
  }
@@ -1983,7 +1988,7 @@ document.addEventListener('input',e=>{
    const field=document.getElementById('cpay-search');field?.focus();if(cursor!==null)field?.setSelectionRange(cursor,cursor);
    return;
   }
- if(state.tab==='cafeteria-finances'&&cafeteriaFinances.schedulerPreviewEnd(e.target))return;
+ if(['cafeteria-finances','court-timetable'].includes(state.tab)&&cafeteriaFinances.schedulerPreviewEnd(e.target))return;
  if(state.tab==='cafeteria-finances'&&cafeteriaFinances.courtPricePreview(e.target))return;
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-list-search'){
   const caret=e.target.selectionStart;
@@ -2082,7 +2087,7 @@ document.addEventListener('toggle',e=>{
   cafeteriaFinances.rememberNote(e.target.dataset.cafeNote,e.target.open);
 },true);
 document.addEventListener('change',e=>{
- if(state.tab==='cafeteria-finances'&&cafeteriaFinances.schedulerPreviewEnd(e.target))return;
+ if(['cafeteria-finances','court-timetable'].includes(state.tab)&&cafeteriaFinances.schedulerPreviewEnd(e.target))return;
  if(state.tab==='cafeteria-finances'&&cafeteriaFinances.courtPricePreview(e.target))return;
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-list-status'){
   try{tournamentManagement.searchList(e.target)}catch(err){toast(err.message||'Unable to filter tournaments.',true)}
@@ -2100,7 +2105,8 @@ document.addEventListener('change',e=>{
   try{tournamentManagement.change(e.target)}catch(err){toast(err.message||'Unable to update tournament.',true)}
   return;
  }
- if((e.target.id==='cafe-finance-date'||e.target.id==='cafe-schedule-date'||e.target.id==='cafe-quick-category'||e.target.dataset?.cafeMarker||e.target.dataset?.cafeReservationMarker||e.target.dataset?.cafePrivateCash!==undefined)&&state.tab==='cafeteria-finances'){
+ if((e.target.id==='cafe-finance-date'||e.target.id==='cafe-schedule-date'||e.target.id==='cafe-quick-category'||e.target.dataset?.cafeMarker||e.target.dataset?.cafeReservationMarker||e.target.dataset?.cafePrivateCash!==undefined)&&
+ (state.tab==='cafeteria-finances'||(state.tab==='court-timetable'&&e.target.id==='cafe-schedule-date'))){
   void cafeteriaFinances.change(e.target).catch(err=>toast(err.message||'Could not update finances.',true));return;
  }
  if(e.target.dataset?.reemInput==='quantity' && state.tab==='reem-items' && canUseOrderLists()){render();return;}
@@ -2181,6 +2187,7 @@ async function refreshAllPagesWhenDue(){
   // Retain every page on the same 30-second cadence and paint only once.
   // A failing feed must not prevent other pages from refreshing.
   const feeds=[
+   ['Court Timetable',()=>state.tab==='court-timetable'?cafeteriaFinances.schedulerLoad(true):undefined],
    ['Shared data',()=>loadData(false,{background:true})],
    ['Cafeteria Finances',()=>Promise.all([cafeteriaFinances.load(true,true),shiftHandover.load(cafeteriaFinances.getDate(),true)])],
     ['Cafeteria Payments',()=>state.staff?.role==='admin'?Promise.all([cafeteriaPayments.load(true),cafeteriaTodo.load(true)]):undefined],

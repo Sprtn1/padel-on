@@ -3,7 +3,7 @@ const v = Date.now().toString(36);
     const icon = document.getElementById('site-favicon');
     if (icon) icon.href = `./assets/favicon.svg?v=${v}`;
     // CSS is modular; append stylesheets in cascade order.
-    for (const path of ['./styles.css', './styles/tournament.css', './styles/cafeteria-payments.css', './styles/consignment.css', './styles/cafeteria-shifts.css', './styles/interface-polish.css', './styles/tournament-workspace.css', './styles/tournament-advanced.css', './styles/mobile-experience.css', './styles/court-timeboard.css', './styles/court-scheduler.css', './styles/court-payment-splits.css', './styles/club-multisport-calendar.css', './styles/club-calendar-v19.css']) {
+    for (const path of ['./styles.css', './styles/tournament.css', './styles/cafeteria-payments.css', './styles/consignment.css', './styles/cafeteria-shifts.css', './styles/interface-polish.css', './styles/tournament-workspace.css', './styles/tournament-advanced.css', './styles/mobile-experience.css', './styles/court-timeboard.css', './styles/court-scheduler.css', './styles/court-payment-splits.css', './styles/club-multisport-calendar.css', './styles/club-calendar-v19.css', './styles/court-kinetic-v2.css']) {
       const stylesheet = document.createElement('link');
       stylesheet.rel = 'stylesheet';
       stylesheet.href = `${path}?v=${v}`;
