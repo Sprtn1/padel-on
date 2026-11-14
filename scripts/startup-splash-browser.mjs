@@ -34,11 +34,17 @@ try{
  await cold.close();
 
  const warm=await fixture({warm:true});
- assert.equal(await isVisible(warm),false);
- await warm.waitForTimeout(1120);
- assert.equal(await isVisible(warm),false,'Returning tab should not show unnecessary splash');
- await warm.waitForTimeout(800);
- assert.equal(await isVisible(warm),true,'Long warm start should eventually reveal loading state');
+ const warmDimensions=await warm.locator('#app>.startup').evaluate(node=>{
+  const bar=getComputedStyle(node),mark=node.querySelector('.startup-brand-mark');
+  return {height:node.getBoundingClientRect().height,visible:bar.visibility!=='hidden',
+   brandVisible:mark.getClientRects().length>0};
+ });
+ assert.ok(warmDimensions.visible,'Returning tabs should show a compact loading indicator');
+ assert.ok(warmDimensions.height<=5,'Returning tabs must never show a full-screen splash');
+ assert.equal(warmDimensions.brandVisible,false,'Returning tabs should not flash the splash logo');
+ await warm.waitForTimeout(1900);
+ assert.ok((await warm.locator('#app>.startup').boundingBox()).height<=5,
+  'Even slow warm connections keep a compact non-blocking indicator');
  await warm.close();
 
  const quick=await fixture({warm:true});
@@ -56,5 +62,10 @@ try{
  assert.equal(await isVisible(reduced),true,'Reduced-motion loading remains visible when needed');
  await reduced.close();
 
- console.log('PASS: cold starts, returning tabs, instant dashboard render, SPA navigation, and reduced motion.');
+ const appSource=readFileSync(join(root,'app.js'),'utf8');
+ assert.match(appSource,/const \[[\s\S]*?\] = await Promise\.all\(\[/,
+  'Independent app modules must download in parallel');
+ assert.ok(appSource.indexOf('if(earlyPaint){')<appSource.indexOf("api.listAll('team_members')"),
+  'Authenticated page shell must render before unrelated shared queries finish');
+ console.log('PASS: cold start, compact returning-tab progress, concurrent imports, early shell, navigation, reduced motion.');
 }finally{await browser.close();}
