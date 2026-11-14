@@ -91,10 +91,18 @@ try{
    document.body.append(node);
    const board=node.querySelector('.cafe-timeboard').getBoundingClientRect();
    const axis=node.querySelector('.cafe-timeboard-axis').getBoundingClientRect();
-   const lane=node.querySelector('.cafe-scheduler-lane').getBoundingClientRect();
-   const line=node.querySelector('.ck-schedule-now').getBoundingClientRect();
+   const laneElement=node.querySelector('.cafe-scheduler-lane');
+   laneElement.innerHTML='<button class="cafe-timeboard-booking cafe-scheduler-event status-all" style="top:420px;height:84px;left:3px;width:calc(100% - 6px)">16:30–18:00</button>';
+   const lane=laneElement.getBoundingClientRect();
+   const bookingElement=laneElement.querySelector('.cafe-timeboard-booking');
+   const booking=bookingElement.getBoundingClientRect();
+   const nowElement=node.querySelector('.ck-schedule-now');
+   const line=nowElement.getBoundingClientRect();
    const result={axisTop:axis.top-board.top,laneTop:lane.top-board.top,
-    lineTop:line.top-board.top,boardHeight:board.height};
+    lineTop:line.top-board.top,boardHeight:board.height,
+    bookingTop:booking.top-lane.top,bookingHeight:booking.height,
+    bookingLayer:Number(getComputedStyle(bookingElement).zIndex),
+    liveLineLayer:Number(getComputedStyle(nowElement).zIndex)};
    node.remove();
    return result;
   });
@@ -102,6 +110,10 @@ try{
   assert.ok(Math.abs(timetableGeometry.laneTop-56)<3,'Court lanes must align with the hour axis');
   assert.ok(Math.abs(timetableGeometry.lineTop-(56+280))<3,'Live line must overlay the correct hour');
   assert.ok(timetableGeometry.boardHeight<1100,'Timetable must not include a ghost row');
+  assert.ok(Math.abs(timetableGeometry.bookingTop-420)<3,'16:30 booking must start 7.5 hours after 09:00');
+  assert.ok(Math.abs(timetableGeometry.bookingHeight-84)<3,'90-minute booking must occupy 1.5 grid hours');
+  if(width===390)assert.ok(timetableGeometry.bookingLayer>timetableGeometry.liveLineLayer,
+   'Mobile booking labels must remain above the live red line');
   const originals=new Map();
   for(const theme of ['light','dark','light']){
    await page.evaluate(theme=>{
