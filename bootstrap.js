@@ -2,7 +2,9 @@
 const v = Date.now().toString(36);
 // Resolve the saved theme before dynamically loading the application styles.
 const {readTheme} = await import(`./lib/theme-preference.js?v=${v}`);
-const initialTheme=readTheme(window.localStorage);
+let startupStorage=null;
+try{startupStorage=window.localStorage;}catch{}
+const initialTheme=readTheme(startupStorage);
 document.documentElement.dataset.theme=initialTheme;
 document.documentElement.style.colorScheme=initialTheme;
 document.querySelector('meta[name="theme-color"]')?.setAttribute('content',initialTheme==='dark'?'#101922':'#f8f9fc');
