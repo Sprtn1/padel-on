@@ -97,6 +97,7 @@ try{
    node.remove();
    return result;
   });
+  console.info('Court timetable layout geometry',width,timetableGeometry);
   assert.ok(Math.abs(timetableGeometry.axisTop-56)<3,'Time axis must start immediately below court headers');
   assert.ok(Math.abs(timetableGeometry.laneTop-56)<3,'Court lanes must align with the hour axis');
   assert.ok(Math.abs(timetableGeometry.lineTop-(56+280))<3,'Live line must overlay the correct hour');
