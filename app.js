@@ -79,7 +79,7 @@ function canAutoRender(){
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
-const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,reportCompare:false,reportCompareDay:addDays(todayBeirut(),-1),reportCompareWeek:addDays(weekStart(todayBeirut()),-7),reportCompareMonth:shiftMonth(monthKey(todayBeirut()),-1),reportCompareData:null,reportCompareKey:'',trainingMonth:monthKey(todayBeirut()),trainingSessions:[],trainingAttendance:[],trainingLoading:false,trainingLoadedMonth:null,trainingError:null,privateClients:[],privateCoaches:[],privateEntries:[],privateBookings:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateNotesOpen:false,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',debtDay:todayBeirut(),settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',overviewTrainingAttendance:[],overviewTrainingMonth:'',overviewTrainingLoading:false,overviewTrainingError:null,overviewTrainingFetchedAt:0,globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
+const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,reportCompare:false,reportCompareDay:addDays(todayBeirut(),-1),reportCompareWeek:addDays(weekStart(todayBeirut()),-7),reportCompareMonth:shiftMonth(monthKey(todayBeirut()),-1),reportCompareData:null,reportCompareKey:'',privateClients:[],privateCoaches:[],privateEntries:[],privateBookings:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateNotesOpen:false,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',debtDay:todayBeirut(),settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
 // The daily cashbook owns its own dated Supabase query and does not mix with other ledgers.
 const consignmentInventory=consignmentModule.createConsignmentInventory({
  api,heading,icon,toast,
@@ -225,7 +225,6 @@ async function navigateToTab(tab){
  if(tab==='dashboard'){loadClubSources();void clubInsights.loadOverview(true);}
  if(tab==='debts')await loadDebtData();
  if(tab==='consignment')await consignmentInventory.load();
- if(tab==='training')await loadTrainingMonth();
  if(tab==='private-clients')await loadPrivateClients();
  if(tab==='cafeteria-finances')await Promise.all([cafeteriaFinances.load(true),shiftHandover.load(cafeteriaFinances.getDate())]);
  if(tab==='court-timetable')await cafeteriaFinances.schedulerLoad(true);
@@ -355,11 +354,6 @@ function clubBalanceSnapshot(){
   cafeteriaCredit:cafeReady?c.reduce((n,x)=>n+Math.max(0,-x.balance),0):null,
   privateRows:p,cafeRows:c};
 }
-function daysLeftInMonth(date){
- const end=addDays(shiftMonth(monthKey(date),1)+'-01',-1);
- const from=new Date(date+'T12:00:00Z'),to=new Date(end+'T12:00:00Z');
- return Math.round((to-from)/86400000);
-}
 function managementAlerts(){
  const alerts=[],balances=clubBalanceSnapshot();
  if(balances){
@@ -378,22 +372,14 @@ function managementAlerts(){
    alerts.push({severity:'warning',subject:x.person.name,detail:'Inactive cafeteria account owes '+amount(x.balance),kind:'debt',id:x.person.id});
   }
  }
- const ym=monthKey(today());
- if(state.overviewTrainingMonth===ym&&!state.overviewTrainingError){
-  const trained=new Set(state.overviewTrainingAttendance.filter(a=>!a.voided_at).map(a=>a.member_id));
-  const missing=state.members.filter(m=>m.active&&m.team_category==='rising_stars'&&!trained.has(m.id));
-  const remaining=daysLeftInMonth(today());
-  if(missing.length)alerts.push({severity:remaining<=7?'warning':'info',subject:'Rising Stars monthly training',
-   detail:missing.length+' member'+(missing.length===1?'':'s')+' not yet trained · '+remaining+' day'+(remaining===1?'':'s')+' left this month',kind:'training'});
- }
  return alerts;
 }
 function managementAlertPanel(){
- const alerts=managementAlerts(),allReady=state.privateLoaded&&state.debtLoaded&&state.overviewTrainingMonth===monthKey(today())&&!state.overviewTrainingError;
+ const alerts=managementAlerts(),allReady=state.privateLoaded&&!state.privateError&&state.debtLoaded&&!state.debtError;
  const content=alerts.length?alerts.slice(0,state.alertExpanded?alerts.length:7).map(a=>
   `<button type="button" class="management-alert ${a.severity}" data-action="management-alert-open" data-kind="${a.kind}" ${a.id?`data-id="${esc(a.id)}"`:''}><span class="management-alert-icon">${icon(a.severity==='warning'?'alert':'info')}</span><span><strong>${esc(a.subject)}</strong><small>${esc(a.detail)}</small></span>${icon('arrow')}</button>`).join(''):
-  allReady?'<div class="panel-empty">No outstanding management alerts at the moment.</div>':'<div class="panel-empty">Loading client and training alerts…</div>';
- return `<article class="panel"><div class="panel-head"><div><h2>Management alerts</h2><p>High balances: ${amount(MANAGEMENT_HIGH_DEBT_CENTS)}+ · training follows the Beirut calendar</p></div>${alerts.length?tag(String(alerts.length)+' alerts','amber'):''}</div><div class="management-alerts">${content}${alerts.length>7?btn(state.alertExpanded?'Show fewer alerts':'Show all '+alerts.length+' alerts','management-alert-toggle','btn-light'):''}${!allReady?'<div class="management-alert-status">Some alert sources are still loading or unavailable; totals may be incomplete.</div>':''}</div></article>`;
+  allReady?'<div class="panel-empty">No outstanding management alerts at the moment.</div>':'<div class="panel-empty">Loading client alerts…</div>';
+ return `<article class="panel"><div class="panel-head"><div><h2>Management alerts</h2><p>High balances: ${amount(MANAGEMENT_HIGH_DEBT_CENTS)}+ · current client balances</p></div>${alerts.length?tag(String(alerts.length)+' alerts','amber'):''}</div><div class="management-alerts">${content}${alerts.length>7?btn(state.alertExpanded?'Show fewer alerts':'Show all '+alerts.length+' alerts','management-alert-toggle','btn-light'):''}${!allReady?'<div class="management-alert-status">Some alert sources are still loading or unavailable; totals may be incomplete.</div>':''}</div></article>`;
 }
 function overviewExtra(){
  const todayDate=today(),snapshot=clubFinancialSnapshot(todayDate,'day'),balance=clubBalanceSnapshot();
@@ -708,75 +694,6 @@ function otherPage(){return `${heading('Special arrangements','Other Benefits','
  const note=p.status==='one_free_per_week'?(weekly.available?`One free game is available for ${weekLabel(today())}.`:`The free game for ${weekLabel(today())} has already been used.`):p.status==='alternating_free_paid'?`Alternating benefit: free game → paid game → free game. ${p.current_counter} game(s) recorded in this cycle.`:p.status==='next_free'?'This player has a free game waiting.':p.slug==='rami-al-rifai'&&p.status==='counting'?`${Math.max(0,5-p.current_counter)} more paid game(s) before a free game.`:p.status==='rule_not_configured'?'Eligibility conditions have not been set.':'Confirm the player’s next-game benefit.';
  return `<article class="other-card"><div class="member-top"><div class="player-avatar">${esc(initials(p.name))}</div><div class="player-title"><strong>${esc(p.name)}</strong><small>Special benefit</small></div></div>${tag(info[0],info[1])}<div class="other-note">${note}</div><div class="player-row" style="margin-bottom:18px"><span class="game-caption">${p.status==='alternating_free_paid'?'Games in cycle':'Games counter'}</span><span class="other-count num">${p.current_counter}</span></div><div class="card-bottom">${btn(`${icon('plus')} Record Game`,'record-other','btn-soft',`data-id="${p.id}"`)}${state.staff?.role==='admin'?btn(icon('edit'),'edit-other','btn-light btn-icon history-button',`data-id="${p.id}" title="Edit player"`):''}</div></article>`
  }).join('')}</div>`}
-
-function risingStarsMembers(){return state.members.filter(m=>m.active&&m.team_category==='rising_stars').sort((a,b)=>a.name.localeCompare(b.name));}
-function trainingMonthData(){
- const sessions=state.trainingSessions.filter(s=>!s.voided_at&&monthKey(s.session_date)===state.trainingMonth).sort((a,b)=>b.session_date.localeCompare(a.session_date)||(b.start_time||'').localeCompare(a.start_time||''));
- const sessionIds=new Set(sessions.map(s=>s.id));
- const attendance=state.trainingAttendance.filter(a=>!a.voided_at&&sessionIds.has(a.session_id));
- const attended=new Set(attendance.map(a=>a.member_id));
- const members=risingStarsMembers();
- return {sessions,attendance,attended,members,used:members.filter(m=>attended.has(m.id)).length,remaining:members.filter(m=>!attended.has(m.id)).length};
-}
-let trainingLoadSequence=0;
-async function loadTrainingMonth({background=false}={}){
- if(!api.getSession()?.access_token||!state.staff)return;
- const target=state.trainingMonth,seq=++trainingLoadSequence;
- const start=target+'-01',end=addDays(shiftMonth(target,1)+'-01',-1);
- state.trainingLoading=true;state.trainingError=null;state.trainingLoadedMonth=null;
- if(state.tab==='training'&&!background)render();
- try{
-  const [sessions,attendance]=await Promise.all([
-   api.listAll('training_sessions','session_date=gte.'+start+'&session_date=lte.'+end),
-   api.listAll('training_attendance','month_key=eq.'+start)
-  ]);
-  if(seq!==trainingLoadSequence||!api.getSession()?.access_token)return;
-  state.trainingSessions=sessions;state.trainingAttendance=attendance;state.trainingLoadedMonth=target;
- }catch(e){
-  if(seq===trainingLoadSequence&&api.getSession()?.access_token)state.trainingError=e?.message||'Unable to retrieve monthly training.';
- }finally{
-  if(seq===trainingLoadSequence){
-   state.trainingLoading=false;
-   if(state.tab==='training'&&!background&&api.getSession()?.access_token)render();
-  }
- }
-}
-
-
-function trainingPage(){
- const ym=state.trainingMonth,ready=!state.trainingLoading&&!state.trainingError&&state.trainingLoadedMonth===ym;
- const d=ready?trainingMonthData():null;
- const sessionRows=d?d.sessions.map(se=>{
-  const people=d.attendance.filter(a=>a.session_id===se.id).map(a=>state.members.find(m=>m.id===a.member_id)?.name||'Member').join(' & ');
-  return `<tr><td>${niceDay(se.session_date)}</td><td><strong>${esc(people)}</strong>${se.solo_exception?'<br/><small>Solo exception</small>':''}</td><td>${se.start_time?esc(String(se.start_time).slice(0,5)):'—'}</td><td>${se.duration_minutes} min</td><td>${esc(se.notes||'—')}</td><td>${state.staff?.role==='admin'?btn('Void','void-training','btn-danger btn-xs',`data-id="${se.id}"`):'<span class="tiny">Recorded</span>'}</td></tr>`;
- }).join(''):'';
- const memberRows=d?d.members.map(m=>{
-  const att=d.attendance.find(a=>a.member_id===m.id),session=att?d.sessions.find(se=>se.id===att.session_id):null;
-  return `<div class="training-member"><div class="player-avatar">${esc(initials(m.name))}</div><div class="training-member-name"><strong>${esc(m.name)}</strong><small>${session?'Completed '+niceDay(session.session_date):'Monthly session available'}</small></div>${tag(session?'Completed':'Available',session?'green':'amber')}</div>`;
- }).join(''):'';
- return `${heading('Rising Stars / Coach Khalil','Monthly Training','One free training entitlement per Rising Stars member every calendar month.',btn(`${icon('plus')} Record Session`,'add-training','btn-primary',!ready?'disabled':''))}
-<div class="period-control"><div><strong>${icon('calendar')} ${monthLabel(ym)}</strong><small>Coach Khalil · 45 minutes by default · normally 2 players</small></div><div class="period-buttons"><button class="btn btn-light" data-action="training-prev-month" aria-label="Previous month">${icon('chevronLeft')}</button><button class="btn btn-light" data-action="training-next-month" ${ym>=monthKey(today())?'disabled':''} aria-label="Next month">${icon('chevronRight')}</button></div></div>
-${!ready?`<div class="panel-empty">${state.trainingLoading?'Loading monthly training records…':state.trainingError?'Unable to load: '+esc(state.trainingError):'Loading training…'}</div>`:`
-<section class="finance-grid">${summaryCard('Eligible players',d.members.length,'Active Rising Stars members','users',true)}${summaryCard('Already trained',d.used,'Used this month','check')}${summaryCard('Still available',d.remaining,'Free sessions remaining','calendar')}</section>
-<div class="training-actions"><div class="notice">${icon('info')} One free session per player per month. Normally two players train together; a solo exception needs a reason. </div>${btn(`${icon('download')} Export Monthly CSV`,'export-training','btn-light')}${btn('Print / Save PDF','print-training','btn-light')}</div>
-<article class="panel training-panel"><div class="panel-head"><div><h2>Monthly player status</h2><p>${monthLabel(ym)} · ${d.used} of ${d.members.length} completed</p></div></div><div class="training-members">${memberRows||'<div class="panel-empty">No active Rising Stars members. Check team classifications.</div>'}</div></article>
-<article class="panel"><div class="panel-head"><div><h2>Sessions with Coach Khalil</h2><p>${d.sessions.length} sessions · ${d.attendance.length} player attendances</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Players</th><th>Time</th><th>Duration</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${sessionRows||'<tr><td colspan="6" class="panel-empty">No sessions recorded this month.</td></tr>'}</tbody></table></div></article>
-`}`;
-}
-function exportTrainingCSV(){
- if(state.trainingLoadedMonth!==state.trainingMonth||state.trainingLoading||state.trainingError)throw Error('Load a training month first.');
- const d=trainingMonthData(),ym=state.trainingMonth;
- const rows=[['PADEL ON','Monthly Rising Stars Training',monthLabel(ym)],['Coach','Coach Khalil'],['Eligible',d.members.length],['Trained',d.used],['Remaining',d.remaining],[],['Member','Status','Training date','Duration (min)','Coach']];
- for(const m of d.members){
-  const att=d.attendance.find(a=>a.member_id===m.id),se=att?d.sessions.find(x=>x.id===att.session_id):null;
-  rows.push([m.name,se?'Completed':'Not yet',se?.session_date||'',se?.duration_minutes||'',se?'Coach Khalil':'']);
- }
- rows.push([],['Date','Start time','Player names','Duration (min)','Solo exception','Notes']);
- for(const se of d.sessions){
-  rows.push([se.session_date,se.start_time||'',d.attendance.filter(a=>a.session_id===se.id).map(a=>state.members.find(m=>m.id===a.member_id)?.name||'Member').join(' & '),se.duration_minutes,se.solo_exception?'Yes':'No',se.notes]);
- }
- downloadCSV(rows,'padel-on-training-'+ym+'.csv');
-}
 
 function debtPersonTransactions(id){
  return state.debtEntries.filter(e=>e.person_id===id&&!e.voided_at)
@@ -1115,7 +1032,7 @@ function settingsPage(){
  const orderListsCard=listsEnabled?'<article class="panel settings-box order-lists-box"><h3>Order Lists</h3><div class="order-list-options"><section class="order-list-option"><h4>Order Counter</h4><p>Count stock items, prepare a complete restocking message, and copy it for WhatsApp.</p>'+btn(icon('list')+' Open Order Counter','open-order-counter','btn-primary')+'</section><section class="order-list-option"><h4>Reem’s Items List</h4><p>Prepare Reem’s delivery order separately from the original supplier list. Copy the complete message for WhatsApp.</p>'+btn(icon('list')+' Open Reem’s Items List','open-reem-items','btn-light')+'</section></div></article>':'';
  return `${heading('Club tools','Settings',admin?'Manage club settings and member accounts.':'Ordering tools.',btn(`${icon('logout')} Sign out`,'signout','btn-light'))}${admin?`<div class="settings-grid">${adminTools}</div>`:''}${admin||listsEnabled?`<div class="settings-followup-grid ${admin?'':'single-column'}">${admin?'<div class="settings-followup-column">'+matchmakerCommissionSettings()+adminAccountManagementCards('private')+'</div>':''}<div class="settings-followup-column">${orderListsCard}${admin?adminAccountManagementCards('cafeteria'):''}</div></div>`:''}`;
 }
-function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'court-timetable':return heading('Facility schedule','Court Timetable','Reservations, blocked slots and private training — 09:00 to 01:00 Beirut business day.')+'<div class="ck-timetable-page">'+cafeteriaFinances.schedulerPage()+'</div>';case'cafeteria-finances':return cafeteriaFinances.page();case'cafeteria-payments':return state.staff?.role==='admin'?cafeteriaPayments.page()+cafeteriaTodo.page():dashboard();case'debts':return debtPage();case'consignment':return consignmentInventory.page();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'training':return trainingPage();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
+function renderPage(){switch(state.tab){case'dashboard':return dashboard();case'court-timetable':return heading('Facility schedule','Court Timetable','Reservations, blocked slots and private training — 09:00 to 01:00 Beirut business day.')+'<div class="ck-timetable-page">'+cafeteriaFinances.schedulerPage()+'</div>';case'cafeteria-finances':return cafeteriaFinances.page();case'cafeteria-payments':return state.staff?.role==='admin'?cafeteriaPayments.page()+cafeteriaTodo.page():dashboard();case'debts':return debtPage();case'consignment':return consignmentInventory.page();case'team':return teamPage();case'other':return otherPage();case'finance':return financePage();case'tournament':return tournamentManagement.page();case'private-clients':return privateClientsPage();case'activity':return activityPage();case'reports':return reportsPage();case'settings':return settingsPage();case'order-counter':return canUseOrderLists()?orderCounter.orderCounterPage(state.staff?.id||state.staff?.email):settingsPage();case'reem-items':return canUseOrderLists()?reemItems.reemItemsPage(state.staff?.id||state.staff?.email):settingsPage();default:return dashboard()}}
 let lastRenderedMarkup=null,lastRenderedTab=null;
 // Mobile card conversion is presentation-only. Preserve every DOM node, form and action.
 function enhanceResponsiveTables(root){
@@ -1312,29 +1229,6 @@ function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',d
  case 'other-game': {const p=state.special.find(x=>x.id===m.id);title='Record Special Benefit';subtitle=p?.name||'';const weekly=p?.status==='one_free_per_week'?getWeeklyFreeGameStatus(p,today(),state.specialGames):null;content=`<form id="modal-form" data-save="save-other">${field('played_on','Game date',today(),'date',`required max="${today()}" min="${addDays(today(),-30)}"`)}${p?.status==='alternating_free_paid'? `<div class="form-field"><span>Game type — automatically determined</span><input type="hidden" name="game_type" value="${alternatingBenefitNext(p)}"/><div class="notice">${alternatingBenefitNext(p)==='free'?'This game is FREE. After saving, the next game will be PAID.':'This game is PAID. After saving, the next game will be FREE.'} </div></div>`:p?.status==='one_free_per_week'? `<div class="form-field"><span>Game type</span><div class="radio-tiles"><label><input type="radio" name="game_type" value="paid" checked/> Paid game</label><label><input id="other-free-game" type="radio" name="game_type" value="free" ${weekly?.available?'':'disabled'}/> Free game</label></div><div id="other-weekly-benefit-preview" class="notice">${weekly?.available?`One free game is available for ${weekLabel(today())}.`:`The free game for ${weekLabel(today())} has already been used. Choose Paid game.`}</div></div>`: `<div class="form-field"><span>Game type</span><div class="radio-tiles"><label><input type="radio" name="game_type" value="paid" ${p?.status!=='next_free'?'checked':''}/> Paid game</label><label><input type="radio" name="game_type" value="free" ${p?.status==='next_free'?'checked':''}/> Free game</label></div></div>`}${textareaField('notes','Notes (optional)')}${formActions('Record Game')}</form>`;break;}
  case 'finance': {const person=selectedMatchmaker();const rec=state.finance.find(x=>x.id===m.id);if(rec&&person&&rec.matchmaker_id!==person.id)throw Error('Selected person does not own this record.');title=rec?'Edit Matchmaking Game':'Add Matchmaking Game';subtitle=(person?person.name+' · ':'')+'Revenue collected from the other players (USD).';content=`<form id="modal-form" data-save="save-finance"><div class="form-cols">${field('played_on','Game date',rec?.played_on||today(),'date',`required max="${today()}"`)}${field('amount','Amount received ($)',rec?Number(rec.amount_cents/100).toFixed(2):'','number','required min="0" max="1000000000" step="0.01" placeholder="45.00"')}</div>${field('players','Other players (optional)',rec?.players||'','text','maxlength="255"')}${textareaField('notes','Notes (optional)',rec?.notes||'')}${formActions(rec?'Save Changes':'Save Revenue')}</form>`;break;}
 
- case 'training':{
-  title='Record Coach Khalil Training';subtitle='One free monthly training per Rising Stars member.';
-  const d=trainingMonthData(),eligible=d.members.filter(m=>!d.attended.has(m.id));
-  const opts=eligible.map(p=>[p.id,p.name]);
-  const first=state.trainingMonth+'-01',last=addDays(shiftMonth(state.trainingMonth,1)+'-01',-1);
-  const latest=last>today()?today():last;
-  content=`<form id="modal-form" data-save="save-training">
-   ${field('session_date','Training date',state.trainingMonth===monthKey(today())?today():latest,'date',`required min="${first}" max="${latest}"`)}
-   ${selectField('player1','Rising Stars player 1',[['','Choose player'],...opts],'')}
-   ${selectField('player2','Rising Stars player 2',[['','Choose second player (or use solo exception)'],...opts],'')}
-   <label class="training-solo-check"><input type="checkbox" name="solo_exception" value="yes"/> One-player exception (normally two players train together)</label>
-   <div class="form-cols">${field('start_time','Start time (optional)','','time')}${field('duration_minutes','Duration (minutes)',45,'number','required min="15" max="180" step="5"')}</div>
-   ${textareaField('notes','Notes / solo exception reason')}
-   <div class="notice">Coach Khalil · Free session · Up to one attendance per player each month. For one player, tick the solo exception and write a reason.</div>
-   ${formActions('Save Completed Training')}</form>`;
-  break;
- }
- case 'void-training':{
-  const session=state.trainingSessions.find(x=>x.id===m.id);
-  title='Void Training Record';subtitle=session?'Coach Khalil · '+niceDay(session.session_date):'Correct an incorrect training entry';danger=true;
-  content=`<div class="notice warn">Voiding this session restores the players’ monthly training eligibility.</div><form id="modal-form" data-save="void-training">${textareaField('reason','Reason for correction')}${formActions('Void Training',true)}</form>`;
-  break;
- }
  case 'edit-member': {const p=state.members.find(x=>x.id===m.id);title=p?'Edit Team Member':'Add Team Member';subtitle='Only administrators can modify the team roster.';content=`<form id="modal-form" data-save="save-member">${field('name','Full name',p?.name||'','text','required maxlength="100" minlength="2"')}${selectField('team_category','Team category',TEAM_GROUPS,p?.team_category||'team')}<div class="form-cols">${field('weekly_allowance','Weekly allowance',p?.weekly_allowance??0,'number','min="0" max="30" required')}${selectField('active','Status',[['true','Active'],['false','Inactive']],p?.active===false?'false':'true')}</div>${selectField('unlimited','Free game rule',[['false','Weekly allowance'],['true','Unlimited free games']],p?.unlimited?'true':'false')}${formActions(p?'Save Member':'Create Member')}</form>`;break;}
  case 'choose-member':{title='Edit Team Member';subtitle='Select a person to update.';content=`<form id="modal-form" data-save="choose-member">${selectField('member_id','Team member',state.members.map(x=>[x.id,x.name]),state.members[0]?.id)}${formActions('Continue')}</form>`;break;}
  case 'edit-other':{const p=state.special.find(x=>x.id===m.id);title=p?'Edit Other Benefit':'Add Other Benefit';subtitle='Choose the rule that determines free-game eligibility.';content=`<form id="modal-form" data-save="save-other-player">${field('name','Player name',p?.name||'','text','required maxlength="100"')}${field('current_counter','Game counter (alternating: 0 = next free; 1 = next paid)',p?.current_counter??0,'number','required min="0" max="1000000"')}${selectField('status','Eligibility status',[['needs_confirmation','Needs Confirmation'],['next_free','Next Game Free'],['counting','Counting Games'],['alternating_free_paid','Alternating: Free Game, Paid Game'],['one_free_per_week','1 Free Game per Week'],['rule_not_configured','Rule Not Configured']],p?.status||'needs_confirmation')}${field('threshold','Threshold (counting policies only)',p?.threshold??'','number','min="1" max="100"')}<div class="notice">For “1 Free Game per Week”, the selected game date determines its Monday–Sunday week. Only one free game is allowed in that week; paid games remain unrestricted. The allowance resets automatically each Monday.</div>${selectField('active','Status',[['true','Active'],['false','Inactive']],p?.active===false?'false':'true')}${formActions('Save Player')}</form>`;break;}
@@ -1346,7 +1240,7 @@ function modalMarkup(){const m=state.modal;let title='',subtitle='',content='',d
  return `<div class="modal-backdrop" id="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-head"><div><h2>${esc(title)}</h2><p>${esc(subtitle)}</p></div><button class="modal-close" data-action="close-modal" aria-label="Close">${icon('close')}</button></div><div class="modal-body">${content}</div></div></div>`
 }
 function formActions(text,danger=false){return `<div class="modal-actions">${btn('Cancel','close-modal','btn-light')}<button type="submit" class="btn ${danger?'btn-danger':'btn-primary'}" id="save-button">${esc(text)}</button></div>`}
-function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance','training','private-session','private-deposit','private-close-balance','debt-person','debt-charge','debt-payment'].includes(type)?{requestId:crypto.randomUUID()}:{}),...(['finance','settlement'].includes(type)?{personId:selectedMatchmaker()?.id||null}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();validatePrivateClientIdInput();},0)}
+function openModal(type,id=null,more={}){state.modal={type,id,...(['team','quick-team','other-game','finance','private-session','private-deposit','private-close-balance','debt-person','debt-charge','debt-payment'].includes(type)?{requestId:crypto.randomUUID()}:{}),...(['finance','settlement'].includes(type)?{personId:selectedMatchmaker()?.id||null}:{}),...more};render();setTimeout(()=>{document.querySelector('#modal-root .form-input')?.focus();updateQuickPreview();validatePrivateClientIdInput();},0)}
 function closeModal(){state.modal=null;document.getElementById('modal-root').innerHTML=''}
 function renderAuth(message=''){
  mobileMenuOpen=false;document.body.classList.remove('mobile-menu-open');
@@ -1376,28 +1270,10 @@ async function loadDebtData({background=false}={}){
   if(!background&&(state.tab==='debts'||state.tab==='dashboard'||state.tab==='reports')&&!state.modal&&api.getSession()?.access_token)render();updateGlobalSearchResults();
  }
 }
-async function loadOverviewTraining({background=false}={}){
- if(!api.getSession()?.access_token||!state.staff||state.overviewTrainingLoading)return;
- const ym=monthKey(today());
- if(state.overviewTrainingMonth===ym&&Date.now()-state.overviewTrainingFetchedAt<30000)return;
- state.overviewTrainingLoading=true;
- try{
-  const records=await api.listAll('training_attendance','month_key=eq.'+ym+'-01');
-  if(!api.getSession()?.access_token||idleLogoutStarted)return;
-  state.overviewTrainingAttendance=records;
-  state.overviewTrainingMonth=ym;state.overviewTrainingError=null;
- }catch(e){
-  if(api.getSession()?.access_token)state.overviewTrainingError=e?.message||'Training attendance unavailable';
- }finally{
-  state.overviewTrainingLoading=false;state.overviewTrainingFetchedAt=Date.now();
-  if(state.tab==='dashboard'&&!state.modal&&!background&&api.getSession()?.access_token)render();
- }
-}
 function loadClubSources(){
  if(!api.getSession()?.access_token||!state.staff)return;
  if(!state.privateLoading)void loadPrivateClients();
  if(!state.debtLoading)void loadDebtData();
- if(state.tab==='dashboard')void loadOverviewTraining();
 }
 async function loadPrivateClients({background=false}={}){
  if(!api.getSession()?.access_token||!state.staff||state.privateLoading)return;
@@ -1449,7 +1325,6 @@ async function loadData(resetTab=false,{background=false}={}){if(state.loading)r
  if(!background){
   render();
   if(state.tab==='reports'&&!state.reportLoading)void loadReport();
-  if(state.tab==='training'&&!state.trainingLoading)void loadTrainingMonth();
   if(state.tab==='private-clients'&&!state.privateLoading)void loadPrivateClients();
   if(state.tab==='debts'&&!state.debtLoading)void loadDebtData();
    if(state.tab==='consignment')void consignmentInventory.load();
@@ -1599,23 +1474,6 @@ async function saveForm(form){const f=new FormData(form),data=Object.fromEntries
    throw Error('The next game type has changed. Reopen this form.');
   await api.rpc('record_other_game',{p_game_id:m.requestId,p_player_id:m.id,p_played_on:data.played_on,p_game_type:data.game_type,p_notes:data.notes||''});break;
  }
- case 'save-training':{
-  const ids=[data.player1,data.player2].filter(Boolean);
-  if(ids.length===0)throw Error('Select a Rising Stars member.');
-  if(new Set(ids).size!==ids.length)throw Error('Select two different members.');
-  const solo=data.solo_exception==='yes';
-  if(ids.length===1&&!solo)throw Error('Select a second player or enable the one-player exception.');
-  if(ids.length===2&&solo)throw Error('Uncheck solo exception when two players are selected.');
-  if(solo&&(data.notes||'').trim().length<4)throw Error('Write a reason for solo training in Notes.');
-  if(monthKey(data.session_date)!==state.trainingMonth)throw Error('Date must be in the selected month.');
-  await api.rpc('record_training_session',{p_session_id:m.requestId,p_member_ids:ids,p_session_date:data.session_date,p_start_time:data.start_time||null,p_duration_minutes:Number(data.duration_minutes),p_notes:(data.notes||'').trim(),p_solo_exception:solo});
-  break;
- }
- case 'void-training':{
-  if(!data.reason||data.reason.trim().length<4)throw Error('Provide a reason for the correction.');
-  await api.rpc('void_training_session',{p_session_id:m.id,p_reason:data.reason.trim()});
-  break;
- }
  case 'save-finance':{
   const person=selectedMatchmaker();
   if(person&&m.personId!==person.id)throw Error('Selection changed. Reopen the game form.');
@@ -1713,9 +1571,6 @@ async function handleAction(target,event){const act=target.dataset.action,id=tar
   state.alertExpanded=!state.alertExpanded;render();break;
  case 'management-alert-open':{
   const kind=target.dataset.kind;
-  if(kind==='training'){
-   state.tab='training';state.trainingMonth=monthKey(today());render();await loadTrainingMonth();break;
-  }
   const personId=target.dataset.id;
   if(kind==='private'){
    const client=state.privateClients.find(x=>x.id===personId&&!x.deleted_at);
@@ -1845,20 +1700,7 @@ async function handleAction(target,event){const act=target.dataset.action,id=tar
  }
  case 'private-void-entry':if(state.staff?.role!=='admin')throw Error('Only admins can correct financial entries.');if(!state.privateEntries.some(e=>e.id===id))throw Error('Entry not found.');openModal('private-void',id);break;
  case 'private-export':exportPrivateClientCSV();break;
- case 'refresh':if(state.tab==='court-timetable'){await cafeteriaFinances.schedulerLoad(true);toast('Timetable refreshed');break;}if(state.tab==='consignment'){await consignmentInventory.load();toast('Inventory refreshed');break;}if(state.tab==='cafeteria-payments'){if(state.staff?.role!=='admin')throw Error('Administrator access required.');await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);toast('Payments and tasks refreshed');break;}if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await Promise.all([cafeteriaFinances.load(true),shiftHandover.load(cafeteriaFinances.getDate())]);else if(state.tab==='training')await loadTrainingMonth();else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
- case 'training-prev-month':
-  state.trainingMonth=shiftMonth(state.trainingMonth,-1);await loadTrainingMonth();break;
- case 'training-next-month':
-  if(state.trainingMonth<monthKey(today())){state.trainingMonth=shiftMonth(state.trainingMonth,1);await loadTrainingMonth()}break;
- case 'add-training':
-  if(state.trainingLoadedMonth!==state.trainingMonth||state.trainingLoading)throw Error('Please load this month first.');
-  if(!trainingMonthData().remaining)throw Error('All Rising Stars members have used their session this month.');
-  openModal('training');break;
- case 'void-training':
-  if(state.staff?.role!=='admin')throw Error('Only administrators can correct recorded training.');
-  openModal('void-training',id);break;
- case 'export-training':exportTrainingCSV();break;
- case 'print-training':window.print();break;
+ case 'refresh':if(state.tab==='court-timetable'){await cafeteriaFinances.schedulerLoad(true);toast('Timetable refreshed');break;}if(state.tab==='consignment'){await consignmentInventory.load();toast('Inventory refreshed');break;}if(state.tab==='cafeteria-payments'){if(state.staff?.role!=='admin')throw Error('Administrator access required.');await Promise.all([cafeteriaPayments.load(),cafeteriaTodo.load()]);toast('Payments and tasks refreshed');break;}if(state.tab==='tournament'){await tournamentManagement.load(true);toast('Tournament refreshed');break;}await loadData();if(state.tab==='debts')await loadDebtData();else if(state.tab==='private-clients')await loadPrivateClients();else if(state.tab==='cafeteria-finances')await Promise.all([cafeteriaFinances.load(true),shiftHandover.load(cafeteriaFinances.getDate())]);else if(state.tab==='reports')await loadReport();else if(state.tab==='team'&&state.historyWeek!==weekStart(today()))await loadHistoryWeek(state.historyWeek);toast('Data refreshed');break;
  case 'quick-team':openModal('quick-team',id);break;
  case 'team-prev-week':await loadHistoryWeek(addDays(state.historyWeek,-7));break;
  case 'team-next-week':await loadHistoryWeek(addDays(state.historyWeek,7));break;
@@ -2228,8 +2070,6 @@ async function refreshAllPagesWhenDue(){
    ['Private Sessions',()=>loadPrivateClients({background:true})],
    ['Cafeteria Debts',()=>loadDebtData({background:true})],
     ['Consignment Inventory',()=>consignmentInventory.load(true)],
-   ['Monthly Training',()=>loadTrainingMonth({background:true})],
-   ['Overview attendance',()=>loadOverviewTraining({background:true})],
    ['Overview financial totals',()=>clubInsights.loadOverview(true)],
    ['Reports and report financial totals',()=>loadReport({background:true})],
    ['Historical Team Members',refreshHistoricalWeekInBackground],
@@ -2261,7 +2101,6 @@ setInterval(()=>{
  if(lastKnownMonth!==currentMonth){
    if(state.reportMonth===lastKnownMonth)state.reportMonth=currentMonth;
    if(state.month===lastKnownMonth)state.month=currentMonth;
-   if(state.trainingMonth===lastKnownMonth){state.trainingMonth=currentMonth;state.trainingLoadedMonth=null;}
    lastKnownMonth=currentMonth;
  }
  void refreshAllPagesWhenDue().catch(err=>console.warn('Automatic data refresh failed',err));
