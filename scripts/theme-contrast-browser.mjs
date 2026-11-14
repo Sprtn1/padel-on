@@ -114,7 +114,7 @@ try{
     }
     for(const id of ['ledger','overview-kpi-box','private-summary-box','report-cash-box','inventory-history-box']){
      const el=document.querySelector('[data-audit-box="'+id+'"]');
-     data[id+'-box']={background:getComputedStyle(el).backgroundColor,bgLuminance:luminance(effectiveBg(el))};
+     data[id==='ledger'?'ledger-box':id]={background:getComputedStyle(el).backgroundColor,bgLuminance:luminance(effectiveBg(el))};
     }
     return data;
    },tests.map(([id])=>id));
