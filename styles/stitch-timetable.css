@@ -61,6 +61,8 @@
  .cafe-scheduler .cafe-timeboard-booking .ck-booking-badge{font-size:7px}
  .cafe-scheduler .cafe-timeboard-booking .ck-booking-payment{display:none}
  .cafe-scheduler .cafe-timeboard .ck-schedule-now:after{left:60px}
+ /* Keep the live red line behind booking text on mobile without moving the cards. */
+ .cafe-scheduler .cafe-timeboard-booking:not(.cafe-scheduler-dragging){z-index:8}
 }
 html[data-theme="dark"] .cafe-scheduler-toolbar{background:#192e37;border-color:#38515a}
 html[data-theme="dark"] .cafe-scheduler-toolbar>div:first-child>strong{color:#edf8f3}
