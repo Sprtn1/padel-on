@@ -498,3 +498,14 @@ html[data-theme="dark"] .cafe-view-toggle button.active,
 html[data-theme="dark"] .cafe-scheduler-sports button.active{
 color:#f9fffa;
 }
+
+/* Small values require WCAG-readable contrast in light mode too. */
+html[data-theme="light"] .workspace[data-page="cafeteria-finances"] .cafe-category-top>strong{
+ background:#e7f7ed;color:#07583e;border:1px solid #b9dec9;
+}
+html[data-theme="light"] .cafe-scheduler .cafe-timeboard-hour{
+ background:#f5f7f8;color:#315645;
+}
+html[data-theme="light"] .cafe-datebar{
+ background:#fff;color:#233f33;
+}
