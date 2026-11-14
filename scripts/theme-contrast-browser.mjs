@@ -72,6 +72,36 @@ try{
    const css=readFileSync(join(root,path),'utf8').replace(/@import\s+url\([^;]+;/g,'');
    await page.addStyleTag({content:css});
   }
+  // Layout regression: the red indicator must overlay row 2, never displace
+  // the actual time axis and court lanes into an implicit third grid row.
+  const timetableGeometry=await page.evaluate(()=>{
+   const node=document.createElement('section');
+   node.className='cafe-scheduler';
+   node.dataset.selectedCourt='C1';
+   node.innerHTML='<div class="cafe-timeboard-scroll"><div class="cafe-timeboard">'+
+    '<div class="cafe-timeboard-corner">TIME</div>'+
+    '<div class="cafe-timeboard-court-head" data-court="C1">C1</div>'+
+    '<div class="cafe-timeboard-court-head" data-court="C2">C2</div>'+
+    '<div class="cafe-timeboard-court-head" data-court="C3">C3</div>'+
+    '<div class="cafe-timeboard-axis">09:00</div>'+
+    '<div class="cafe-timeboard-court cafe-scheduler-lane" data-court="C1">C1</div>'+
+    '<div class="cafe-timeboard-court cafe-scheduler-lane" data-court="C2">C2</div>'+
+    '<div class="cafe-timeboard-court cafe-scheduler-lane" data-court="C3">C3</div>'+
+    '<div class="ck-schedule-now" style="top:280px"><span>14:00</span></div></div></div>';
+   document.body.append(node);
+   const board=node.querySelector('.cafe-timeboard').getBoundingClientRect();
+   const axis=node.querySelector('.cafe-timeboard-axis').getBoundingClientRect();
+   const lane=node.querySelector('.cafe-scheduler-lane').getBoundingClientRect();
+   const line=node.querySelector('.ck-schedule-now').getBoundingClientRect();
+   const result={axisTop:axis.top-board.top,laneTop:lane.top-board.top,
+    lineTop:line.top-board.top,boardHeight:board.height};
+   node.remove();
+   return result;
+  });
+  assert.ok(Math.abs(timetableGeometry.axisTop-56)<3,'Time axis must start immediately below court headers');
+  assert.ok(Math.abs(timetableGeometry.laneTop-56)<3,'Court lanes must align with the hour axis');
+  assert.ok(Math.abs(timetableGeometry.lineTop-(56+280))<3,'Live line must overlay the correct hour');
+  assert.ok(timetableGeometry.boardHeight<1100,'Timetable must not include a ghost row');
   const originals=new Map();
   for(const theme of ['light','dark','light']){
    await page.evaluate(theme=>{

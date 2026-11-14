@@ -45,7 +45,8 @@
 .cafe-scheduler .cafe-timeboard-booking.schedule-training{background:#e8f3fb;border-color:#bdd8ef;color:#245078}
 .cafe-scheduler .cafe-timeboard-booking.schedule-block{background:#eef1f6;border-color:#cad5e2;color:#4a5c72}
 .cafe-scheduler .cafe-timeboard-booking:hover:not(.cafe-scheduler-dragging){box-shadow:0 5px 12px rgba(13,54,48,.13);filter:brightness(.99)}
-.cafe-scheduler .cafe-timeboard .ck-schedule-now{grid-column:1/-1;grid-row:2;align-self:start;position:relative;z-index:7;height:0;min-width:0;border-top:2px solid #ef333f;pointer-events:none;isolation:isolate}
+.cafe-scheduler .cafe-timeboard{position:relative}
+.cafe-scheduler .cafe-timeboard .ck-schedule-now{position:absolute;left:0;right:0;transform:translateY(56px);z-index:7;height:0;min-width:0;border-top:2px solid #ef333f;pointer-events:none;isolation:isolate}
 .cafe-scheduler .cafe-timeboard .ck-schedule-now[hidden]{display:none!important}
 .cafe-scheduler .cafe-timeboard .ck-schedule-now>span{position:absolute;left:5px;top:-11px;background:#e82f3d;color:#fff;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1.35}
 .cafe-scheduler .cafe-timeboard .ck-schedule-now:after{content:"";position:absolute;top:-5px;left:70px;width:8px;height:8px;background:#e82f3d;border:2px solid #fff;border-radius:50%}
@@ -83,3 +84,32 @@ html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.schedule-tentati
 html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking .ck-booking-badge{background:rgba(255,255,255,.16);color:inherit}
 html[data-theme="dark"] .cafe-scheduler .cafe-timeboard .ck-schedule-now:after{border-color:#1e333e}
 @media print{.cafe-scheduler .cafe-timeboard .ck-schedule-now{display:none!important}}
+
+/* Time-slot brush: live hover readout and mouse-drag selection, never a booking. */
+.cafe-scheduler .cafe-scheduler-lane{cursor:crosshair}
+.cafe-scheduler .ck-slot-hover,.cafe-scheduler .ck-slot-range{
+ box-sizing:border-box;position:absolute;left:3px;right:3px;min-height:27px;
+ border-radius:6px;border:1px solid #8dc9e9;background:rgba(47,157,223,.12);
+ z-index:3;pointer-events:none;user-select:none;overflow:hidden;
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)
+}
+.cafe-scheduler .ck-slot-range{border:1px solid #2698dc;background:rgba(44,157,222,.23);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.cafe-scheduler .ck-slot-range.is-dragging{background:rgba(49,152,218,.24);
+ border-color:#1178b9}
+.cafe-scheduler .ck-slot-time{position:sticky;top:0;display:inline-block;
+ padding:4px 6px;border-radius:5px;background:#1389cc;color:#fff;font-size:10px;
+ font-weight:800;line-height:1.25;font-variant-numeric:tabular-nums;
+ white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+html[data-theme="dark"] .cafe-scheduler .ck-slot-hover{background:rgba(54,161,222,.2);
+ border-color:#74b4d9}
+html[data-theme="dark"] .cafe-scheduler .ck-slot-range{background:rgba(46,148,215,.34);
+ border-color:#6cc6f1}
+html[data-theme="dark"] .cafe-scheduler .ck-slot-time{background:#167bb5;color:#fff}
+@media(hover:none) and (pointer:coarse){
+ .cafe-scheduler .ck-slot-hover{display:none}
+ .cafe-scheduler .cafe-scheduler-lane{cursor:pointer}
+}
+@media(prefers-reduced-motion:reduce){
+ .cafe-scheduler .ck-slot-hover,.cafe-scheduler .ck-slot-range{transition:none}
+}
