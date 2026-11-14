@@ -1,5 +1,6 @@
 // Each page load uses a fresh module graph to avoid stale GitHub Pages assets.
 const assetVersion = new URL(import.meta.url).searchParams.get('v') || Date.now().toString(36);
+const {readTheme,writeTheme,nextTheme,themeActionLabel} = await import(`./lib/theme-preference.js?v=${assetVersion}`);
 const {icon} = await import(`./lib/icons.js?v=${assetVersion}`);
 const {tabs,renderNavigation,navSectionForTab} = await import(`./lib/navigation.js?v=${assetVersion}`);
 const {readSidebarCollapsed,storeSidebarCollapsed,sidebarToggleLabel} = await import(`./lib/sidebar-layout.js?v=${assetVersion}`);
@@ -26,8 +27,30 @@ const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLab
 const app=document.getElementById('app');
 let sidebarCollapsed=false;
 let mobileMenuOpen=false;
+let themeStorage=null;
+try{themeStorage=window.localStorage;}catch{}
+let currentTheme=readTheme(themeStorage);
+// The theme changes in place: do not rerender forms, scroll positions or open dialogs.
 let routeInitialized=false;
 try{sidebarCollapsed=readSidebarCollapsed(window.localStorage)}catch{}
+function themeButton(){
+ const label=themeActionLabel(currentTheme);
+ return btn(icon(currentTheme==='dark'?'sun':'moon'),'theme-toggle','btn-light btn-icon po-theme-toggle',
+  'aria-label="'+label+'" title="'+label+'" aria-pressed="'+(currentTheme==='dark')+'"');
+}
+function applyTheme(theme){
+ currentTheme=writeTheme(themeStorage,theme);
+ document.documentElement.dataset.theme=currentTheme;
+ document.documentElement.style.colorScheme=currentTheme;
+ document.querySelector('meta[name="theme-color"]')?.setAttribute('content',currentTheme==='dark'?'#101922':'#f8f9fc');
+ for(const control of document.querySelectorAll('[data-action="theme-toggle"]')){
+  const label=themeActionLabel(currentTheme);
+  control.setAttribute('aria-label',label);
+  control.setAttribute('title',label);
+  control.setAttribute('aria-pressed',String(currentTheme==='dark'));
+  control.innerHTML=icon(currentTheme==='dark'?'sun':'moon');
+ }
+}
 function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function initials(name){return String(name).split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase()}
 function tag(label,color='green'){return `<span class="tag tag-${color}">${esc(label)}</span>`}
@@ -279,7 +302,7 @@ function globalSearchOverlay(){
 }
 function shell(){
  const name=state.staff?.email?.split('@')[0]||'Staff';
- return `<div class="app-layout ${sidebarCollapsed?'sidebar-collapsed':''}"><aside class="sidebar" aria-label="Primary navigation"><div class="sidebar-panel"><div class="sidebar-header"><div class="sidebar-brand"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><span class="brand-compact" aria-hidden="true">PO</span></div><button type="button" class="sidebar-toggle" data-action="sidebar-toggle" aria-controls="sidebar-menu" aria-label="${sidebarToggleLabel(sidebarCollapsed)}" title="${sidebarToggleLabel(sidebarCollapsed)}" aria-expanded="${!sidebarCollapsed}">${icon(sidebarCollapsed?'chevronRight':'chevronLeft')}</button></div><div class="brand-sub">Club management</div><nav class="menu" id="sidebar-menu" aria-label="Sections">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></div></aside><main class="main"><header class="topbar"><button type="button" class="mobile-menu-toggle" data-action="mobile-menu-toggle" aria-label="Open navigation menu" aria-controls="mobile-drawer" aria-expanded="${mobileMenuOpen}">${icon("menu")}</button><div class="topbar-identity"><div class="crumb">PADEL ON / ${esc(navSectionForTab(state.tab)?.label||"Club Management")}</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div data-page="${esc(state.tab)}" class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='consignment'||state.tab==='tournament'||state.tab==='court-timetable'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><div id="mobile-drawer" class="mobile-drawer ${mobileMenuOpen?'is-open':''}" aria-hidden="${!mobileMenuOpen}" ${mobileMenuOpen?'':'inert'}><button type="button" class="mobile-drawer-backdrop" data-action="mobile-menu-close" aria-label="Close navigation menu"></button><aside class="mobile-drawer-panel" aria-label="Mobile sections"><div class="mobile-drawer-header"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><button class="mobile-menu-close" type="button" data-action="mobile-menu-close" aria-label="Close menu">${icon('close')}</button></div><div class="mobile-drawer-title">Workspace navigation</div><nav class="mobile-drawer-links" aria-label="All sections">${navMarkup(false,'drawer')}</nav><div class="mobile-drawer-account"><span class="avatar">${esc(initials(name))}</span><div><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div></div></aside></div></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
+ return `<div class="app-layout ${sidebarCollapsed?'sidebar-collapsed':''}"><aside class="sidebar" aria-label="Primary navigation"><div class="sidebar-panel"><div class="sidebar-header"><div class="sidebar-brand"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><span class="brand-compact" aria-hidden="true">PO</span></div><button type="button" class="sidebar-toggle" data-action="sidebar-toggle" aria-controls="sidebar-menu" aria-label="${sidebarToggleLabel(sidebarCollapsed)}" title="${sidebarToggleLabel(sidebarCollapsed)}" aria-expanded="${!sidebarCollapsed}">${icon(sidebarCollapsed?'chevronRight':'chevronLeft')}</button></div><div class="brand-sub">Club management</div><nav class="menu" id="sidebar-menu" aria-label="Sections">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></div></aside><main class="main"><header class="topbar"><button type="button" class="mobile-menu-toggle" data-action="mobile-menu-toggle" aria-label="Open navigation menu" aria-controls="mobile-drawer" aria-expanded="${mobileMenuOpen}">${icon("menu")}</button><div class="topbar-identity"><div class="crumb">PADEL ON / ${esc(navSectionForTab(state.tab)?.label||"Club Management")}</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}${themeButton()}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div data-page="${esc(state.tab)}" class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='consignment'||state.tab==='tournament'||state.tab==='court-timetable'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><div id="mobile-drawer" class="mobile-drawer ${mobileMenuOpen?'is-open':''}" aria-hidden="${!mobileMenuOpen}" ${mobileMenuOpen?'':'inert'}><button type="button" class="mobile-drawer-backdrop" data-action="mobile-menu-close" aria-label="Close navigation menu"></button><aside class="mobile-drawer-panel" aria-label="Mobile sections"><div class="mobile-drawer-header"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><button class="mobile-menu-close" type="button" data-action="mobile-menu-close" aria-label="Close menu">${icon('close')}</button></div><div class="mobile-drawer-title">Workspace navigation</div><nav class="mobile-drawer-links" aria-label="All sections">${navMarkup(false,'drawer')}</nav><div class="mobile-drawer-account"><span class="avatar">${esc(initials(name))}</span><div><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div></div></aside></div></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
 }
 function heading(eyebrow,title,desc,actions=''){return `<div class="heading-row"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${desc}</p></div>${actions?`<div class="heading-actions">${actions}</div>`:''}</div>`}
 function summaryCard(label,num,sub,ico,feature=false){return `<article class="summary-card ${feature?'feature':''}"><div class="card-top"><span class="label">${label}</span><span class="metric-icon">${icon(ico)}</span></div><div class="metric num">${num}</div><div class="submetric">${sub}</div></article>`}
@@ -1320,7 +1343,7 @@ function closeModal(){state.modal=null;document.getElementById('modal-root').inn
 function renderAuth(message=''){
  mobileMenuOpen=false;document.body.classList.remove('mobile-menu-open');
  lastRenderedMarkup=null;lastRenderedTab=null;
- app.innerHTML=`<main class="auth-wrap"><section class="auth-lead"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><h1>The team.<br/><em>All in one place.</em></h1><p>Weekly padel benefits, special players, and matchmaking revenue—securely tracked together.</p></section><section class="auth-card"><div class="eyebrow">Private club workspace</div><h2>Welcome back</h2><p class="sub">Sign in with your PADEL ON staff account.</p>${!api.configured?'<div class="auth-error">Unable to connect. Please contact an administrator.</div>':''}${message?`<div class="auth-error">${esc(message)}</div>`:''}<form id="login-form">${field('email','Email address','','email','required autocomplete="email"')}${field('password','Password','','password','required autocomplete="current-password"')}<button class="btn btn-primary" ${!api.configured?'disabled':''} type="submit">Sign In ${icon('arrow')}</button></form><div class="auth-foot">Authorized PADEL ON staff only · Staff access only</div></section></main>`;
+ app.innerHTML=`<main class="auth-wrap"><section class="auth-lead"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><h1>The team.<br/><em>All in one place.</em></h1><p>Weekly padel benefits, special players, and matchmaking revenue—securely tracked together.</p></section><section class="auth-card"><div class="auth-top-actions"><div class="eyebrow">Private club workspace</div>${themeButton()}</div><h2>Welcome back</h2><p class="sub">Sign in with your PADEL ON staff account.</p>${!api.configured?'<div class="auth-error">Unable to connect. Please contact an administrator.</div>':''}${message?`<div class="auth-error">${esc(message)}</div>`:''}<form id="login-form">${field('email','Email address','','email','required autocomplete="email"')}${field('password','Password','','password','required autocomplete="current-password"')}<button class="btn btn-primary" ${!api.configured?'disabled':''} type="submit">Sign In ${icon('arrow')}</button></form><div class="auth-foot">Authorized PADEL ON staff only · Staff access only</div></section></main>`;
 }
 async function loadDebtData({background=false}={}){
  if(!api.getSession()?.access_token||!state.staff||state.debtLoading)return;
@@ -1653,6 +1676,7 @@ async function handleAction(target,event){const act=target.dataset.action,id=tar
    }
  }
  switch(act){
+ case 'theme-toggle':applyTheme(nextTheme(currentTheme));break;
  case 'sidebar-toggle':toggleDesktopSidebar();break;
  case 'mobile-menu-toggle':setMobileMenuOpen(!mobileMenuOpen);break;
  case 'mobile-menu-close':setMobileMenuOpen(false);break;
