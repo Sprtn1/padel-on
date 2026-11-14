@@ -50,6 +50,8 @@ try{
     document.documentElement.setAttribute('data-theme',theme);
     document.documentElement.style.colorScheme=theme;
    },theme);
+   // Existing rows animate background changes over ~0.15s; inspect settled colors.
+   await page.waitForTimeout(270);
    const values=await page.evaluate(ids=>{
     const rgba=s=>{
      const match=s.match(/rgba?\(([^)]+)\)/);
