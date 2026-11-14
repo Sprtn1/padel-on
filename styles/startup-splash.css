@@ -175,9 +175,21 @@ body:has(#app > .startup){background:#0b1c16}
   visibility:hidden;
   animation:po-splash-reveal .18s ease 650ms both;
 }
+/* Returning staff should see a tiny loading indicator, not another full-screen
+   splash while the cached session and page data are being restored. */
 html.po-startup-warm #app > .startup{
-  animation-delay:1650ms;
+  min-height:3px;height:3px;padding:0;overflow:hidden;
+  animation:none;visibility:visible;opacity:1;background:transparent;
 }
+html.po-startup-warm #app > .startup > *{display:none!important}
+html.po-startup-warm #app > .startup::after{
+  content:'';display:block;position:absolute;inset:0;width:38%;height:3px;
+  background:#16895e;box-shadow:none;animation:po-warm-progress 1.3s ease-in-out infinite alternate;
+}
+html.po-startup-warm #app > .startup::before{display:none}
+html.po-startup-warm body:has(#app > .startup){background:#f8f9fc}
+html.po-startup-warm[data-theme="dark"] body:has(#app > .startup){background:#101922}
+@keyframes po-warm-progress{from{transform:translateX(0)}to{transform:translateX(160%)}}
 @keyframes po-splash-reveal{
   from{opacity:0;visibility:hidden}
   to{opacity:1;visibility:visible}
