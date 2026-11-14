@@ -35,6 +35,28 @@ test('slot brush keeps 09:00–01:00 business boundary and a max twelve-hour ran
  assert.equal(long.startMinute,540);
  assert.equal(long.endMinute,1260);
 });
+test('mobile bookings align with the hour grid, including overlapping reservations',async()=>{
+ const {padelCourtTimeGrid}=await import('../lib/court-timetable.js');
+ const rows=[
+  ['C1','16:30','18:00'],
+  ['C3','18:30','19:30'],
+  ['C3','19:30','21:00'],
+  ['C3','20:00','21:30']
+ ].map(([court,start,end],index)=>({id:'mobile-'+index,category:'padel_courts',court_number:court,
+  name:'Booking '+index,booking_start_time:start+':00',booking_end_time:end+':00',amount_cents:3200}));
+ const grid=padelCourtTimeGrid(rows,'padel');
+ const court1=grid.columns.find(column=>column.court==='C1').bookings;
+ const court3=grid.columns.find(column=>column.court==='C3').bookings;
+ assert.deepEqual(court1.map(x=>[x.topPx,x.heightPx]),[[420,84]]); // 16:30–18:00
+ assert.deepEqual(court3.map(x=>[x.topPx,x.heightPx,x.tracks]),[
+  [532,56,1], // 18:30–19:30
+  [588,84,2], // 19:30–21:00
+  [616,84,2]  // 20:00–21:30
+ ]);
+ assert.equal(court3[0].topPx+court3[0].heightPx,court3[1].topPx);
+ assert.equal(court1[0].topPx+court1[0].heightPx,9*56); // 18:00 axis
+});
+
 test('current-time indicator is an overlay and cannot create an extra grid row',async()=>{
  const {readFileSync}=await import('node:fs');
  const css=readFileSync(new URL('../styles/stitch-timetable.css',import.meta.url),'utf8');
