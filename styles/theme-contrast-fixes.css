@@ -509,3 +509,23 @@ html[data-theme="light"] .cafe-scheduler .cafe-timeboard-hour{
 html[data-theme="light"] .cafe-datebar{
  background:#fff;color:#233f33;
 }
+
+/* High-specificity component backgrounds from Court Kinetic sitewide styles. */
+html[data-theme="dark"] .workspace[data-page="cafeteria-payments"] .cpay-amounts>div{
+ background:#20343e;border-color:#3c545d;color:#eaf3f0;
+}
+html[data-theme="dark"] .workspace[data-page="cafeteria-payments"] .cpay-amounts>div :is(strong,small,span){
+ color:#dcece8;
+}
+html[data-theme="dark"] .workspace[data-page="debts"] .debt-total:not(.cleared){
+ background:#4a3035;border:1px solid #7c4d55;color:#ffe0d7;
+}
+html[data-theme="dark"] .workspace[data-page="debts"] .debt-total:not(.cleared) :is(strong,small){
+ color:#ffd4c8;
+}
+html[data-theme="dark"] .workspace[data-page="debts"] .debt-total.cleared{
+ background:#1d4335;border:1px solid #3b7159;color:#b1efd0;
+}
+html[data-theme="dark"] .workspace[data-page="debts"] .debt-total.cleared :is(strong,small){
+ color:#aaf2cd;
+}
