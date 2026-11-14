@@ -543,3 +543,173 @@ html[data-theme="dark"] .workspace[data-page="private-clients"] .private-balance
 html[data-theme="dark"] .workspace[data-page="private-clients"] .private-balance-box.negative :is(strong,small){
  color:#ffd0c5;
 }
+
+
+/* Screen-only contrast repair: preserve light print/PDF layouts. */
+@media screen {
+/* Deep-component contrast audit: Overview, Private Sessions, Reports, Consignment.
+   Keep every correction scoped to dark mode and to the affected page; light mode,
+   navigation identity, business logic, exports and print styling are unchanged. */
+
+/* Overview: chart totals and management KPI/alert surfaces keep their own
+   component colors, which previously won over the generic theme rules. */
+html[data-theme="dark"] .workspace[data-page="dashboard"] :is(.management-summary .summary-card,.management-panels>.panel,.po-overview-sessions,.po-activity-panel){
+ background:var(--dm-card);border-color:var(--dm-border);color:var(--dm-text);
+}
+html[data-theme="dark"] .workspace[data-page="dashboard"] .management-summary .summary-card:not(.feature) :is(.metric,strong){
+ color:var(--dm-text);
+}
+html[data-theme="dark"] .workspace[data-page="dashboard"] .management-summary .summary-card:not(.feature) :is(.label,.submetric,small){
+ color:#b2c6c9;
+}
+html[data-theme="dark"] .workspace[data-page="dashboard"] .po-chart-total{
+ background:#214839;color:#c1f7d9;border:1px solid #386d56;
+}
+html[data-theme="dark"] .workspace[data-page="dashboard"] .po-chart-total :is(strong,span,b,small){
+ color:inherit;
+}
+html[data-theme="dark"] .workspace[data-page="dashboard"] .club-insight-metrics article{
+ background:#203640;border-color:#3a515a;
+}
+html[data-theme="dark"] .workspace[data-page="dashboard"] .club-insight-metrics article strong,
+html[data-theme="dark"] .workspace[data-page="dashboard"] .management-commission-total{
+ color:#e6f6ee;
+}
+html[data-theme="dark"] .workspace[data-page="dashboard"] .club-insight-metrics article small,
+html[data-theme="dark"] .workspace[data-page="dashboard"] .management-alert small,
+html[data-theme="dark"] .workspace[data-page="dashboard"] .management-commission-total small{
+ color:#bbccca;
+}
+html[data-theme="dark"] .workspace[data-page="dashboard"] .management-alert.warning{
+ background:#453624;border-color:#705438;color:#ffe4b6;
+}
+html[data-theme="dark"] .workspace[data-page="dashboard"] .management-alert.warning strong{
+ color:#ffe3b2;
+}
+
+/* Private Sessions: avoid pale date tiles, white notes and dark green text on
+   the dark client directory; preserve selected, session and negative states. */
+html[data-theme="dark"] .workspace[data-page="private-clients"] :is(.private-directory,.private-detail,.private-daily-panel,.private-client-row){
+ background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border);
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-client-row:is(:hover,.selected){
+ background:#234437;color:#ebfff3;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-client-row :is(strong,.private-client-heading){
+ color:#e5f3ed;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-client-balance:not(.negative){
+ color:#a7f0c8;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-client-balance.negative{
+ color:#ffc0ad;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-client-notes>summary{
+ color:#a6e7c5;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-client-notes>p,
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-account-note,
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-day-summary{
+ background:#213641;color:#dcece8;border-color:#405760;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-day-summary strong,
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-month-nav strong{
+ color:#e9f5f1;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-day-summary span{
+ color:#b7cad0;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-calendar-day{
+ background:#20333e;border-color:#3a535d;color:#d9e9e8;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-calendar-day:hover:not(:disabled){
+ background:#294944;border-color:#50786a;color:#f1fff7;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-calendar-day.has-sessions{
+ background:#234c3c;border-color:#457d60;color:#e4fff0;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-calendar-day.selected,
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-calendar-day.selected.has-sessions{
+ background:#126f51;border-color:#4ab68a;color:#fff;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-calendar-day.selected :is(span,small){
+ color:#fff;opacity:1;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] #private-day-date{
+ background:#263b45;color:#f0f8f4;border-color:#4b646c;color-scheme:dark;
+}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-id-feedback.available{color:#a2f0c5}
+html[data-theme="dark"] .workspace[data-page="private-clients"] .private-id-feedback.duplicate{color:#ffc0b7}
+
+/* Reports: keep comparison controls, financial highlights, differences and
+   nested labels legible, even in responsive table/card layouts. */
+html[data-theme="dark"] .workspace[data-page="reports"] :is(.period-control,.report-compare-control,.report-compare-toolbar,.report-comparison-panel,.consolidated-finance-panel){
+ background:var(--dm-card);border-color:var(--dm-border);color:var(--dm-text);
+}
+html[data-theme="dark"] .workspace[data-page="reports"] .report-compare-control{
+ background:#1f343e;
+}
+html[data-theme="dark"] .workspace[data-page="reports"] :is(.period-control strong,.period-control small,.report-compare-toolbar span){
+ color:#d4e7e2;
+}
+html[data-theme="dark"] .workspace[data-page="reports"] .report-compare-picker input{
+ background:#263b45;color:#eff8f4;border-color:#4b636b;color-scheme:dark;
+}
+html[data-theme="dark"] .workspace[data-page="reports"] .consolidated-finance-total{
+ background:#214339;border:1px solid #3b6654;color:#e2ffed;
+}
+html[data-theme="dark"] .workspace[data-page="reports"] .consolidated-finance-total.secondary{
+ background:#263843;border-color:#47606b;
+}
+html[data-theme="dark"] .workspace[data-page="reports"] .consolidated-finance-total :is(strong,small,p){
+ color:#dcf6e7;
+}
+html[data-theme="dark"] .workspace[data-page="reports"] .consolidated-finance-total.secondary :is(strong,small,p){
+ color:#e1ebf1;
+}
+html[data-theme="dark"] .workspace[data-page="reports"] .report-comparison-table .report-difference{
+ color:#9cf1c7!important;
+}
+html[data-theme="dark"] .workspace[data-page="reports"] .report-comparison-loading{
+ color:#bbcbca;border-color:var(--dm-border);
+}
+html[data-theme="dark"] .workspace[data-page="reports"] .consolidated-finance-current h3,
+html[data-theme="dark"] .workspace[data-page="reports"] .consolidated-finance-row :is(strong,b){
+ color:#e4f2ee;
+}
+
+/* Consignment Inventory: editor, history expansion, labels and stock metadata
+   previously retained fixed light-mode greens/whites. */
+html[data-theme="dark"] .workspace[data-page="consignment"] :is(.inv-summary .summary-card,.inv-table-panel,.inv-editor,.inv-history){
+ background:var(--dm-card);border-color:var(--dm-border);color:var(--dm-text);
+}
+html[data-theme="dark"] .workspace[data-page="consignment"] :is(.inv-toolbar label,.inv-fields label){
+ color:#bfd0ce;
+}
+html[data-theme="dark"] .workspace[data-page="consignment"] .inv-table th{
+ background:#20343f;color:#c2d5da;border-color:#3e555f;
+}
+html[data-theme="dark"] .workspace[data-page="consignment"] .inv-table td strong,
+html[data-theme="dark"] .workspace[data-page="consignment"] .inv-editor h3,
+html[data-theme="dark"] .workspace[data-page="consignment"] .inv-history>strong{
+ color:#e9f5f0;
+}
+html[data-theme="dark"] .workspace[data-page="consignment"] .inv-table td:first-child small,
+html[data-theme="dark"] .workspace[data-page="consignment"] .inv-table .inv-notes-display,
+html[data-theme="dark"] .workspace[data-page="consignment"] :is(.inv-editor p,.inv-history p,.inv-empty){
+ color:#b2c6c5;
+}
+html[data-theme="dark"] .workspace[data-page="consignment"] .inv-history-row td{
+ background:#20343e!important;color:#e0efea;border-color:#3b515b;
+}
+html[data-theme="dark"] .workspace[data-page="consignment"] .inv-removal{
+ background:#442d32;border-color:#89545b;color:#ffe0d7;
+}
+html[data-theme="dark"] .workspace[data-page="consignment"] .inv-removal h3{
+ color:#ffcac0;
+}
+html[data-theme="dark"] .workspace[data-page="consignment"] .inv-removal>label{
+ color:#f2c6bd;
+}
+
+}
