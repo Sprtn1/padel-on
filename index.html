@@ -8,9 +8,27 @@
   <meta name="description" content="PADEL ON — private team games, benefits and matchmaking management" />
   <title>PADEL ON · Management</title>
   <link id="site-favicon" rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+  <!-- Preload the branded splash independently of the dynamically loaded app CSS. -->
+  <link rel="stylesheet" href="./styles/startup-splash.css" />
 </head>
 <body>
-  <div id="app"><div class="startup"><div class="loader"></div><p>Loading PADEL ON…</p></div></div>
+  <div id="app">
+    <main class="startup" role="status" aria-label="PADEL ON is preparing your workspace">
+      <div class="startup-glow" aria-hidden="true"></div>
+      <div class="startup-content">
+        <div class="startup-brand-mark">
+          <img src="./assets/logo.svg" alt="" width="112" height="74" decoding="async" />
+        </div>
+        <h1 class="startup-name">PADEL ON</h1>
+        <p class="startup-kicker">CLUB MANAGEMENT</p>
+        <div class="startup-progress" role="progressbar" aria-label="Loading PADEL ON">
+          <span class="startup-progress-indicator"></span>
+        </div>
+        <p class="startup-message">Preparing your workspace…</p>
+      </div>
+      <p class="startup-bottom">YOUR CLUB. CONNECTED.</p>
+    </main>
+  </div>
   <div id="toast-host" aria-live="polite" aria-atomic="true"></div>
   <!-- Request fresh application assets on each new page load. -->
   <script type="module" src="./bootstrap.js"></script>
