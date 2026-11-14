@@ -815,3 +815,39 @@ html[data-theme="dark"] .management-summary .summary-card{background:var(--dm-ca
 @media (prefers-reduced-motion:reduce){
  html[data-theme="dark"] .po-theme-toggle{transition:none!important}
 }
+
+/* Status colors need an extra level of specificity over generic workspace spans. */
+html[data-theme="dark"] .workspace[data-page] :is(.tag-green,.cpay-paid,.inv-quantity.in-stock,.debt-clear,.tm-status-ongoing,.cafe-planned-pill){
+ background:#173f32;color:#9af2c5;border-color:#356d54;
+}
+html[data-theme="dark"] .workspace[data-page] :is(.tag-amber,.cpay-partial,.tm-v2-status-pending){
+ background:#493a26;color:#f7d198;border-color:#70552e;
+}
+html[data-theme="dark"] .workspace[data-page] :is(.tag-red,.cpay-unpaid,.tm-v2-status-cancelled,.tm-v2-status-disqualified,.debt-owing){
+ background:#472d35;color:#ffbabb;border-color:#6d434d;
+}
+html[data-theme="dark"] .workspace[data-page] :is(.tag-gray,.tm-status-completed){
+ background:#2b3944;color:#c2d6df;border-color:#3f515c;
+}
+html[data-theme="dark"] .workspace[data-page] :is(.tm-status-upcoming,.tm-v2-status-waitlisted){
+ background:#233d54;color:#b1d9ff;border-color:#385e7e;
+}
+html[data-theme="dark"] .workspace[data-page] .cafe-timeboard-booking :is(strong,small,span),
+html[data-theme="dark"] .workspace[data-page] .ck-detail-money{
+ color:inherit;
+}
+html[data-theme="dark"] .workspace[data-page] .ck-detail-money{color:#8cf2bb}
+html[data-theme="dark"] .workspace[data-page] :is(.btn-primary,.btn-primary span,.cafe-view-toggle button.active){
+ color:#fff;
+}
+html[data-theme="dark"] .workspace[data-page] :is(.cafe-scheduler-sports button.active,.ck-court-tab[aria-pressed="true"]){
+ color:#defee9;
+}
+@media print{
+ html[data-theme="dark"] .workspace :is(h1,h2,h3,h4,p,span,strong,small,td,th,label){
+  color:#17232a!important;
+ }
+ html[data-theme="dark"] .workspace :is(.panel,.summary-card,.data-table,.data-table th,.data-table td){
+  background:#fff!important;border-color:#cad4d7!important;
+ }
+}
