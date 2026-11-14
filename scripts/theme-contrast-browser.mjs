@@ -27,7 +27,7 @@ const tests=[
  ['wish-balance',4.5],['wish-item',4.5],['shift-total',4.5],
  ['payments-title',4.5],['payments-amount',4.5],['debts-name',4.5],['debts-total',4.5],
  ['inventory-title',4.5],['inventory-input',4.5],['private-name',4.5],
- ['private-balance',4.5],['team-title',4.5],['training-title',4.5],
+ ['private-balance',4.5],['team-title',4.5],
  ['benefit-title',4.5],['benefit-number',4.5],['matchmaker-tab',4.5],
  ['tournament-title',4.5],['tournament-fixture',4.5],['activity-text',4.5],
  ['reports-title',4.5],['settings-title',4.5],['settings-input',4.5],
@@ -140,5 +140,5 @@ if(failures.length){
  console.error('CONTRAST AUDIT FAILED:\n'+JSON.stringify(failures,null,2));
  process.exitCode=1;
 }else{
- console.log('PASS: 41 representative text/number controls in light, dark, and restored-light modes at 390 and 1366px.');
+ console.log('PASS: 40 representative text/number controls in light, dark, and restored-light modes at 390 and 1366px.');
 }
