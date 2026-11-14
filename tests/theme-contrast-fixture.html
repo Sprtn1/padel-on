@@ -6,11 +6,25 @@
   <nav class="menu"><div class="po-nav-section"><div class="po-nav-heading">Core Operations</div><div class="po-nav-items">
    <button class="nav-item active"><span>Overview</span></button>
   </div></div></nav></div></aside>
+ <div class="mobile-drawer" id="mobile-drawer" aria-hidden="true">
+  <button class="mobile-drawer-backdrop" aria-label="Close navigation"></button>
+  <aside class="mobile-drawer-panel">
+   <div class="mobile-drawer-header"><span>PADEL ON</span><button class="mobile-menu-close">×</button></div>
+   <div class="mobile-drawer-title">Workspace navigation</div>
+   <nav class="mobile-drawer-links">
+    <section class="po-nav-section"><h2 class="po-nav-heading">Core Operations</h2><div class="po-nav-items">
+     <button class="nav-item active"><span>Overview</span></button>
+     <button class="nav-item"><span>Court Timetable</span></button>
+    </div></section>
+   </nav>
+   <div class="mobile-drawer-account"><span class="avatar">A</span><div><strong>Admin</strong><small>admin account</small></div></div>
+  </aside>
+ </div>
  <main class="main">
  <header class="topbar"><div class="topbar-main" data-audit="topbar">PADEL ON management</div><div class="top-right"><button class="btn btn-light po-theme-toggle" data-audit="theme-button">Change theme</button></div></header>
  <div class="workspace" data-page="dashboard"><div class="heading-row"><h1 data-audit="overview-heading">Overview</h1></div>
   <div class="summary"><article class="summary-card"><span class="label" data-audit="overview-label">Daily income</span><strong class="metric" data-audit="overview-total">$120</strong></article></div>
-  <div class="management-alert" data-audit="overview-alert">Missing training session</div>
+  <div class="management-alert" data-audit="overview-alert">High unpaid balance</div>
  </div>
  <div class="workspace" data-page="court-timetable"><div class="heading-row"><h1>Court Timetable</h1></div>
   <div class="cafe-scheduler"><div class="cafe-scheduler-toolbar"><div><strong data-audit="scheduler-heading">Court schedule</strong><small>Saturday evening</small></div></div>
@@ -41,7 +55,6 @@
  <div class="workspace" data-page="consignment"><section class="panel inv-editor"><h3 data-audit="inventory-title">Consignment item</h3><label class="inv-fields"><span>Stock</span><input type="number" value="10" data-audit="inventory-input"/></label></section></div>
  <div class="workspace" data-page="private-clients"><section class="private-directory"><div class="private-client-row"><strong data-audit="private-name">Private client</strong></div><div class="private-balance-box"><strong data-audit="private-balance">$85</strong></div></section></div>
  <div class="workspace" data-page="team"><article class="panel member-card"><strong data-audit="team-title">Team player</strong><span>Available games: 1</span></article></div>
- <div class="workspace" data-page="training"><section class="panel training-panel"><div class="training-member"><strong data-audit="training-title">Monthly Training</strong></div></section></div>
  <div class="workspace" data-page="other"><article class="panel other-card"><strong data-audit="benefit-title">Other Benefits</strong><div class="other-count" data-audit="benefit-number">3</div></article></div>
  <div class="workspace" data-page="finance"><div class="matchmaker-tabs"><button class="matchmaker-tab active" data-audit="matchmaker-tab">Matchmaking</button></div></div>
  <div class="workspace" data-page="tournament"><article class="tm-browser-card"><h3 data-audit="tournament-title">Tournament details</h3><section class="tm-v2-fixture"><strong data-audit="tournament-fixture">Fixture #12</strong></section></article></div>

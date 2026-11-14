@@ -10,7 +10,7 @@ test('Each existing PADEL ON page appears in exactly one Stitch-inspired navigat
  assert.deepEqual(ids,tabs.map(([id])=>id),'section grouping must keep old tab order');
  assert.equal(new Set(ids).size,tabs.length);
  assert.deepEqual(NAV_SECTIONS.map(section=>section.label),[
-  'Core Operations','Facility & Services','People & Training',
+  'Core Operations','Facility & Services','People & Benefits',
   'Competition & Activity','Management & System'
  ]);
  for(const section of NAV_SECTIONS){
@@ -50,7 +50,7 @@ test('Sitewide theme is loaded after module CSS, with mobile drawer and per-page
  assert.match(style,/\.mobile-drawer-panel/);
  assert.match(style,/\.mobile-drawer-links \.po-nav-heading/);
  assert.match(style,/\.sidebar-collapsed \.po-nav-heading/);
- for(const key of ['dashboard','debts','private-clients','team','training','other',
+ for(const key of ['dashboard','debts','private-clients','team','other',
   'finance','tournament','reports','settings','consignment','cafeteria-payments']){
   assert.match(style,new RegExp('data-page="'+key+'"'));
  }

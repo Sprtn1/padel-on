@@ -5,7 +5,7 @@ import {AUTO_REFRESH_INTERVAL_MS,PAGE_REFRESH_INTERVALS_MS,
  pageRefreshIntervalMs,isPageRefreshDue} from '../lib/refresh-policy.js';
 
 const everyPage=['dashboard','cafeteria-finances','cafeteria-payments','debts','consignment','private-clients',
- 'team','training','other','finance','tournament','activity','reports',
+ 'team','other','finance','tournament','activity','reports',
  'settings','order-counter','reem-items'];
 
 test('All real navigation pages have exactly the same 30-second auto refresh cadence',()=>{
@@ -56,8 +56,6 @@ function mockAllPageClock(){
   tournamentManagement:{load:record('tournament')},
   loadPrivateClients:record('private'),
   loadDebtData:record('debts'),
-  loadTrainingMonth:record('training'),
-  loadOverviewTraining:record('attendance'),
   clubInsights:{loadOverview:record('financial-overview')},
   loadReport:record('reports'),
   fetchPeriod:async(...a)=>{seen.push(['historical-week',...a]);return {matches:[]}},
@@ -93,7 +91,7 @@ test('Every 30-second sync fetches ALL independent page data, not only the open 
  assert.equal(await m.controller.run(),true);
  const names=m.seen.map(x=>x[0]);
  for(const category of ['shared','cafeteria','tournament','private','debts',
-  'training','attendance','financial-overview','reports','historical-week',
+  'financial-overview','reports','historical-week',
   'payables','todo','consignment','shift-cash',
   'order-counter','reem-items','render'])
   assert.ok(names.includes(category),'Missing background sync: '+category);

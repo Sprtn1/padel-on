@@ -168,9 +168,6 @@ body{background:var(--ck-page)}
 .workspace[data-page="team"] .player-avatar{border-radius:11px;background:#e9f6ed;color:#006948}
 .workspace[data-page="team"] .progress{background:#e9eff0}
 .workspace[data-page="team"] .progress-bar{background:#007d57}
-.workspace[data-page="training"] .training-panel{border-radius:14px}
-.workspace[data-page="training"] .training-member{border-color:#e8edef}
-.workspace[data-page="training"] .training-actions{display:flex;flex-wrap:wrap;gap:10px}
 .workspace[data-page="other"] .other-grid{gap:14px}
 .workspace[data-page="other"] .other-card{padding:20px;border-radius:14px}
 .workspace[data-page="other"] .other-card:hover{transform:none}
@@ -208,7 +205,6 @@ body{background:var(--ck-page)}
  .workspace[data-page="team"] .member-card{padding:15px}
  .workspace[data-page="other"] .other-card{padding:15px}
  .workspace[data-page="cafeteria-payments"] .cpay-form{padding:15px}
- .workspace[data-page="training"] .training-actions .btn{max-width:100%}
  .workspace[data-page="settings"] .settings-grid{grid-template-columns:minmax(0,1fr)}
  .workspace[data-page="finance"] .matchmaker-tabs{max-width:100%;overflow-x:auto;scrollbar-width:thin}
 }
