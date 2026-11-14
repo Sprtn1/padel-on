@@ -49,7 +49,12 @@ const tests=[
  ['inventory-editor-hint',4.5],['inventory-danger-title',4.5],['inventory-danger-label',4.5],
  ['inventory-table-head',4.5],['inventory-stock-name',4.5],['inventory-stock-brand',4.5],
  ['inventory-notes',4.5],['inventory-history-title',4.5],
- ['inventory-history-description',4.5]
+ ['inventory-history-description',4.5],
+ ['quick-title-0',4.5],['quick-note-0',4.5],['quick-icon-0',3],
+ ['quick-title-1',4.5],['quick-note-1',4.5],['quick-icon-1',3],
+ ['quick-title-2',4.5],['quick-note-2',4.5],['quick-icon-2',3],
+ ['quick-title-3',4.5],['quick-note-3',4.5],['quick-icon-3',3],
+ ['quick-title-4',4.5],['quick-note-4',4.5],['quick-icon-4',3]
 ];
 
 // The added checks target dark-mode defects. In light mode the existing small
@@ -117,7 +122,7 @@ try{
      data[id]={foreground:style.color,background:style.backgroundColor,backdrop:bg.slice(0,3),contrast:ratio,
       bgLuminance:dark,text:el.textContent.trim().slice(0,45)};
     }
-    for(const id of ['ledger','overview-kpi-box','private-summary-box','report-cash-box','inventory-history-box']){
+    for(const id of ['ledger','overview-kpi-box','private-summary-box','report-cash-box','inventory-history-box',...Array.from({length:5},(_,i)=>'quick-action-'+i)]){
      const el=document.querySelector('[data-audit-box="'+id+'"]');
      data[id==='ledger'?'ledger-box':id]={background:getComputedStyle(el).backgroundColor,bgLuminance:luminance(effectiveBg(el))};
     }
@@ -146,7 +151,8 @@ try{
    // Explicit cross-theme regression for the user's three reported controls.
    for(const [id,maxDark,minLight] of [['timetable-hour',.2,.65],['court-amount',.2,.65],['ledger-box',.2,.65],
      ['overview-kpi-box',.2,.65],['private-summary-box',.2,.65],
-     ['report-cash-box',.2,.65],['inventory-history-box',.2,.65]]){
+     ['report-cash-box',.2,.65],['inventory-history-box',.2,.65],
+     ...Array.from({length:5},(_,i)=>['quick-action-'+i,.2,.65])]){
     const v=values[id];
     if(theme==='dark'&&v.bgLuminance>maxDark)failures.push({width,theme,id,error:'Background remained light',...v});
     if(theme==='light'&&v.bgLuminance<minLight)failures.push({width,theme,id,error:'Background remained dark',...v});
@@ -159,6 +165,33 @@ try{
      if(current!==originals.get(id))failures.push({width,theme,id,error:'Light mode did not return to its original style'});
     }
    }
+   // Verify that every real quick action uses dark card colors in normal,
+   // hover and keyboard-focus states, rather than the white sitewide cards.
+   for(let i=0;i<5;i++){
+    const selector='[data-audit-box="quick-action-'+i+'"]';
+    const action=page.locator(selector);
+    const normal=await action.evaluate(el=>getComputedStyle(el).backgroundColor);
+    const expectedNormal=theme==='dark'?'rgb(33, 54, 64)':'rgb(255, 255, 255)';
+    if(normal!==expectedNormal)failures.push({width,theme,id:'quick-action-'+i,error:'Incorrect base button surface',actual:normal,expected:expectedNormal});
+    await action.hover();
+    await page.waitForTimeout(220);
+    const hovered=await action.evaluate(el=>getComputedStyle(el).backgroundColor);
+    const expectedHover=theme==='dark'?'rgb(43, 73, 70)':'rgb(240, 251, 244)';
+    if(hovered!==expectedHover)failures.push({width,theme,id:'quick-action-'+i,error:'Incorrect hovered button surface',actual:hovered,expected:expectedHover});
+    await page.mouse.move(1,1);
+    if(theme==='dark'){
+     await action.focus();
+     await page.waitForTimeout(220);
+     const focused=await action.evaluate(el=>getComputedStyle(el).backgroundColor);
+     // Programmatic focus does not always trigger :focus-visible in Chromium;
+     // when it does, verify the dark interactive state.
+     if(focused!==expectedNormal&&focused!==expectedHover)
+      failures.push({width,theme,id:'quick-action-'+i,error:'Incorrect focused button surface',actual:focused});
+     await action.evaluate(el=>el.blur());
+    }
+   }
+   await page.mouse.move(1,1);
+   await page.waitForTimeout(220);
    const label=width===390?'mobile':'desktop';
    if(theme==='dark'){
     if(width===1366)await page.locator('.sidebar-panel').screenshot({path:join(screenshotDir,'sidebar-desktop-dark.png')});
