@@ -1,0 +1,35 @@
+name: Theme contrast and mobile visual audit
+on:
+  pull_request:
+    paths:
+      - 'styles/**'
+      - 'bootstrap.js'
+      - 'scripts/theme-contrast-browser.mjs'
+      - 'tests/theme-contrast-fixture.html'
+      - '.github/workflows/theme-contrast-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-theme-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save --no-package-lock @playwright/test@1.55.1
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Compare computed styles in both themes at desktop and mobile widths
+        run: node scripts/theme-contrast-browser.mjs
+      - name: Archive privacy-safe screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: theme-contrast-screenshots
+          path: theme-contrast-artifacts/*.png
+          if-no-files-found: ignore
+          retention-days: 7
