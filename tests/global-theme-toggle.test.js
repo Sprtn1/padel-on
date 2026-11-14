@@ -65,7 +65,7 @@ test('Dark coverage includes every feature area, mobile and the editor overlays'
  const groups=['.sidebar-panel','.mobile-drawer-panel','.topbar','.summary-card',
  '.data-table td','.cafe-scheduler-dialog','.cafe-timeboard-court',
  '.ck-detail-drawer','.cafe-fold','.whish-section','.shift-section',
- '.private-directory','.debt-directory','.training-member','.other-card',
+ '.private-directory','.debt-directory','.member-card','.other-card',
  '.matchmaker-tabs','.tm-v2-participant','.tm-bracket',
  '.cpay-card','.inv-table-panel','.settings-box','.report-comparison-panel',
  '.modal','.auth-card'];
