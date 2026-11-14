@@ -1,0 +1,29 @@
+name: Conditional startup splash browser tests
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'bootstrap.js'
+      - 'app.js'
+      - 'styles/startup-splash.css'
+      - 'lib/startup-readiness.js'
+      - 'scripts/startup-splash-browser.mjs'
+      - '.github/workflows/startup-splash-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  startup-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test runner
+        run: npm install --no-save --no-package-lock @playwright/test@1.55.1
+      - name: Install supported Chromium browser
+        run: npx playwright install --with-deps chromium
+      - name: Verify conditional splash lifecycle
+        run: node scripts/startup-splash-browser.mjs
