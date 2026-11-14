@@ -1,0 +1,202 @@
+/* Court Kinetic V2 • adapted from Stitch references to the existing PADEL ON application.
+   Presentation only: no financial, booking, navigation, or authorization rules. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+:root {
+  --green:#006948;--darkgreen:#005438;--ink:#152b35;--muted:#667785;
+  --stroke:#dfe7e8;--card:#fff;--soft:#f6f8fb;--sidebar:#fff;
+  --po-border:#dfe7e8;--po-ui-border:#dfe7e8;--po-panel-radius:14px;
+  --ck-accent:#006948;--ck-green-soft:#e9f6ef;--ck-surface:#f8f9fc;
+  --ck-border:#dee7e8;--ck-ink:#152b35;--ck-muted:#687a85;
+  color:var(--ck-ink);background:var(--ck-surface);
+  font-family:Inter,system-ui,-apple-system,sans-serif;
+}
+body{background:var(--ck-surface);color:var(--ck-ink)}
+button,input,select,textarea{font-family:Inter,system-ui,-apple-system,sans-serif}
+:is(.num,.metric,.cafe-summary strong,.cafe-category-top>strong,.cafe-scheduler-stats b){
+  font-variant-numeric:tabular-nums;
+}
+.app-layout,.main{background:var(--ck-surface)}
+.main{min-width:0}
+.topbar{height:76px;background:rgba(255,255,255,.96);border-bottom:1px solid var(--ck-border);padding:0 clamp(16px,2.4vw,36px);box-shadow:0 1px 9px rgba(23,41,51,.025);position:relative;z-index:9}
+.topbar-main{font-family:'Space Grotesk',Inter,sans-serif;font-size:17px;font-weight:700;color:var(--ck-ink);letter-spacing:-.35px}
+.crumb{color:#7b8d98;font-size:10px;letter-spacing:1.2px}
+.avatar{border-color:#d4e9dd;color:#006948;background:#eaf7f0}
+.workspace{max-width:1580px;padding:30px clamp(16px,2.6vw,38px) 72px}
+.workspace-wide{max-width:1680px}
+.heading-row{align-items:center;gap:18px;margin-bottom:23px}
+.heading-row h1{font-family:'Space Grotesk',Inter,sans-serif;font-size:clamp(23px,2.2vw,32px);font-weight:700;letter-spacing:-.95px;color:var(--ck-ink)}
+.heading-row p{color:var(--ck-muted);font-size:12px;line-height:1.55}
+.eyebrow{color:#00764f;font-size:10px;letter-spacing:1.35px}
+.panel,.summary-card,.member-card,.other-card{border:1px solid var(--ck-border);border-radius:14px;background:#fff;box-shadow:0 2px 13px rgba(24,47,59,.035)}
+.panel-head h2,.settings-box h3{font-family:'Space Grotesk',Inter,sans-serif;color:var(--ck-ink)}
+.summary-card{padding:19px 20px;min-height:128px}
+.summary-card .metric{font-family:'Space Grotesk',Inter,sans-serif;font-size:26px;color:var(--ck-ink)}
+.summary-card.feature{background:linear-gradient(125deg,#006948,#00845c);border-color:#006948}
+.summary-card.feature .metric{color:#fff}
+.summary-card .label,.summary-card .submetric{color:var(--ck-muted)}
+.metric-icon{color:#006948;background:#eaf7f0}
+.btn{border-radius:10px;font-weight:700;min-height:40px}
+.btn-primary{background:#006948;box-shadow:0 5px 12px rgba(0,105,72,.13)}
+.btn-primary:hover{background:#005639}
+.btn-light{color:#344d57;border-color:#dce5e8;background:#fff}
+.btn-light:hover{background:#f1f6f5;border-color:#c7dcd2}
+.btn-soft{background:#e7f5ed;color:#006948}
+.btn-danger{border-color:#f6d8d6;color:#ae3f3a;background:#fff4f3}
+.btn:focus-visible,.nav-item:focus-visible,.cafe-fold>summary:focus-visible,
+.ck-detail-overlay button:focus-visible,.ck-court-tab:focus-visible{
+ outline:2px solid #14865e;outline-offset:3px
+}
+.data-table th{background:#f6f8fa;color:#647783;font-weight:750;border-color:var(--ck-border)}
+.data-table td{color:#455c64;border-bottom-color:#edf1f2}
+.data-table strong{color:#203841}
+.data-table-wrap{border-radius:10px}
+.form-input,.select{border-color:#d6e2e4;color:#233c44}
+.form-input:focus,.select:focus{border-color:#00855d;box-shadow:0 0 0 3px rgba(0,133,93,.1)}
+.notice{background:#f0f8f4;border-color:#d2e7da;color:#315d49}
+.tag-green{background:#e6f5ee;color:#006948}
+.tag-amber{background:#fff4df;color:#9e641a}
+.tag-gray{background:#eef1f5;color:#566978}
+.page-footer{color:#94a4ad}
+/* Stitch-inspired light navigation while preserving existing role-based markup. */
+@media(min-width:831px){
+ .sidebar{background:#fff!important}
+ .sidebar-panel,.sidebar-collapsed .sidebar:is(:hover,:has(.nav-item:focus-visible))>.sidebar-panel{
+  background:#fff!important;color:var(--ck-ink);border-right:1px solid var(--ck-border);
+  border-radius:0;box-shadow:3px 0 18px rgba(16,38,49,.03)
+ }
+ .sidebar .brand-sub{color:#8999a0}
+ .sidebar .brand img{object-position:left center}
+ .sidebar-toggle{background:#f4f7f8;color:#516a71;border-color:#e0e7e9}
+ .sidebar-toggle:hover{background:#e8f2ee;color:#006948;border-color:#bedacd}
+ .sidebar .menu{scrollbar-color:#d2dfdc transparent}
+ .sidebar .nav-item{color:#607580;font-weight:650;border-radius:10px}
+ .sidebar .nav-item svg{color:#84979b}
+ .sidebar .nav-item.active{background:#e6f3ec;color:#005b40;box-shadow:inset 0 0 0 1px #d1e9dc}
+ .sidebar .nav-item.active svg{color:#006948}
+ .sidebar .nav-item.active::before{background:#006948}
+ .sidebar .nav-item:hover,.sidebar .nav-item.active:hover{
+  background:#eef6f1;color:#005d42;transform:none
+ }
+ .sidebar .nav-item:hover svg{color:#00744f;transform:none}
+ .sidebar .menu-footer{border-top-color:#e6edf0}
+ .sidebar .sidebar-bottom{color:#9aa8ac}
+ .sidebar .brand-compact{background:#e8f5ee;color:#006948;border-color:#cde9d9}
+}
+/* Cafeteria finance: hybrid summary + dense operational cards; retain all inputs/actions. */
+.cafe-summary{gap:11px;margin-bottom:15px}
+.cafe-summary article{background:#fff;border:1px solid var(--ck-border);border-radius:13px;box-shadow:0 2px 10px rgba(25,49,60,.025)}
+.cafe-summary article span{color:#74838c;font-size:11px}
+.cafe-summary article strong{font-family:'Space Grotesk',Inter,sans-serif;letter-spacing:-.55px;color:#16343a}
+.cafe-fold{background:#fff;border:1px solid var(--ck-border);border-radius:13px;box-shadow:0 2px 12px rgba(23,48,58,.026);margin-bottom:13px;overflow:hidden}
+.cafe-fold>summary{padding:15px 18px;font-family:'Space Grotesk',Inter,sans-serif;font-weight:700;font-size:15px;color:#1b3940;background:#fff;cursor:pointer;min-height:53px;display:flex;align-items:center}
+.cafe-fold>summary:hover{background:#f8fbf9}
+.cafe-fold[open]>summary{border-bottom:1px solid #e9eff0;background:#fcfdfd;color:#006948}
+.cafe-fold-body{padding:16px}
+.cafe-category-card,.cafe-court-payment-card,.cafe-closing-box,.cafe-day-status,.cafe-goods-pending{border:1px solid var(--ck-border);border-radius:12px;box-shadow:none}
+.cafe-category-top h3{color:#253d46;font-size:13px}
+.cafe-category-top>strong{font-family:'Space Grotesk',Inter,sans-serif;color:#006948;font-weight:700}
+.cafe-entry-form input,.cafe-entry-form select,.cafe-entry-form textarea,
+.cafe-closing-form input,.whish-transaction-card input{
+ border-color:#dce5e7;border-radius:9px
+}
+.cafe-ledger-entry,.cafe-auto-payments-wrap{border-color:#e6ebee}
+.cafe-quick-fab{background:#006948;box-shadow:0 8px 22px rgba(0,93,66,.21)}
+.cafe-quick-fab:hover{background:#00583c}
+.cafe-view-toggle{background:#f1f5f5;border-radius:10px}
+.cafe-view-toggle button.active{background:#006948;color:#fff}
+.whish-section .panel,.shift-section,.cafe-closing-box{background:#fff}
+.cafe-scheduler-toolbar{background:#fff!important;border-color:var(--ck-border);border-radius:13px;box-shadow:0 2px 12px rgba(17,46,58,.03);padding:15px 17px}
+.cafe-scheduler-toolbar>div:first-child>strong{font-family:'Space Grotesk',Inter,sans-serif;color:#1c383f;font-size:17px}
+.cafe-scheduler-sports{background:#f2f6f6;border-color:#e2e9e8}
+.cafe-scheduler-sports button{font-size:12px}
+.cafe-scheduler-sports button.active,.cafe-scheduler-sports button[aria-pressed="true"]{background:#006948;color:#fff;box-shadow:0 2px 8px rgba(0,105,72,.16)}
+.cafe-scheduler-sports button:hover:not(.active){background:#e5efeb}
+.cafe-scheduler-date-controls>button.btn-primary{background:#006948;border-color:#006948}
+.cafe-scheduler .cafe-timetable-summary h3{font-family:'Space Grotesk',Inter,sans-serif;color:#153a33}
+.cafe-scheduler-sync{background:#eff8f3;color:#316650}
+.cafe-scheduler-sync::before{background:#00865a}
+.cafe-scheduler-stats{gap:9px;margin:10px 0 14px}
+.cafe-scheduler-stats>div{background:#fff;border:1px solid var(--ck-border);border-radius:10px;padding:9px 11px}
+.cafe-scheduler-stats b{font-family:'Space Grotesk',Inter,sans-serif;font-size:18px;color:#005b40}
+.cafe-scheduler .cafe-timeboard-scroll{border-color:#dbe5e5;border-radius:12px}
+.cafe-scheduler .cafe-timeboard-court-head{background:#edf5f1;border-color:#dbe8df}
+.cafe-scheduler .cafe-timeboard-court-head strong{color:#225541}
+.cafe-scheduler .cafe-timeboard-booking{
+ border-radius:7px;padding:5px 7px;border-left-width:3px;
+ font-family:Inter,sans-serif;box-shadow:0 2px 6px rgba(18,54,41,.065)
+}
+.cafe-scheduler .cafe-timeboard-booking>strong{font-size:11px;letter-spacing:-.1px}
+.cafe-scheduler .cafe-timeboard-booking.schedule-confirmed{background:#e3f4eb;border-color:#5cb48f;color:#07593c}
+.cafe-scheduler .cafe-timeboard-booking.schedule-tentative{background:#fff1d6;border-color:#d5a85d;color:#794d1c}
+.cafe-scheduler .cafe-timeboard-booking.schedule-training{background:#e8efff;border-color:#90aee2;color:#314f84}
+.cafe-scheduler .cafe-timeboard-booking.schedule-block{background:repeating-linear-gradient(135deg,#f0f2f5,#f0f2f5 9px,#e6e9ee 9px,#e6e9ee 18px);border-color:#9ca9b7;color:#4d5d68}
+.cafe-scheduler .cafe-timeboard-booking:focus-visible{outline:2px solid #007653}
+/* An accessible booking detail drawer; the existing editor owns all writes. */
+.ck-detail-overlay{position:fixed;inset:0;z-index:95;display:flex;justify-content:flex-end;align-items:stretch}
+.ck-detail-scrim{position:absolute;inset:0;border:0;background:rgba(13,31,38,.32);backdrop-filter:blur(2px);cursor:default}
+.ck-detail-drawer{position:relative;z-index:1;display:flex;flex-direction:column;width:min(430px,100vw);height:100dvh;max-height:100dvh;background:#fff;border-left:1px solid #dae5e6;box-shadow:-15px 0 46px rgba(12,31,39,.17);animation:ck-slide-right .2s ease both}
+.ck-detail-head{padding:22px;border-bottom:1px solid #e7edee;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.ck-detail-head h3{font-family:'Space Grotesk',Inter,sans-serif;font-size:21px;margin:2px 0 4px;letter-spacing:-.5px}
+.ck-detail-head p{margin:0;font-size:11px;color:#75848a}
+.ck-detail-close{border:1px solid #e0e8e9;background:#f8fafb;border-radius:9px;width:34px;height:34px;font-size:19px;color:#526771}
+.ck-detail-body{padding:20px 22px;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:grid;align-content:start;gap:14px}
+.ck-detail-label{font-size:10px;letter-spacing:.8px;text-transform:uppercase;font-weight:700;color:#7b8c93}
+.ck-detail-box{background:#f8fafb;border:1px solid #e5ebed;border-radius:11px;padding:14px;display:grid;gap:9px}
+.ck-detail-box h4{margin:3px 0 0;font-size:15px;font-family:'Space Grotesk',Inter,sans-serif;overflow-wrap:anywhere}
+.ck-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.ck-detail-value{font-size:13px;font-weight:700;color:#233d45;overflow-wrap:anywhere}
+.ck-detail-money{font-family:'JetBrains Mono',monospace;font-size:19px;color:#006948;font-weight:600}
+.ck-detail-split{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:7px 0;border-top:1px solid #e5ebed}
+.ck-detail-split b{font-family:'JetBrains Mono',monospace;color:#28464c}
+.ck-detail-footer{display:flex;gap:9px;justify-content:flex-end;padding:16px 22px calc(16px + env(safe-area-inset-bottom));border-top:1px solid #e5ecee;background:#fff}
+.ck-detail-footer .btn{flex:1;min-width:0}
+.ck-detail-note{font-size:12px;color:#566a73;white-space:pre-wrap;overflow-wrap:anywhere}
+.ck-court-tabs{display:none;gap:8px;margin:12px 0;flex-wrap:wrap}
+.ck-court-tab{border:1px solid #d8e3e4;border-radius:10px;background:#fff;color:#4d6870;font-weight:700;font-size:12px;padding:10px 12px;min-height:40px}
+.ck-court-tab[aria-pressed="true"]{background:#e4f4eb;border-color:#58a981;color:#006948}
+.ck-detail-pill{font-size:10px;padding:4px 8px;background:#e5f4ed;border-radius:99px;color:#006948;font-weight:700}
+.ck-timetable-page .cafe-scheduler-toolbar{margin-top:0}
+.ck-timetable-page .cafe-timetable{border-color:var(--ck-border)}
+@keyframes ck-slide-right{from{transform:translateX(24px);opacity:.6}to{transform:translateX(0);opacity:1}}
+@keyframes ck-slide-up{from{transform:translateY(24px);opacity:.8}to{transform:translateY(0);opacity:1}}
+@media(max-width:830px){
+ .topbar{height:68px;padding:0 16px}
+ .workspace{padding:20px 14px 112px}
+ .heading-row{gap:11px}
+ .heading-row h1{font-size:24px}
+ .mobile-bar{background:#fff;border-top:1px solid var(--ck-border);color:#6a7a83;box-shadow:0 -3px 17px rgba(18,38,46,.06)}
+ .mobile-nav{color:#697b83}
+ .mobile-nav.active{color:#006948}
+ .cafe-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .cafe-summary article{padding:12px}
+ .cafe-fold-body{padding:12px}
+ .cafe-scheduler-toolbar{padding:12px}
+ .cafe-scheduler-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ck-court-tabs{display:flex}
+ .cafe-scheduler:not(.cafe-single-court) .cafe-timeboard{
+  min-width:0;width:100%;grid-template-columns:60px minmax(0,1fr)
+ }
+ .cafe-scheduler:not(.cafe-single-court) .cafe-timeboard-scroll::after{display:none}
+ .cafe-scheduler[data-selected-court] .cafe-timeboard-court-head:not([data-court]),.cafe-scheduler[data-selected-court] .cafe-timeboard-court:not([data-court]){display:none}
+ .cafe-scheduler[data-selected-court="C1"] .cafe-timeboard [data-court]:not([data-court="C1"]),
+ .cafe-scheduler[data-selected-court="C2"] .cafe-timeboard [data-court]:not([data-court="C2"]),
+ .cafe-scheduler[data-selected-court="C3"] .cafe-timeboard [data-court]:not([data-court="C3"]){display:none}
+ .ck-detail-overlay{align-items:flex-end}
+ .ck-detail-drawer{width:100%;height:auto;max-height:86dvh;border:0;border-top:1px solid #d8e5e6;border-radius:20px 20px 0 0;animation:ck-slide-up .2s ease both}
+ .ck-detail-head{padding:17px 18px}
+ .ck-detail-body{padding:16px 18px}
+ .ck-detail-footer{padding:12px 18px calc(13px + env(safe-area-inset-bottom))}
+ .cafe-scheduler .cafe-timeboard-booking{touch-action:manipulation}
+}
+@media(max-width:560px){
+ .cafe-fold>summary{font-size:14px;padding:13px}
+ .summary-card{padding:16px}
+ .ck-detail-grid{grid-template-columns:1fr 1fr}
+ .ck-court-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+ .ck-court-tab{min-width:0;padding:9px 4px;font-size:11px}
+ .cafe-scheduler-toolbar>div:first-child>small{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .ck-detail-drawer,.cafe-scheduler .cafe-timeboard-booking{animation:none!important;transition:none!important}
+}
+@media print{.ck-detail-overlay,.ck-court-tabs{display:none!important}}
