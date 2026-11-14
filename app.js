@@ -1,30 +1,46 @@
-// Each page load uses a fresh module graph to avoid stale GitHub Pages assets.
+// Start independent module fetches together. On slower mobile connections, serial
+// top-level await imports unnecessarily multiplied network round-trip time.
 const assetVersion = new URL(import.meta.url).searchParams.get('v') || Date.now().toString(36);
-const {readTheme,writeTheme,nextTheme,themeActionLabel} = await import(`./lib/theme-preference.js?v=${assetVersion}`);
-const {noteAppReadyInThisTab} = await import(`./lib/startup-readiness.js?v=${assetVersion}`);
-const {icon} = await import(`./lib/icons.js?v=${assetVersion}`);
-const {tabs,renderNavigation,navSectionForTab} = await import(`./lib/navigation.js?v=${assetVersion}`);
-const {readSidebarCollapsed,storeSidebarCollapsed,sidebarToggleLabel} = await import(`./lib/sidebar-layout.js?v=${assetVersion}`);
-const {hashForTab,canAccessTab,resolveTabFromHash} = await import(`./lib/hash-routing.js?v=${assetVersion}`);
-const api = await import(`./lib/api.js?v=${assetVersion}`);
-const orderCounter = await import(`./lib/order-counter-ui.js?v=${assetVersion}`);
-const reemItems = await import(`./lib/reem-items-ui.js?v=${assetVersion}`);
-const cafeteriaFinanceModule = await import(`./lib/cafeteria-finances.js?v=${assetVersion}`);
-const cafeteriaPaymentsModule = await import(`./lib/cafeteria-payments.js?v=${assetVersion}`);
-const cafeteriaTodoModule = await import(`./lib/cafeteria-todo.js?v=${assetVersion}`);
-const shiftHandoverModule = await import(`./lib/cafeteria-shift-handover.js?v=${assetVersion}`);
-const consignmentModule = await import(`./lib/consignment-inventory.js?v=${assetVersion}`);
-const clubInsightsModule = await import(`./lib/club-finance-insights.js?v=${assetVersion}`);
-const {sevenDayActivity} = await import(`./lib/activity-visualizations.js?v=${assetVersion}`);
-const reportComparison = await import(`./lib/report-comparison.js?v=${assetVersion}`);
-const {getDebtDayEntries,summarizeDebtDay} = await import(`./lib/cafeteria-debt-daily.js?v=${assetVersion}`);
-const {visiblePrivateClientSelection} = await import(`./lib/private-client-selection.js?v=${assetVersion}`);
-const refreshPolicy = await import(`./lib/refresh-policy.js?v=${assetVersion}`);
-const scrollPreservation = await import(`./lib/scroll-preservation.js?v=${assetVersion}`);
-const tournamentModule = await import(`./lib/tournament-management.js?v=${assetVersion}`);
-const arabicDailyPdf = await import(`./lib/arabic-daily-pdf.js?v=${assetVersion}`);
-const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus,getMatchmakingFinance,getMatchmakingStreakLedger,getMatchmakingCurrentStreak} = await import(`./lib/logic.js?v=${assetVersion}`);
-const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = await import(`./lib/date.js?v=${assetVersion}`);
+const [
+ themePreference, startupReadiness, iconsModule, navigationModule, sidebarModule, routeModule, api, orderCounter, reemItems, cafeteriaFinanceModule, cafeteriaPaymentsModule, cafeteriaTodoModule, shiftHandoverModule, consignmentModule, clubInsightsModule, activityModule, reportComparison, debtDailyModule, privateSelectionModule, refreshPolicy, scrollPreservation, tournamentModule, arabicDailyPdf, logicModule, dateModule
+] = await Promise.all([
+ import(`./lib/theme-preference.js?v=${assetVersion}`),
+ import(`./lib/startup-readiness.js?v=${assetVersion}`),
+ import(`./lib/icons.js?v=${assetVersion}`),
+ import(`./lib/navigation.js?v=${assetVersion}`),
+ import(`./lib/sidebar-layout.js?v=${assetVersion}`),
+ import(`./lib/hash-routing.js?v=${assetVersion}`),
+ import(`./lib/api.js?v=${assetVersion}`),
+ import(`./lib/order-counter-ui.js?v=${assetVersion}`),
+ import(`./lib/reem-items-ui.js?v=${assetVersion}`),
+ import(`./lib/cafeteria-finances.js?v=${assetVersion}`),
+ import(`./lib/cafeteria-payments.js?v=${assetVersion}`),
+ import(`./lib/cafeteria-todo.js?v=${assetVersion}`),
+ import(`./lib/cafeteria-shift-handover.js?v=${assetVersion}`),
+ import(`./lib/consignment-inventory.js?v=${assetVersion}`),
+ import(`./lib/club-finance-insights.js?v=${assetVersion}`),
+ import(`./lib/activity-visualizations.js?v=${assetVersion}`),
+ import(`./lib/report-comparison.js?v=${assetVersion}`),
+ import(`./lib/cafeteria-debt-daily.js?v=${assetVersion}`),
+ import(`./lib/private-client-selection.js?v=${assetVersion}`),
+ import(`./lib/refresh-policy.js?v=${assetVersion}`),
+ import(`./lib/scroll-preservation.js?v=${assetVersion}`),
+ import(`./lib/tournament-management.js?v=${assetVersion}`),
+ import(`./lib/arabic-daily-pdf.js?v=${assetVersion}`),
+ import(`./lib/logic.js?v=${assetVersion}`),
+ import(`./lib/date.js?v=${assetVersion}`)
+]);
+const {readTheme,writeTheme,nextTheme,themeActionLabel} = themePreference;
+const {noteAppReadyInThisTab} = startupReadiness;
+const {icon} = iconsModule;
+const {tabs,renderNavigation,navSectionForTab} = navigationModule;
+const {readSidebarCollapsed,storeSidebarCollapsed,sidebarToggleLabel} = sidebarModule;
+const {hashForTab,canAccessTab,resolveTabFromHash} = routeModule;
+const {sevenDayActivity} = activityModule;
+const {getDebtDayEntries,summarizeDebtDay} = debtDailyModule;
+const {visiblePrivateClientSelection} = privateSelectionModule;
+const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus,getMatchmakingFinance,getMatchmakingStreakLedger,getMatchmakingCurrentStreak} = logicModule;
+const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = dateModule;
 const app=document.getElementById('app');
 let initialViewRendered=false;
 function noteInitialViewRendered(){
