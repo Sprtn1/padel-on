@@ -26,12 +26,15 @@ test('Each sidebar page has one unique canonical URL, including staff tools',()=
 test('Internal IDs and friendly aliases resolve to supported pages',()=>{
  const aliases={
   '#dashboard':'dashboard','#cafeteria-debts':'debts','#private-sessions':'private-clients',
-  '#team-members':'team','#monthly-training':'training','#other-benefits':'other',
+  '#team-members':'team','#other-benefits':'other',
   '#finance':'finance','#tournaments':'tournament','#tournament-management':'tournament',
   '#game-activity':'activity'
  };
  for(const [hash,tab] of Object.entries(aliases))assert.equal(tabFromHash(hash),tab);
  assert.equal(tabFromHash('#OVERVIEW'),'dashboard');
+ assert.equal(tabFromHash('#monthly-training'),null);
+ assert.equal(resolveTabFromHash('#training','staff'),'dashboard');
+ assert.equal(canAccessTab('training','admin'),false);
 });
 test('Admin-only routes remain unavailable to staff and unauthorized viewers',()=>{
  assert.equal(canAccessTab('cafeteria-payments','admin'),true);
