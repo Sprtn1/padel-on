@@ -580,14 +580,10 @@ html[data-theme="dark"] .private-negative{color:#ffb8a8}
 
 html[data-theme="dark"] .debt-clear{color:#8ee7b2}
 
-html[data-theme="dark"] .training-panel,
-html[data-theme="dark"] .training-members,
-html[data-theme="dark"] .training-member,
 html[data-theme="dark"] .other-grid,
 html[data-theme="dark"] .other-card,
 html[data-theme="dark"] .member-card{background:var(--dm-card);color:var(--dm-text);border-color:var(--dm-border)}
 
-html[data-theme="dark"] .training-member strong,
 html[data-theme="dark"] .member-card strong,
 html[data-theme="dark"] .other-card strong{color:var(--dm-text)}
 
