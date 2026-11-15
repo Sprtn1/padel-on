@@ -17,7 +17,11 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  if(host.protocol!=='https:')throw Error('MatchPoint host must use HTTPS');
  const supabase=new URL(env.SUPABASE_URL);
  if(supabase.protocol!=='https:'||!supabase.hostname.endsWith('.supabase.co'))throw Error('Invalid Supabase project URL');
- const from=beirutToday(now),to=addDays(from,Number(env.MATCHPOINT_LOOKAHEAD_DAYS||7));
+ const from=beirutToday(now);
+ // Every six hours, pull up to 90 days ahead. The frequent five-minute feed stays small,
+ // leaving headroom in MatchPoint's default 500 API calls/day allowance.
+ const isExtended=Math.floor(now.getTime()/300000)%72===0;
+ const to=addDays(from,isExtended?89:Number(env.MATCHPOINT_LOOKAHEAD_DAYS||7));
  const backend=supabase.origin+'/rest/v1';
  const serviceHeaders={apikey:env.SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':'application/json'};
  const api=async(method,table,params={},data)=>{
@@ -71,7 +75,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  // Default 500 calls/day: 288 booking polls + ~48 each for matches and activities.
  // Additional pagination/backfills use the remaining allowance; an increased token quota
  // is needed if all three endpoints must be polled every five minutes.
- const kinds=['bookings',...(needSlow('matches')?['matches']:[]),...(needSlow('activities')?['activities']:[])];
+ const kinds=['bookings',...(isExtended||needSlow('matches')?['matches']:[]),...(isExtended||needSlow('activities')?['activities']:[])];
  const fetched={},items=[],warnings=[];
  for(const kind of kinds){
   fetched[kind]=await query(kind);
@@ -137,7 +141,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  const stamps={last_run_at:now.toISOString(),last_error:warnings.length?warnings.slice(0,12).join('; ').slice(0,1000):null,last_conflict_count:conflicts};
  for(const kind of kinds)stamps['last_'+kind+'_at']=now.toISOString();
  await api('PATCH','matchpoint_sync_status',{id:'eq.1'},stamps);
- const summary={from,to,feeds:Object.fromEntries(kinds.map(k=>[k,fetched[k].length])),inserted,updated,cancelled,ignored,conflicts,warnings:warnings.length};
+ const summary={from,to,extended:isExtended,feeds:Object.fromEntries(kinds.map(k=>[k,fetched[k].length])),inserted,updated,cancelled,ignored,conflicts,warnings:warnings.length};
  logger.log('MatchPoint sync result',JSON.stringify(summary));
  if(warnings.length)logger.warn('MatchPoint mapping/validation warnings:',warnings.slice(0,20).join(' | '));
  return summary;
