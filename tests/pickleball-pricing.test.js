@@ -62,16 +62,19 @@ const make=(records=[])=>{
  });
  return {widget,calls};
 };
-test('Pickleball court form offers a 2-player and 4-player selector',async()=>{
+test('Pickleball court action launches the timetable booking editor with 2-player and 4-player options',async()=>{
  const {widget}=make();await widget.load();
+ assert.match(widget.page(),/data-action="cafe-court-new-reservation" data-sport="pickleball"/);
+ assert.doesNotMatch(widget.page(),/data-cafe-save="entry" data-category="pickleball_courts"/);
+ await widget.action({dataset:{action:'cafe-court-new-reservation',sport:'pickleball'}});
  const html=widget.page();
- assert.match(html,/data-category="pickleball_courts"/);
+ assert.match(html,/data-cafe-save="schedule-reservation"/);
  assert.match(html,/name="pickleball_player_count"/);
- assert.match(html,/2 players \(singles\)/);
- assert.match(html,/4 players \(doubles\)/);
- assert.match(html,/including rackets/);
+ assert.match(html,/2 players \\(singles\\)/);
+ assert.match(html,/4 players \\(doubles\\)/);
+ assert.match(html,/name="total_amount"/);
 });
-test('Price preview reacts to player count and preserves editable amount',()=>{
+test('Legacy Pickleball amount editor still previews 2/4-player tariffs and preserves editable amount',()=>{
  const {widget}=make();
  const input={value:'manual'},note={textContent:''};
  const players={value:'2'};
@@ -104,20 +107,27 @@ test('Price preview reacts to player count and preserves editable amount',()=>{
  assert.match(note.textContent,/4 players at 7.50 USD each/);
  assert.deepEqual(marks.map(x=>x.hidden),[false,false,false,false]);
 });
-test('New 2-player pickleball booking uses dedicated RPC and exact manual amount',async()=>{
+test('New 2-player Pickleball booking uses the shared timetable RPC and exact manual amount',async()=>{
  await withFormData(async()=>{
   const x=make();await x.widget.load();
-  const entry={dataset:{cafeSave:'entry',category:'pickleball_courts'},
-   fields:fields(2,'22.50'),querySelector:()=>({disabled:false,isConnected:false})};
-  await x.widget.submit(entry);
+  await x.widget.action({dataset:{action:'cafe-court-new-reservation',sport:'pickleball'}});
+  const form={dataset:{cafeSave:'schedule-reservation'},fields:{
+   booking_type:'reservation',customer_name:'Pickleball booking',court_number:'P1',
+   start_time:'18:00',duration_minutes:'90',pickleball_player_count:'2',
+   status:'confirmed',notes:'Rackets included',
+   total_amount:'22.50',cash_amount:'22.50',whish_amount:'0.00',check0:'on',check1:'on'
+  }};
+  await x.widget.submit(form);
   assert.equal(x.calls.length,1);
-  assert.equal(x.calls[0].name,'cafeteria_finance_record_pickleball_booking');
-  assert.equal(x.calls[0].args.p_player_count,2);
-  assert.equal(x.calls[0].args.p_amount_cents,2250);
-  assert.deepEqual(x.calls[0].args.p_checkmarks,[true,true,false,false]);
+  assert.equal(x.calls[0].name,'club_court_reservation_priced_save');
+  assert.equal(x.calls[0].args.p_pickleball_player_count,2);
+  assert.equal(x.calls[0].args.p_payment_total_cents,2250);
+  assert.equal(x.calls[0].args.p_cash_cents,2250);
+  assert.equal(x.calls[0].args.p_whish_cents,0);
+  assert.deepEqual(x.calls[0].args.p_checkmarks,[true,true,false,false,false,false]);
   assert.equal(x.calls[0].args.p_start,'18:00');
-  assert.equal(x.calls[0].args.p_end,'19:30');
-  assert.equal(x.calls[0].args.p_court,undefined);
+  assert.equal(x.calls[0].args.p_duration,90);
+  assert.equal(x.calls[0].args.p_court,'P1');
  });
 });
 test('Editing existing pickleball booking changes player count without changing other categories',async()=>{
