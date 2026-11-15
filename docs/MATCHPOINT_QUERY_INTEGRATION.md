@@ -60,15 +60,20 @@ Unknown courts are logged and **not guessed**.
 
 ## Frequency and limits
 
-The job runs every **five minutes**. `/bookings` polls every run.
-`/matches` and `/activities` poll approximately every 30 minutes to
-respect the MatchPoint Query API **default 500-request daily quota**:
-288 + 48 + 48 = approximately 384 requests/day before pagination or retries.
-If all three feeds must refresh every five minutes, request an increased
-MatchPoint query-token quota (at least 864 calls/day plus headroom), then
-update the throttling after approval.
+The GitHub Actions job is scheduled **once per hour** at minute 17 UTC,
+for **24 scheduled synchronization passes per day**. Every pass checks
+`/bookings`, `/matches` and `/activities` so all three update hourly.
+The worker skips an extra/manual pass if the last completed run was less
+than 60 minutes ago.
 
-The regular feed covers the next seven days. Approximately every six hours,
+**Important quota distinction:** a pass is not one HTTP request. Each pass
+makes at least **3 MatchPoint API requests**, one for each endpoint, or
+approximately **72 requests/day** plus pagination or retries. If the MatchPoint
+token has a strict limit of only **24 HTTP API requests per day**, do **not**
+enable this three-feed hourly configuration; the integration would need a
+different endpoint rotation or a larger API quota.
+
+The regular feed covers the next seven days. Every six UTC hours,
 a wider scan covers up to 90 days ahead. All scans paginate via `hasMore` and
 offset, including cancellations; if pagination or retries exhaust the quota,
 request a higher token limit. Check action logs for unmapped courts, source
