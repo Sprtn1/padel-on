@@ -9,11 +9,11 @@ const imported={
  external_source:'matchpoint',external_kind:'bookings',external_id:'5432',
  checkmarks:[false,false,false,false,false,false],notes:''
 };
-function setup({matchpointActive=true}={}){
+function setup({matchpointActive=true,allowWrites=false}={}){
  const calls=[];
  const api={
   getSession:()=>({access_token:'token'}),
-  rpc:async(name,args)=>{calls.push({rpc:name,args});throw Error('Unexpected write to '+name)},
+  rpc:async(name,args)=>{calls.push({rpc:name,args});if(!allowWrites)throw Error('Unexpected write to '+name);return 'saved-booking-id'},
   listAll:async(table)=>{
    calls.push(table);
    if(table==='padel_court_reservations')return [imported];
@@ -137,4 +137,53 @@ test('stale finance-only court forms are rejected before any cashbook RPC is cal
 test('invalid court sport is rejected before opening the editor',async()=>{
  const {finance}=setup({matchpointActive:false});await finance.load();
  await assert.rejects(()=>finance.action(action('tennis')),/Unsupported court sport/);
+});
+
+const withScheduleData=async (entries,fn)=>{
+ const prior=globalThis.FormData;
+ globalThis.FormData=class{
+  constructor(){this.entriesArray=entries;}
+  entries(){return this.entriesArray[Symbol.iterator]();}
+ };
+ try{return await fn();}finally{globalThis.FormData=prior;}
+};
+test('Padel training saved from Finance is linked using the private-training RPC, not court revenue',async()=>{
+ const {finance,calls}=setup({matchpointActive:false,allowWrites:true});
+ await finance.load();
+ await finance.action(action('padel'));
+ const selected={name:'booking_type',value:'private_training',closest:()=>({querySelector:()=>null})};
+ assert.equal(finance.schedulerPreviewEnd(selected),true);
+ await withScheduleData([
+  ['start_time','18:00'],['duration_minutes','90'],['court_number','C1'],
+  ['status','confirmed'],['private_client_id','11111111-1111-1111-1111-111111111111'],
+  ['private_session_fee','65.00'],['private_coach_id',''],['notes','One-to-one Padel session']
+ ],async()=>finance.submit({dataset:{cafeSave:'schedule-reservation'}}));
+ const writes=calls.filter(item=>item&&item.rpc);
+ assert.equal(writes.length,1);
+ assert.equal(writes[0].rpc,'club_private_training_save');
+ assert.equal(writes[0].args.p_client_id,'11111111-1111-1111-1111-111111111111');
+ assert.equal(writes[0].args.p_session_fee_cents,6500);
+ assert.equal(writes[0].args.p_court,'C1');
+ assert.equal(writes[0].args.p_duration,90);
+ assert.equal(writes.some(x=>x.rpc?.startsWith('cafeteria_finance_record')),false);
+});
+test('maintenance saved from Finance uses block reservation RPC with zero court payments',async()=>{
+ const {finance,calls}=setup({matchpointActive:false,allowWrites:true});
+ await finance.load();
+ await finance.action(action('basketball'));
+ const selected={name:'booking_type',value:'block',closest:()=>({querySelector:()=>null})};
+ assert.equal(finance.schedulerPreviewEnd(selected),true);
+ await withScheduleData([
+  ['start_time','09:00'],['duration_minutes','960'],['court_number','B1'],
+  ['status','confirmed'],['customer_name','Maintenance'],['notes','Floor maintenance']
+ ],async()=>finance.submit({dataset:{cafeSave:'schedule-reservation'}}));
+ const writes=calls.filter(item=>item&&item.rpc);
+ assert.equal(writes.length,1);
+ assert.equal(writes[0].rpc,'club_court_reservation_priced_save');
+ assert.equal(writes[0].args.p_booking_type,'block');
+ assert.equal(writes[0].args.p_payment_total_cents,0);
+ assert.equal(writes[0].args.p_cash_cents,0);
+ assert.equal(writes[0].args.p_whish_cents,0);
+ assert.equal(writes[0].args.p_update_payments,false);
+ assert.equal(writes[0].args.p_duration,960);
 });
