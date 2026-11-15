@@ -1266,7 +1266,7 @@ test('Court bookings save court/time with manual price override',()=>{
  assert.throws(()=>cafeEntryFromForm('padel_courts',{
   name:'Players',court_number:'C1',booking_start_time:'20:00',
   booking_end_time:'18:00',amount:'25'
- }),/12 hours/);
+ }),/16 hours/);
 });
 
 
