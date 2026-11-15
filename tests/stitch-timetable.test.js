@@ -25,15 +25,15 @@ test('slot brush snaps both edges to half hours',async()=>{
  assert.equal(backwards.endMinute,810);
  assert.equal(backwards.durationMinutes,120);
 });
-test('slot brush keeps 09:00–01:00 business boundary and a max twelve-hour range',async()=>{
+test('slot brush keeps 09:00–01:00 business boundary and supports a full sixteen-hour range',async()=>{
  const {courtSchedulerSelection}=await import('../lib/court-scheduler-ui.js');
  const last=courtSchedulerSelection(1499,1499);
  assert.equal(last.startMinute,1470);
  assert.equal(last.endMinute,1500);
  const long=courtSchedulerSelection(540,1470,true);
- assert.equal(long.durationMinutes,720);
+ assert.equal(long.durationMinutes,960);
  assert.equal(long.startMinute,540);
- assert.equal(long.endMinute,1260);
+ assert.equal(long.endMinute,1500);
 });
 test('mobile bookings align with the hour grid, including overlapping reservations',async()=>{
  const {padelCourtTimeGrid}=await import('../lib/court-timetable.js');
