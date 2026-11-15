@@ -89,6 +89,6 @@ test('hourly cooldown avoids a second API pass within 60 minutes',async()=>{
 test('MatchPoint scheduled workflow uses one hourly cron with a manual cooldown',async()=>{
  const {readFile}=await import('node:fs/promises');
  const yaml=await readFile(new URL('../.github/workflows/matchpoint-reservations-sync.yml',import.meta.url),'utf8');
- assert.match(yaml,/cron: '17 \\* \\* \\* \\*'/);
- assert.doesNotMatch(yaml,/cron: '\\/5/);
+ assert.equal(yaml.includes("cron: '17 * * * *'"),true);
+ assert.equal(yaml.includes("*/5 * * * *"),false);
 });
