@@ -1,6 +1,8 @@
 import test from 'node:test';
+import {courtSchedulerSelection,timetableCourtPriceCents} from '../lib/court-scheduler-ui.js';
+import {padelCourtTimeGrid,COURT_GRID_HOUR_HEIGHT} from '../lib/court-timetable.js';
 import assert from 'node:assert/strict';
-import {courtPriceCents,pickleballPricePerPersonCents,bookingMinutes,bookingEndTime,bookingCrossesMidnight,parseCourtBooking,sortCourtBookingsByTime} from '../lib/court-bookings.js';
+import {courtPriceCents,COURT_DURATION_OPTIONS,pickleballPricePerPersonCents,bookingMinutes,bookingEndTime,bookingCrossesMidnight,parseCourtBooking,sortCourtBookingsByTime} from '../lib/court-bookings.js';
 test('Padel tariffs: 1h $25, 1.5h $32, 2h $40',()=>{
  assert.equal(courtPriceCents('padel_courts','18:00','19:00'),2500);
  assert.equal(courtPriceCents('padel_courts','18:00','19:30'),3200);
@@ -105,4 +107,27 @@ test('Court sorting is stable for same time/court and gracefully handles legacy 
  assert.deepEqual(sortCourtBookingsByTime([
   {id:'b',booking_start_time:'18:00:00'},{id:'a',booking_start_time:'17:00:00'}
  ]).map(x=>x.id),['a','b']);
+});
+
+test('full-day 960-minute duration is available, selectable, and rendered through 01:00 next day',()=>{
+ assert(COURT_DURATION_OPTIONS.includes(960));
+ assert(COURT_DURATION_OPTIONS.includes(750));
+ const dragged=courtSchedulerSelection(9*60,24*60+30,true);
+ assert.equal(dragged.durationMinutes,960);
+ assert.equal(dragged.startMinute,540);
+ assert.equal(dragged.endMinute,1500);
+ const grid=padelCourtTimeGrid([{
+  id:'full-day',category:'padel_courts',court_number:'C1',
+  booking_start_time:'09:00',booking_end_time:'01:00',
+  name:'Maintenance',booking_type:'block',duration_minutes:960,
+  status:'confirmed'
+ }],'padel');
+ const reservation=grid.columns[0].bookings[0];
+ assert.equal(reservation.startMinute,540);
+ assert.equal(reservation.endMinute,1500);
+ assert.equal(reservation.heightPx,16*COURT_GRID_HOUR_HEIGHT);
+ assert.equal(reservation.clipped,false);
+ assert.deepEqual(grid.conflicts,[]);
+ assert.equal(timetableCourtPriceCents('padel','09:00',960),null,'long bookings require a manual price');
+ assert.equal(timetableCourtPriceCents('padel','10:00',960),null,'bookings cannot extend after 01:00');
 });
