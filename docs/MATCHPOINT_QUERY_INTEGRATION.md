@@ -58,27 +58,40 @@ Unknown courts are logged and **not guessed**.
 - Source statuses are synchronized only when explicitly present. Missing
   records are not presumed canceled.
 
-## Frequency and limits
+## Frequency and strict API-request limit
 
-The GitHub Actions job is scheduled **once per hour** at minute 17 UTC,
-for **24 scheduled synchronization passes per day**. Every pass checks
-`/bookings`, `/matches` and `/activities` so all three update hourly.
-The worker skips an extra/manual pass if the last completed run was less
-than 60 minutes ago.
+**Hard maximum: 24 actual MatchPoint HTTP requests per Beirut calendar day.**
+An API *request* is a call to MatchPoint, not a sync run or a Supabase call.
 
-**Important quota distinction:** a pass is not one HTTP request. Each pass
-makes at least **3 MatchPoint API requests**, one for each endpoint, or
-approximately **72 requests/day** plus pagination or retries. If the MatchPoint
-token has a strict limit of only **24 HTTP API requests per day**, do **not**
-enable this three-feed hourly configuration; the integration would need a
-different endpoint rotation or a larger API quota.
+Eight sync passes occur at **09:17, 11:17, 13:17, 15:17, 17:17, 19:17,
+21:17 and 23:17 Asia/Beirut**. Each pass makes **one request each** to
+`/bookings`, `/matches`, and `/activities`: 8 x 3 = 24.
 
-The regular feed covers the next seven days. Every six UTC hours,
-a wider scan covers up to 90 days ahead. All scans paginate via `hasMore` and
-offset, including cancellations; if pagination or retries exhaust the quota,
-request a higher token limit. Check action logs for unmapped courts, source
-errors, duplicates and conflicts. An
-administrator can manually trigger a sync via Actions → MatchPoint booking sync.
+GitHub Actions runs a UTC hour-range cron (`17 6-21 * * *`), while the
+worker enforces the valid local two-hour slots. This covers Lebanon's
+winter (UTC+2) and summer (UTC+3) time, without duplicating calls.
+Cron execution is best-effort: delayed runs outside a valid slot are
+skipped, not retried into an extra slot.
+
+Every MatchPoint HTTP call must first claim an entry in the Supabase
+`matchpoint_query_request_claims` table using the server-role-only RPC
+`matchpoint_claim_query_request`. Its primary key allows one request per
+feed per time slot and its transactionally checked daily count is capped at
+24. Requests are counted **before** they are attempted, including failed
+connections and requests rejected by MatchPoint. Manual runs, retries,
+failed jobs, and overlapping GitHub workers cannot exceed the cap.
+
+To avoid unbudgeted pagination, each endpoint requests only its first
+(up to 1,000 records) page. If `hasMore=true`, it **fails closed** with an
+error instead of silently importing an incomplete result or issuing an
+additional HTTP request. In that case shorten the date window or request
+a larger MatchPoint quota; imported financial rows are never overwritten.
+The regular feed covers seven days ahead, and 09:17, 15:17 and 21:17
+perform a 90-day forward scan.
+
+The source API's own quota reset time zone may differ from Beirut. If the
+provider enforces a rolling 24-hour cap or resets in another time zone,
+confirm that reset policy with MatchPoint before running at the ceiling.
 
 ## Installation and rollback
 
