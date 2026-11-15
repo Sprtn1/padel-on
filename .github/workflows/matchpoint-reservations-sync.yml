@@ -1,12 +1,13 @@
 name: MatchPoint booking sync
 
-# One scheduled run per hour (24/day). A 60-minute cooldown in the worker
-# prevents manual runs from polling MatchPoint again too soon.
+# Check UTC hours 06–21 to cover 09,11,...,23 in Asia/Beirut across DST.
+# Only 8 of these trigger real MatchPoint calls; the worker/DB enforce the slots.
+# Three feed requests x eight slots = at most 24 MatchPoint HTTP requests/day.
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 * * * *'
+    - cron: '17 6-21 * * *'
 
 permissions:
   contents: read

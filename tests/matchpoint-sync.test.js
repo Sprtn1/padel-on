@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {loadCourtMap,normalizeMatchPointRecord,pickNonDuplicate} from '../lib/matchpoint-normalize.js';
-import {runMatchPointSync} from '../scripts/matchpoint-sync.mjs';
+import {runMatchPointSync,matchpointLebanonSlot} from '../scripts/matchpoint-sync.mjs';
 
 const mapping=loadCourtMap({'MAIN|Court 1':{sport:'padel',court:'C1'},'MAIN|Pickle 1':{sport:'pickleball',court:'P1'},'MAIN|Basketball':{sport:'basketball',court:'B1'}});
 const booking=(id,date='2026-11-16',start='18:00',end='19:30')=>({
@@ -47,6 +47,7 @@ test('worker inserts one amount-free record even if another feed repeats the cou
   }
   const name=u.pathname.split('/').pop();
   if(name==='matchpoint_sync_status')return response(options.method==='PATCH'?[{id:1}]:[{id:1}]);
+  if(name==='matchpoint_claim_query_request')return response(true);
   if(name==='court_payment_splits')return response([]);
   if(name==='padel_court_reservations'){
    if(options.method==='POST'){
@@ -86,9 +87,76 @@ test('hourly cooldown avoids a second API pass within 60 minutes',async()=>{
  assert.equal(result.reason,'hourly_cooldown');
  assert.equal(matchpointRequests,0);
 });
-test('MatchPoint scheduled workflow uses one hourly cron with a manual cooldown',async()=>{
+test('MatchPoint scheduled workflow covers Lebanon DST hours but only allows eight local slots',async()=>{
  const {readFile}=await import('node:fs/promises');
  const yaml=await readFile(new URL('../.github/workflows/matchpoint-reservations-sync.yml',import.meta.url),'utf8');
- assert.equal(yaml.includes("cron: '17 * * * *'"),true);
+ assert.equal(yaml.includes("cron: '17 6-21 * * *'"),true);
  assert.equal(yaml.includes("*/5 * * * *"),false);
+});
+
+test('eight Lebanese odd-hour windows accept winter and summer clocks and exclude midnight',()=>{
+ for(const offset of ['+02:00','+03:00']){
+  for(const hour of [9,11,13,15,17,19,21,23]){
+   const dt=new Date('2026-'+(offset==='+02:00'?'11-15':'06-15')+'T'+String(hour).padStart(2,'0')+':17:00'+offset);
+   assert.equal(matchpointLebanonSlot(dt)?.hour,hour,'valid local slot '+hour);
+  }
+ }
+ for(const local of ['08:17','10:17','12:17','22:17','23:55','00:17']){
+  assert.equal(matchpointLebanonSlot(new Date('2026-11-15T'+local+':00+02:00')),null,local);
+ }
+});
+test('off-hours and manually retriggered sync produce zero MatchPoint HTTP requests',async()=>{
+ const now=new Date('2026-11-15T20:17:00+02:00');
+ let calls=0;
+ const env={
+  MATCHPOINT_HOST:'https://matchpoint.example.com',MATCHPOINT_API_TOKEN:'test',
+  MATCHPOINT_COURT_MAP_JSON:JSON.stringify({'MAIN|Court 1':{sport:'padel',court:'C1'}}),
+  SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'private-key'
+ };
+ const result=await runMatchPointSync({env,now,fetcher:async()=>{calls++;throw Error('should not fetch')},logger:{log:()=>{}}});
+ assert.equal(result.skipped,true);
+ assert.equal(result.reason,'outside_venue_hours');
+ assert.equal(calls,0);
+});
+test('rejected database claim forbids API requests without any network request to MatchPoint',async()=>{
+ let requests=0,claims=0;
+ const env={
+  MATCHPOINT_HOST:'https://matchpoint.example.com',MATCHPOINT_API_TOKEN:'test',
+  MATCHPOINT_COURT_MAP_JSON:JSON.stringify({'MAIN|Court 1':{sport:'padel',court:'C1'}}),
+  SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'private-key'
+ };
+ const mock=body=>({ok:true,status:200,text:async()=>JSON.stringify(body),json:async()=>body});
+ const fetcher=async (url)=>{
+  const u=new URL(url);
+  if(u.pathname.startsWith('/api/query/'))requests++;
+  if(u.pathname.endsWith('/matchpoint_claim_query_request')){claims++;return mock(false);}
+  if(u.pathname.endsWith('/matchpoint_sync_status'))return mock([{id:1,last_run_at:null}]);
+  throw Error('Unexpected endpoint '+u.pathname);
+ };
+ await assert.rejects(()=>runMatchPointSync({
+  env,now:new Date('2026-11-15T09:17:00+02:00'),fetcher,logger:{log:()=>{}}
+ }),/daily quota or local time-slot already used/);
+ assert.equal(claims,1);
+ assert.equal(requests,0);
+});
+test('pagination fails closed instead of issuing a 25th API HTTP request',async()=>{
+ let requests=0,claims=0;
+ const env={
+  MATCHPOINT_HOST:'https://matchpoint.example.com',MATCHPOINT_API_TOKEN:'test',
+  MATCHPOINT_COURT_MAP_JSON:JSON.stringify({'MAIN|Court 1':{sport:'padel',court:'C1'}}),
+  SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'private-key'
+ };
+ const mock=body=>({ok:true,status:200,text:async()=>JSON.stringify(body),json:async()=>body});
+ const fetcher=async(url)=>{
+  const u=new URL(url);
+  if(u.pathname.startsWith('/api/query/')){requests++;return mock({ok:true,data:[booking(1)],hasMore:true});}
+  if(u.pathname.endsWith('/matchpoint_claim_query_request')){claims++;return mock(true);}
+  if(u.pathname.endsWith('/matchpoint_sync_status'))return mock([{id:1,last_run_at:null}]);
+  throw Error('Unexpected endpoint '+u.pathname);
+ };
+ await assert.rejects(()=>runMatchPointSync({
+  env,now:new Date('2026-11-15T09:17:00+02:00'),fetcher,logger:{log:()=>{}}
+ }),/has more than 1,000 records/);
+ assert.equal(claims,1);
+ assert.equal(requests,1);
 });
