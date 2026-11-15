@@ -7,6 +7,16 @@ function addDays(day,count){
  const date=new Date(day+'T12:00:00Z'); date.setUTCDate(date.getUTCDate()+count);
  return date.toISOString().slice(0,10);
 }
+export function matchpointLebanonSlot(now=new Date()){
+ const parts=new Intl.DateTimeFormat('en-GB',{
+  timeZone:'Asia/Beirut',hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+ }).formatToParts(now);
+ const hour=Number(parts.find(p=>p.type==='hour')?.value);
+ const minute=Number(parts.find(p=>p.type==='minute')?.value);
+ // Eight allowed local slots: 09,11,13,15,17,19,21,23.
+ if(![9,11,13,15,17,19,21,23].includes(hour)||minute>=45)return null;
+ return {day:beirutToday(now),hour};
+}
 const keyOf=item=>[item.external_kind,item.external_id].join(':');
 const errorText=x=>typeof x==='string'?x:JSON.stringify(x);
 export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new Date(),logger=console}={}){
@@ -17,10 +27,14 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  if(host.protocol!=='https:')throw Error('MatchPoint host must use HTTPS');
  const supabase=new URL(env.SUPABASE_URL);
  if(supabase.protocol!=='https:'||!supabase.hostname.endsWith('.supabase.co'))throw Error('Invalid Supabase project URL');
- const from=beirutToday(now);
- // Scheduled once per hour; use a 90-day forward scan at 00:17, 06:17,
- // 12:17 and 18:17 UTC (or the nearest delayed GitHub Actions run).
- const isExtended=now.getUTCHours()%6===0;
+ const slot=matchpointLebanonSlot(now);
+ if(!slot){
+  logger.log('MatchPoint sync skipped: outside the 09:00–23:44 Beirut allowed slots.');
+  return {skipped:true,reason:'outside_venue_hours'};
+ }
+ const from=slot.day;
+ // Wider scan every six hours locally, at 09:17, 15:17 and 21:17.
+ const isExtended=[9,15,21].includes(slot.hour);
  const to=addDays(from,isExtended?89:Number(env.MATCHPOINT_LOOKAHEAD_DAYS||7));
  const backend=supabase.origin+'/rest/v1';
  const serviceHeaders={apikey:env.SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':'application/json'};
@@ -49,22 +63,24 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
   throw Error('Supabase pagination limit exceeded');
  };
  const query=async(kind)=>{
-  const result=[];let offset=0;
-  for(let page=0;page<50;page++){
-   const url=new URL('/api/query/'+kind,host);
-   url.searchParams.set('dateFrom',from);url.searchParams.set('dateTo',to);
-   url.searchParams.set('canceled','yes');url.searchParams.set('offset',String(offset));url.searchParams.set('limit','1000');
-   if(kind==='bookings'&&env.MATCHPOINT_CENTER_CODE)url.searchParams.set('center',env.MATCHPOINT_CENTER_CODE);
-   const response=await fetcher(url.toString(),{headers:{'X-Api-Token':env.MATCHPOINT_API_TOKEN,Accept:'application/json'}});
-   if(!response.ok)throw Error('MatchPoint '+kind+' HTTP '+response.status);
-   const pageData=await response.json();
-   if(pageData?.ok!==true||!Array.isArray(pageData.data))throw Error('Invalid MatchPoint '+kind+' response');
-   result.push(...pageData.data);
-   if(!pageData.hasMore)return result;
-   if(!pageData.data.length)throw Error('MatchPoint pagination stalled');
-   offset+=pageData.data.length;
-  }
-  throw Error('MatchPoint pagination limit exceeded');
+  // Reserve this one HTTP request atomically in Supabase *before* touching MatchPoint.
+  // A failed request still consumes the quota; retries/manual actions cannot bypass it.
+  const claimed=await api('POST','rpc/matchpoint_claim_query_request',{}, {p_feed:kind});
+  if(claimed!==true)throw Error('MatchPoint '+kind+' skipped: daily quota or local time-slot already used.');
+  const url=new URL('/api/query/'+kind,host);
+  url.searchParams.set('dateFrom',from);url.searchParams.set('dateTo',to);
+  url.searchParams.set('canceled','yes');url.searchParams.set('offset','0');url.searchParams.set('limit','1000');
+  if(kind==='bookings'&&env.MATCHPOINT_CENTER_CODE)url.searchParams.set('center',env.MATCHPOINT_CENTER_CODE);
+  const response=await fetcher(url.toString(),{
+   headers:{'X-Api-Token':env.MATCHPOINT_API_TOKEN,Accept:'application/json'},
+   redirect:'error'
+  });
+  if(!response.ok)throw Error('MatchPoint '+kind+' HTTP '+response.status);
+  const pageData=await response.json();
+  if(pageData?.ok!==true||!Array.isArray(pageData.data))throw Error('Invalid MatchPoint '+kind+' response');
+  // A second page would cost a 25th request. Never silently import partial data.
+  if(pageData.hasMore)throw Error('MatchPoint '+kind+' has more than 1,000 records in this date range. Import stopped to respect the strict 24-request cap. Reduce the window or request a larger API allowance.');
+  return pageData.data;
  };
  const state=await api('GET','matchpoint_sync_status',{id:'eq.1',select:'*'});
  const last=state?.[0]||{};
@@ -76,8 +92,9 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
   logger.log('MatchPoint sync skipped: previous completed pass was less than one hour ago.');
   return {skipped:true,reason:'hourly_cooldown',last_run_at:last.last_run_at};
  }
- // Each hourly pass includes all three requested sources. One source call
- // is a separate MatchPoint HTTP API request (minimum 72 requests/day).
+ // Eight two-hourly passes x three feeds = at most 24 HTTP requests/day.
+ // The database claim RPC enforces the hard ceiling even after manual runs,
+ // failed requests, overlapping jobs, or webhook retries.
  const kinds=['bookings','matches','activities'];
  const fetched={},items=[],warnings=[];
  for(const kind of kinds){
