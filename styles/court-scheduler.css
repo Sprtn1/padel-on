@@ -121,3 +121,11 @@ body:has(.cafe-scheduler-overlay){overflow:hidden}
 @media(prefers-reduced-motion:reduce){
  .cafe-scheduler .cafe-timeboard-booking{transition:none}
 }
+
+/* Finance court-entry shortcuts share the timetable's validated booking workflow. */
+.cafe-court-special-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}
+.cafe-court-special-actions p{flex-basis:100%;margin:0;font-size:.85rem;opacity:.85}
+.cafe-matchpoint-only{padding:12px 0}
+.cafe-matchpoint-only>p{margin:0 0 10px;line-height:1.5;font-size:.9rem}
+.cafe-matchpoint-only .cafe-court-special-actions{margin-bottom:0}
+@media(max-width:600px){.cafe-court-special-actions .btn{flex:1 1 145px;min-height:40px;white-space:normal}}
