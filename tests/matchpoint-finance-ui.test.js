@@ -13,6 +13,7 @@ function setup({matchpointActive=true}={}){
  const calls=[];
  const api={
   getSession:()=>({access_token:'token'}),
+  rpc:async(name,args)=>{calls.push({rpc:name,args});throw Error('Unexpected write to '+name)},
   listAll:async(table)=>{
    calls.push(table);
    if(table==='padel_court_reservations')return [imported];
@@ -113,7 +114,7 @@ test('submit fallback routes private training into its client-linked editor with
  assert.match(html,/name="private_client_id"/);
  assert.match(html,/name="private_session_fee"/);
  assert.match(html,/name="booking_type"/);
- assert.equal(calls.includes('cafeteria_finance_entries'),true);
+ assert.equal(calls.filter(item=>typeof item==='object'&&item.rpc).length,0,'No financial RPC should run when selecting training');
 });
 test('submit fallback routes maintenance into a blocked court editor, not a cashbook entry',async()=>{
  const {finance}=setup({matchpointActive:false});
