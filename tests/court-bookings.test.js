@@ -35,13 +35,17 @@ test('Unsupported pickleball durations remain manually priced',()=>{
  assert.equal(courtPriceCents('pickleball_courts','18:00','19:00',3),null);
  assert.equal(courtPriceCents('padel_courts','18:00','18:45'),null);
 });
-test('Overnight bookings use the next-day boundary and remain limited to 12 hours',()=>{
+test('Overnight bookings use the next-day boundary and allow up to 16 hours',()=>{
  assert.equal(bookingMinutes('22:00','23:00'),60);
  assert.equal(bookingMinutes('22:30','00:00'),90);
  assert.equal(bookingEndTime('22:30',90),'00:00');
  assert.equal(bookingCrossesMidnight('22:30','00:00'),true);
  assert.equal(courtPriceCents('padel_courts','22:30','00:00'),3200);
- assert.throws(()=>bookingMinutes('12:00','11:59'),/12 hours/);
+ assert.equal(bookingMinutes('09:00','01:00'),960);
+ assert.equal(bookingEndTime('09:00',960),'01:00');
+ assert.throws(()=>bookingMinutes('09:00','01:01'),/16 hours/);
+ assert.throws(()=>bookingEndTime('09:00',975),/16 hours/);
+ assert.throws(()=>bookingMinutes('12:00','11:59'),/16 hours/);
 });
 test('Reject invalid courts and incomplete booking data',()=>{
  for(const sample of [
@@ -56,6 +60,12 @@ test('Duration-based forms calculate and store their end clock time',()=>{
   court_number:'C1',booking_start_time:'22:30',booking_end_time:'00:00'
  });
  assert.throws(()=>parseCourtBooking('padel_courts',{court_number:'C1',booking_start_time:'22:30',booking_duration_minutes:'91'}),/15-minute/);
+ assert.deepEqual(parseCourtBooking('padel_courts',{court_number:'C1',booking_start_time:'09:00',booking_duration_minutes:'960'}),{
+  court_number:'C1',booking_start_time:'09:00',booking_end_time:'01:00'
+ });
+ assert.deepEqual(parseCourtBooking('basketball_courts',{booking_start_time:'09:00',booking_duration_minutes:'960'}),{
+  court_number:null,booking_start_time:'09:00',booking_end_time:'01:00'
+ });
 });
 test('Basketball and pickleball use times without a court selection',()=>{
  for(const category of ['basketball_courts','pickleball_courts']){
