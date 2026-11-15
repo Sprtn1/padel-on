@@ -115,9 +115,10 @@ test('page shows saved cash, auto Goods Sold and six basketball player-paid tick
  assert.match(html,/\$55\.00/);
  assert.match(html,/\$5\.00/);
  assert.match(html,/Save closing cash/);
- assert.match(html,/Players paid \(6\)/);
- assert.match(html,/Players paid \(4\)/);
  assert.match(html,/aria-label="Player 6 paid"/);
+ assert.match(html,/aria-label="Player 4 paid"/);
+ assert.match(html,/New Basketball Court Reservation/);
+ assert.match(html,/New Padel Court Reservation/);
  assert.doesNotMatch(html,/data-action="cafe-void"/);
 });
 
@@ -1016,7 +1017,7 @@ test('Whish card shows only the useful balance and transaction controls',async()
  assert.match(html,/players who paid/);
 });
 
-test('Court booking form has a notes box and validates notes separately from amounts',async()=>{
+test('Court notes validation remains available for legacy rows while new court forms are retired',async()=>{
  assert.equal(cafeCourtNotes('   Water x2\\nIced tea x1   '),'Water x2\\nIced tea x1');
  assert.throws(()=>cafeCourtNotes('x'.repeat(1001)),/1000/);
  const booking=cafeEntryFromForm('padel_courts',{
@@ -1035,53 +1036,42 @@ test('Court booking form has a notes box and validates notes separately from amo
  });
  await widget.load();
  const page=widget.page();
- assert.equal((page.match(/name="court_notes" maxlength="1000"/g)||[]).length,3);
- assert.equal((page.match(/name="court_number"/g)||[]).length,1,'Only padel asks for C1/C2/C3');
- assert.equal((page.match(/name="booking_start_time"/g)||[]).length,3,'All booking types keep time selection');
- assert.equal((page.match(/name="booking_duration_minutes"/g)||[]).length,3,'All booking types use a simple duration picker');
- assert.doesNotMatch(page,/name="booking_end_time"/);
- assert.match(page,/Cafeteria items, drinks, or booking details/);
+ assert.equal((page.match(/name="court_notes" maxlength="1000"/g)||[]).length,0);
+ assert.equal((page.match(/name="booking_start_time"/g)||[]).length,0);
+ assert.equal((page.match(/name="booking_duration_minutes"/g)||[]).length,0);
+ assert.equal((page.match(/data-action="cafe-court-new-reservation"/g)||[]).length,3);
+ assert.match(page,/New Padel Court Reservation/);
+ assert.match(page,/New Pickleball Court Reservation/);
+ assert.match(page,/New Basketball Court Reservation/);
 });
 
-test('Saving a court booking includes notes in the same entry RPC; noncourt RPC remains unchanged',async()=>{
- const day='2026-10-23',calls=[],rows=[];
+test('Stale court forms cannot record income while noncourt entries still save',async()=>{
+ const day='2026-10-23',calls=[];
  const api={
   getSession:()=>({access_token:'token'}),
-  listAll:async table=>table==='cafeteria_finance_entries'?rows.map(x=>({...x})):[],
-  rpc:async(name,args)=>{
-   calls.push({name,args});
-   if(name==='cafeteria_finance_record_entry'||name==='cafeteria_finance_record_court_booking')rows.push({
-    id:args.p_entry_id,entry_date:args.p_entry_date,category:args.p_category,
-    name:args.p_name,amount_cents:args.p_amount_cents,
-    checkmarks:args.p_checkmarks,court_notes:args.p_court_notes||'',
-    court_number:args.p_court||null,booking_start_time:args.p_start||null,booking_end_time:args.p_end||null
-   });
-  }
+  listAll:async()=>[],
+  rpc:async(name,args)=>{calls.push({name,args});}
  };
  const widget=createCafeteriaFinances({
   api,heading:()=>'',icon:()=>'',amount:n=>'$'+(n/100).toFixed(2),
   today:()=>day,addDays:()=>day,rerender:()=>{},toast:()=>{},isAdmin:()=>false
  });
  await widget.load();
+ await assert.rejects(
+  ()=>widget.submit({dataset:{cafeSave:'entry',category:'padel_courts'}}),
+  /Use the New Court Reservation button/
+ );
  const oldFormData=globalThis.FormData;
  try{
   globalThis.FormData=class{constructor(form){this._values=form.__values;}entries(){return this._values[Symbol.iterator]();}};
-  await widget.submit({dataset:{cafeSave:'entry',category:'padel_courts'},querySelector:()=>null,
-   __values:[['name','Fajr'],['court_number','C1'],['booking_start_time','22:30'],['booking_duration_minutes','90'],
-    ['amount','16.00'],['check0','on'],['court_notes','Nescafe x2 / Water x1']]});
-  await widget.submit({dataset:{cafeSave:'entry',category:'shoes'},querySelector:()=>null,
-   __values:[['name','Court shoes'],['amount','30.00']]});
+  await widget.submit({dataset:{cafeSave:'entry',category:'shoes'},
+   querySelector:()=>null,__values:[['name','Court shoes'],['amount','30.00']]});
  }finally{globalThis.FormData=oldFormData;}
- assert.equal(calls.length,2);
- assert.equal(calls[0].name,'cafeteria_finance_record_court_booking');
- assert.equal(calls[0].args.p_court_notes,'Nescafe x2 / Water x1');
- assert.equal(calls[0].args.p_start,'22:30');
- assert.equal(calls[0].args.p_end,'00:00');
- assert.equal(calls[1].args.p_court_notes,undefined);
- assert.equal(rows[0].amount_cents,1600);
- assert.match(widget.page(),/Nescafe x2 \/ Water x1/);
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].name,'cafeteria_finance_record_entry');
+ assert.equal(calls[0].args.p_category,'shoes');
+ assert.equal(calls[0].args.p_amount_cents,3000);
 });
-
 test('Court notes are shown safely and can be edited independently of prices and paid-player flags',async()=>{
  const day='2026-10-23',calls=[],messages=[];
  const row={id:'court-1',entry_date:day,category:'padel_courts',name:'Fajr',
@@ -1196,7 +1186,7 @@ test('Older court bookings created before notes existed can save their first not
  assert.match(widget.page(),/Water x2, Nescafe x1/);
 });
 
-test('Court notes stay minimized for new entries and saved bookings until opened',async()=>{
+test('Legacy saved court notes remain collapsed after the old booking forms are removed',async()=>{
  const day='2026-10-23';
  const saved=[
   {id:'padel-one',category:'padel_courts',entry_date:day,name:'Padel booking',
@@ -1212,9 +1202,8 @@ test('Court notes stay minimized for new entries and saved bookings until opened
  });
  await widget.load();
  let html=widget.page();
- assert.equal((html.match(/<details class="cafe-court-note-collapsible">/g)||[]).length,3,
-  'Each court booking form begins with minimized notes');
- assert.equal((html.match(/<summary>Notes \(optional\)<\/summary>/g)||[]).length,3);
+ assert.equal((html.match(/<details class="cafe-court-note-collapsible">/g)||[]).length,0);
+ assert.equal((html.match(/data-action="cafe-court-new-reservation"/g)||[]).length,3);
  const openingAttributes=id=>{
   return widget.page().match(new RegExp('<details class="cafe-booking-notes" data-cafe-note="'+id+'"([^>]*)>'))?.[1];
  };
