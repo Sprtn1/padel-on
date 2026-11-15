@@ -74,8 +74,8 @@ test('court finance form uses a reservation-type dropdown while keeping the regu
  assert.match(html,/name="booking_start_time"/);
  assert.match(html,/name="amount"/);
  assert.equal((html.match(/data-cafe-court-booking-type/g)||[]).length,3);
- const pickle=html.match(/<select data-cafe-court-booking-type data-sport="pickleball"[^>]*>[\\s\\S]*?<\\/select>/)?.[0];
- const basketball=html.match(/<select data-cafe-court-booking-type data-sport="basketball"[^>]*>[\\s\\S]*?<\\/select>/)?.[0];
+ const pickle=html.split('data-sport="pickleball"')[1]?.split('</select>')[0];
+ const basketball=html.split('data-sport="basketball"')[1]?.split('</select>')[0];
  assert.ok(pickle);assert.ok(basketball);
  assert.doesNotMatch(pickle,/private_training/);
  assert.doesNotMatch(basketball,/private_training/);
