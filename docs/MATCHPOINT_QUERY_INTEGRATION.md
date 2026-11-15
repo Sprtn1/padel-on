@@ -48,7 +48,10 @@ Unknown courts are logged and **not guessed**.
   not as a second court cashbook entry. This preserves daily reconciliation,
   receipts, Whish categories and PDF totals.
 - Existing private-client training and maintenance blocks remain local
-  operations available from Cafeteria Finances and Timetable.
+  operations available from Cafeteria Finances and Timetable. Because the
+  MatchPoint Query API is read-only, staff must create the corresponding
+  block/reservation in MatchPoint too; Padel On cannot prevent new bookings
+  there. The UI warns about this important limitation.
 - Imported MatchPoint booking details cannot be edited by staff in Padel On.
   Paid cancellations are flagged for manual finance review without automatic
   refunds; conflicts with locally occupied courts are logged, never overwritten.
