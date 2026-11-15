@@ -66,7 +66,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  const last=state?.[0]||{};
  const needSlow=kind=>{
   const stamp=last['last_'+kind+'_at'];
-  return !stamp || now.getTime()-Date.parse(stamp)>=30*60_000;
+  return !stamp || !Number.isFinite(Date.parse(stamp)) || now.getTime()-Date.parse(stamp)>=30*60_000;
  };
  // Default 500 calls/day: 288 booking polls + ~48 each for matches and activities.
  // Additional pagination/backfills use the remaining allowance; an increased token quota
@@ -84,7 +84,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
   }
  }
  const unique=pickNonDuplicate(items),seenIds=new Set(unique.map(keyOf));
- const existing=await readAll('padel_court_reservations',{business_date:'gte.'+previousDate(from),and:'(business_date.lte.'+to+')'});
+ const existing=await readAll('padel_court_reservations',{and:'(business_date.gte.'+previousDate(from)+',business_date.lte.'+to+')'});
  const splitRows=await readAll('court_payment_splits',{source_kind:'eq.reservation',voided_at:'is.null'});
  const withMoney=new Set(splitRows.map(x=>x.source_id));
  const byId=new Map(existing.filter(x=>x.external_source==='matchpoint').map(x=>[keyOf(x),x]));
@@ -104,7 +104,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
    }
    const changes={};
    for(const [field,value] of Object.entries(delta)){
-    if(field==='notes')continue;
+    if(field==='notes'||field==='external_seen_at')continue;
     if(value!==old[field])changes[field]=value;
    }
    if(!Object.keys(changes).length)continue;
@@ -117,6 +117,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
     }
    }
    try{
+    changes.external_seen_at=now.toISOString();
     changes.updated_at=now.toISOString();changes.revision=Number(old.revision||1)+1;
     await api('PATCH','padel_court_reservations',{id:'eq.'+old.id},changes);
     updated++;if(item.status==='cancelled'&&!paid)cancelled++;
