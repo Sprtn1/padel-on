@@ -70,8 +70,8 @@ test('Pickleball court action launches the timetable booking editor with 2-playe
  const html=widget.page();
  assert.match(html,/data-cafe-save="schedule-reservation"/);
  assert.match(html,/name="pickleball_player_count"/);
- assert.match(html,/2 players \\(singles\\)/);
- assert.match(html,/4 players \\(doubles\\)/);
+ assert.match(html,/2 players \(singles\)/);
+ assert.match(html,/4 players \(doubles\)/);
  assert.match(html,/name="total_amount"/);
 });
 test('Legacy Pickleball amount editor still previews 2/4-player tariffs and preserves editable amount',()=>{
