@@ -9,14 +9,14 @@ const imported={
  external_source:'matchpoint',external_kind:'bookings',external_id:'5432',
  checkmarks:[false,false,false,false,false,false],notes:''
 };
-function setup(){
+function setup({matchpointActive=true}={}){
  const calls=[];
  const api={
   getSession:()=>({access_token:'token'}),
   listAll:async(table)=>{
    calls.push(table);
    if(table==='padel_court_reservations')return [imported];
-   if(table==='matchpoint_sync_status')return [{id:1,last_bookings_at:'2026-11-16T08:00:00Z'}];
+   if(table==='matchpoint_sync_status')return matchpointActive?[{id:1,last_bookings_at:'2026-11-16T08:00:00Z'}]:[];
    if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
    return [];
   }
@@ -35,6 +35,9 @@ test('imported MatchPoint name is shown without cash, Whish, or amount until rec
  assert.match(html,/data-source-kind="reservation" data-id="mp-uuid"/);
  assert.match(html,/MatchPoint is the primary booking system/);
  assert.match(html,/cafe-matchpoint-only/);
+ assert.match(html,/data-cafe-court-booking-type data-sport="padel"/);
+ assert.match(html,/value="reservation" disabled>Reservation · Managed in MatchPoint/);
+ assert.equal((html.match(/data-cafe-court-booking-type/g)||[]).length,3);
  assert.match(html,/Block Court \/ Maintenance/);
  assert.match(html,/Private Client Training/);
  assert.doesNotMatch(html,/data-action="cafe-void-reservation" data-id="mp-uuid"/);
@@ -42,7 +45,7 @@ test('imported MatchPoint name is shown without cash, Whish, or amount until rec
 });
 test('maintenance from Cafeteria Finances reuses timetable editor and never demands a court payment',async()=>{
  const {finance}=setup();await finance.load();
- await finance.action({dataset:{action:'cafe-court-special-create',type:'block',sport:'padel'}});
+ await finance.change({dataset:{cafeCourtBookingType:'',sport:'padel'},value:'block',isConnected:false});
  const html=finance.page();
  assert.match(html,/data-cafe-save="schedule-reservation"/);
  assert.match(html,/value="Maintenance"/);
@@ -52,10 +55,40 @@ test('maintenance from Cafeteria Finances reuses timetable editor and never dema
 });
 test('private training from Cafeteria Finances uses private client selection',async()=>{
  const {finance}=setup();await finance.load();
- await finance.action({dataset:{action:'cafe-court-special-create',type:'private_training',sport:'padel'}});
+ await finance.change({dataset:{cafeCourtBookingType:'',sport:'padel'},value:'private_training',isConnected:false});
  const html=finance.page();
  assert.match(html,/data-cafe-save="schedule-reservation"/);
  assert.match(html,/name="private_client_id"/);
  assert.match(html,/name="private_session_fee"/);
  assert.match(html,/Private Client Training/);
+});
+
+test('court finance form uses a reservation-type dropdown while keeping the regular reservation fields',async()=>{
+ const {finance}=setup({matchpointActive:false});await finance.load();
+ const html=finance.page();
+ assert.match(html,/data-cafe-court-booking-type data-sport="padel" name="booking_type"/);
+ assert.match(html,/value="reservation" selected>Reservation/);
+ assert.match(html,/value="block">Block Court \/ Maintenance/);
+ assert.match(html,/value="private_training">Private Client Training/);
+ assert.match(html,/data-cafe-save="entry" data-category="padel_courts"/);
+ assert.match(html,/name="booking_start_time"/);
+ assert.match(html,/name="amount"/);
+ assert.equal((html.match(/data-cafe-court-booking-type/g)||[]).length,3);
+ const pickle=html.split('data-sport="pickleball"')[1]?.split('</select>')[0];
+ const basketball=html.split('data-sport="basketball"')[1]?.split('</select>')[0];
+ assert.ok(pickle);assert.ok(basketball);
+ assert.doesNotMatch(pickle,/private_training/);
+ assert.doesNotMatch(basketball,/private_training/);
+});
+test('non-Padel training is rejected instead of creating an invalid booking',async()=>{
+ const {finance}=setup({matchpointActive:false});await finance.load();
+ await assert.rejects(
+  ()=>finance.change({dataset:{cafeCourtBookingType:'',sport:'pickleball'},value:'private_training'}),
+  /Private client training is available for Padel only/
+ );
+});
+test('normal reservation dropdown selection stays on the original finance form',async()=>{
+ const {finance}=setup({matchpointActive:false});await finance.load();
+ assert.equal(await finance.change({dataset:{cafeCourtBookingType:'',sport:'padel'},value:'reservation'}),true);
+ assert.doesNotMatch(finance.page(),/data-cafe-save="schedule-reservation"/);
 });
