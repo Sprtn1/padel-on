@@ -18,9 +18,9 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  const supabase=new URL(env.SUPABASE_URL);
  if(supabase.protocol!=='https:'||!supabase.hostname.endsWith('.supabase.co'))throw Error('Invalid Supabase project URL');
  const from=beirutToday(now);
- // Every six hours, pull up to 90 days ahead. The frequent five-minute feed stays small,
- // leaving headroom in MatchPoint's default 500 API calls/day allowance.
- const isExtended=Math.floor(now.getTime()/300000)%72===0;
+ // Scheduled once per hour; use a 90-day forward scan at 00:17, 06:17,
+ // 12:17 and 18:17 UTC (or the nearest delayed GitHub Actions run).
+ const isExtended=now.getUTCHours()%6===0;
  const to=addDays(from,isExtended?89:Number(env.MATCHPOINT_LOOKAHEAD_DAYS||7));
  const backend=supabase.origin+'/rest/v1';
  const serviceHeaders={apikey:env.SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':'application/json'};
@@ -68,14 +68,17 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  };
  const state=await api('GET','matchpoint_sync_status',{id:'eq.1',select:'*'});
  const last=state?.[0]||{};
- const needSlow=kind=>{
-  const stamp=last['last_'+kind+'_at'];
-  return !stamp || !Number.isFinite(Date.parse(stamp)) || now.getTime()-Date.parse(stamp)>=30*60_000;
- };
- // Default 500 calls/day: 288 booking polls + ~48 each for matches and activities.
- // Additional pagination/backfills use the remaining allowance; an increased token quota
- // is needed if all three endpoints must be polled every five minutes.
- const kinds=['bookings',...(isExtended||needSlow('matches')?['matches']:[]),...(isExtended||needSlow('activities')?['activities']:[])];
+ // An additional manual/early run should not create another API pass within an hour.
+ // This checks the last completed sync; failed runs still need manual investigation.
+ const previousRun=Date.parse(last.last_run_at||'');
+ const elapsed=now.getTime()-previousRun;
+ if(Number.isFinite(previousRun)&&elapsed>=0&&elapsed<60*60*1000){
+  logger.log('MatchPoint sync skipped: previous completed pass was less than one hour ago.');
+  return {skipped:true,reason:'hourly_cooldown',last_run_at:last.last_run_at};
+ }
+ // Each hourly pass includes all three requested sources. One source call
+ // is a separate MatchPoint HTTP API request (minimum 72 requests/day).
+ const kinds=['bookings','matches','activities'];
  const fetched={},items=[],warnings=[];
  for(const kind of kinds){
   fetched[kind]=await query(kind);

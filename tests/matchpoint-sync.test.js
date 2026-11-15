@@ -67,3 +67,28 @@ test('worker inserts one amount-free record even if another feed repeats the cou
  assert(requests.filter(r=>r.url.pathname.includes('/api/query/')).every(r=>r.options.headers['X-Api-Token']==='secret'));
  assert(requests.filter(r=>r.url.pathname.includes('/rest/v1/')).every(r=>r.options.headers['X-Api-Token']===undefined));
 });
+
+test('hourly cooldown avoids a second API pass within 60 minutes',async()=>{
+ const now=new Date('2026-11-15T17:30:00+02:00');
+ const env={
+  MATCHPOINT_HOST:'https://matchpoint.example.com',MATCHPOINT_API_TOKEN:'secret',
+  MATCHPOINT_COURT_MAP_JSON:JSON.stringify({'MAIN|Court 1':{sport:'padel',court:'C1'}}),
+  SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'private-key'
+ };
+ let matchpointRequests=0;
+ const response=body=>({ok:true,status:200,text:async()=>JSON.stringify(body),json:async()=>body});
+ const fetcher=async url=>{
+  if(new URL(url).pathname.includes('/api/query/'))matchpointRequests++;
+  return response([{id:1,last_run_at:new Date(now.getTime()-30*60*1000).toISOString()}]);
+ };
+ const result=await runMatchPointSync({env,fetcher,now,logger:{log:()=>{},warn:()=>{}}});
+ assert.equal(result.skipped,true);
+ assert.equal(result.reason,'hourly_cooldown');
+ assert.equal(matchpointRequests,0);
+});
+test('MatchPoint scheduled workflow uses one hourly cron with a manual cooldown',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const yaml=await readFile(new URL('../.github/workflows/matchpoint-reservations-sync.yml',import.meta.url),'utf8');
+ assert.equal(yaml.includes("cron: '17 * * * *'"),true);
+ assert.equal(yaml.includes("*/5 * * * *"),false);
+});
