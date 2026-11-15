@@ -13,6 +13,7 @@ function setup({matchpointActive=true}={}){
  const calls=[];
  const api={
   getSession:()=>({access_token:'token'}),
+  rpc:async(name,args)=>{calls.push({rpc:name,args});throw Error('Unexpected write to '+name)},
   listAll:async(table)=>{
    calls.push(table);
    if(table==='padel_court_reservations')return [imported];
@@ -91,4 +92,50 @@ test('normal reservation dropdown selection stays on the original finance form',
  const {finance}=setup({matchpointActive:false});await finance.load();
  assert.equal(await finance.change({dataset:{cafeCourtBookingType:'',sport:'padel'},value:'reservation'}),true);
  assert.doesNotMatch(finance.page(),/data-cafe-save="schedule-reservation"/);
+});
+
+test('app delegates finance booking type select changes instead of ignoring them',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+ const handler=app.slice(app.indexOf("document.addEventListener('change'"));
+ assert.match(handler,/e\.target\.dataset\?\.cafeCourtBookingType!==undefined/);
+ assert.match(handler,/cafeteriaFinances\.change\(e\.target\)/);
+});
+test('submit fallback routes private training into its client-linked editor without recording normal court income',async()=>{
+ const {finance,calls}=setup({matchpointActive:false});
+ await finance.load();
+ const entryForm={
+  dataset:{cafeSave:'entry',courtCategory:'padel_courts',category:'padel_courts'},
+  querySelector:selector=>selector==='[data-cafe-court-booking-type]'?{value:'private_training'}:null
+ };
+ await finance.submit(entryForm);
+ const html=finance.page();
+ assert.match(html,/data-cafe-save="schedule-reservation"/);
+ assert.match(html,/name="private_client_id"/);
+ assert.match(html,/name="private_session_fee"/);
+ assert.match(html,/name="booking_type"/);
+ assert.equal(calls.filter(item=>typeof item==='object'&&item.rpc).length,0,'No financial RPC should run when selecting training');
+});
+test('submit fallback routes maintenance into a blocked court editor, not a cashbook entry',async()=>{
+ const {finance}=setup({matchpointActive:false});
+ await finance.load();
+ const entryForm={
+  dataset:{cafeSave:'entry',courtCategory:'basketball_courts',category:'basketball_courts'},
+  querySelector:selector=>selector==='[data-cafe-court-booking-type]'?{value:'block'}:null
+ };
+ await finance.submit(entryForm);
+ const html=finance.page();
+ assert.match(html,/data-cafe-save="schedule-reservation"/);
+ assert.match(html,/value="Maintenance"/);
+ assert.match(html,/value="block" selected/);
+ assert.match(html,/name="court_number"/);
+});
+test('submit fallback never allows non-Padel training to be recorded',async()=>{
+ const {finance}=setup({matchpointActive:false});
+ await finance.load();
+ const entryForm={
+  dataset:{cafeSave:'entry',courtCategory:'pickleball_courts',category:'pickleball_courts'},
+  querySelector:selector=>selector==='[data-cafe-court-booking-type]'?{value:'private_training'}:null
+ };
+ await assert.rejects(()=>finance.submit(entryForm),/Private client training is available for Padel only/);
 });

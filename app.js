@@ -2039,7 +2039,7 @@ document.addEventListener('change',e=>{
   try{tournamentManagement.change(e.target)}catch(err){toast(err.message||'Unable to update tournament.',true)}
   return;
  }
- if((e.target.id==='cafe-finance-date'||e.target.id==='cafe-schedule-date'||e.target.id==='cafe-quick-category'||e.target.dataset?.cafeMarker||e.target.dataset?.cafeReservationMarker||e.target.dataset?.cafePrivateCash!==undefined)&&
+ if((e.target.id==='cafe-finance-date'||e.target.id==='cafe-schedule-date'||e.target.id==='cafe-quick-category'||e.target.dataset?.cafeMarker||e.target.dataset?.cafeReservationMarker||e.target.dataset?.cafePrivateCash!==undefined||e.target.dataset?.cafeCourtBookingType!==undefined)&&
  (state.tab==='cafeteria-finances'||(state.tab==='court-timetable'&&e.target.id==='cafe-schedule-date'))){
   void cafeteriaFinances.change(e.target).catch(err=>toast(err.message||'Could not update finances.',true));return;
  }
