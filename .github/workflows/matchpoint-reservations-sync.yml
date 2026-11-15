@@ -1,9 +1,12 @@
 name: MatchPoint booking sync
 
+# One scheduled run per hour (24/day). A 60-minute cooldown in the worker
+# prevents manual runs from polling MatchPoint again too soon.
+
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '17 * * * *'
 
 permissions:
   contents: read
