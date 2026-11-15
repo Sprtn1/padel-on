@@ -51,3 +51,21 @@ CREATE TRIGGER matchpoint_booking_ownership_guard
 BEFORE UPDATE ON public.padel_court_reservations
 FOR EACH ROW EXECUTE FUNCTION public.guard_matchpoint_booking_ownership();
 REVOKE ALL ON FUNCTION public.guard_matchpoint_booking_ownership() FROM PUBLIC,anon,authenticated;
+
+-- Dashboard-readable sync timestamps, never MatchPoint credentials.
+CREATE TABLE IF NOT EXISTS public.matchpoint_sync_status (
+  id integer PRIMARY KEY CHECK (id=1),
+  last_bookings_at timestamptz,
+  last_matches_at timestamptz,
+  last_activities_at timestamptz,
+  last_run_at timestamptz,
+  last_error text,
+  last_conflict_count integer NOT NULL DEFAULT 0
+);
+INSERT INTO public.matchpoint_sync_status(id) VALUES(1) ON CONFLICT(id) DO NOTHING;
+ALTER TABLE public.matchpoint_sync_status ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.matchpoint_sync_status FROM PUBLIC,anon;
+GRANT SELECT ON public.matchpoint_sync_status TO authenticated;
+DROP POLICY IF EXISTS matchpoint_status_staff_read ON public.matchpoint_sync_status;
+CREATE POLICY matchpoint_status_staff_read ON public.matchpoint_sync_status FOR SELECT TO authenticated
+  USING ((SELECT public.is_staff()));
