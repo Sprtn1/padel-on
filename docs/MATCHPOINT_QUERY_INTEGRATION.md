@@ -65,9 +65,11 @@ If all three feeds must refresh every five minutes, request an increased
 MatchPoint query-token quota (at least 864 calls/day plus headroom), then
 update the throttling after approval.
 
-Each source fetches an inclusive seven-day forward window and paginates via
-`hasMore`/offset, including canceled records. Check action logs for unknown
-court names, source errors, duplicate bookings and API throttling. An
+The regular feed covers the next seven days. Approximately every six hours,
+a wider scan covers up to 90 days ahead. All scans paginate via `hasMore` and
+offset, including cancellations; if pagination or retries exhaust the quota,
+request a higher token limit. Check action logs for unmapped courts, source
+errors, duplicates and conflicts. An
 administrator can manually trigger a sync via Actions → MatchPoint booking sync.
 
 ## Installation and rollback
