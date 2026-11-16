@@ -33,12 +33,12 @@ test('synced MatchPoint reservations still display without automatically inserti
  const {finance}=setup();await finance.load();
  const html=finance.page();
  assert.match(html,/MatchPoint Guest/);
- assert.match(html,/MatchPoint booking · court details managed in MatchPoint/);
+ assert.match(html,/Synced from MatchPoint/);
  assert.match(html,/Amount not recorded · no financial entry yet/);
  assert.match(html,/>Record Amount<\/button>/);
  assert.match(html,/data-source-kind="reservation" data-id="mp-uuid"/);
- assert.match(html,/MatchPoint is the primary booking system/);
- assert.doesNotMatch(html,/data-action="cafe-void-reservation" data-id="mp-uuid"/);
+ assert.match(html,/Bookings sync from MatchPoint automatically/);
+ assert.match(html,/data-action="cafe-void-reservation" data-id="mp-uuid"/);
  assert.equal(cafeCourtBookingTotal([], [imported], 'padel_courts','padel',[]),0);
 });
 test('each court card has exactly one create button and no finance-only reservation form',async()=>{
@@ -105,7 +105,7 @@ test('when MatchPoint is authoritative, modal opens as local block and disables 
  assert.match(html,/data-cafe-save="schedule-reservation"/);
  assert.match(html,/value="block" selected>Block Court · Unavailable/);
  assert.match(html,/value="reservation" disabled>Reservation · Managed in MatchPoint/);
- assert.match(html,/local-only court block or training entry/);
+ assert.match(html,/local block or training does not update MatchPoint/);
  assert.match(html,/value="private_training">Private Client Training/);
 });
 test('MatchPoint ownership cannot be bypassed by selecting Reservation in the open editor',async()=>{
@@ -137,6 +137,65 @@ test('stale finance-only court forms are rejected before any cashbook RPC is cal
 test('invalid court sport is rejected before opening the editor',async()=>{
  const {finance}=setup({matchpointActive:false});await finance.load();
  await assert.rejects(()=>finance.action(action('tennis')),/Unsupported court sport/);
+});
+
+test('synced MatchPoint rows open the normal full editor with amount optional',async()=>{
+ const {finance}=setup();
+ await finance.load();
+ const before=finance.page();
+ assert.match(before,/data-action="cafe-open-planned" data-id="mp-uuid"/);
+ assert.match(before,/>Edit booking<\/button>/);
+ await finance.action({dataset:{action:'cafe-open-planned',id:'mp-uuid',sport:'padel'}});
+ const editor=finance.page();
+ assert.match(editor,/data-cafe-save="schedule-reservation"/);
+ assert.match(editor,/Synced from MatchPoint\. All edits here stay in Padel On/);
+ assert.match(editor,/name="booking_type"/);
+ assert.match(editor,/option value="reservation" selected>Reservation/);
+ assert.match(editor,/option value="private_training">Private Client Training/);
+ assert.doesNotMatch(editor,/name="booking_type" disabled/);
+ assert.match(editor,/name="court_number"/);
+ assert.match(editor,/name="start_time"/);
+ assert.match(editor,/name="duration_minutes"/);
+ assert.match(editor,/name="private_client_id"/);
+ assert.match(editor,/name="total_amount"/);
+ assert.match(editor,/name="notes"/);
+});
+test('local edits to a synced booking do not record money unless amount is supplied',async()=>{
+ const {finance,calls}=setup({allowWrites:true});
+ await finance.load();
+ await finance.action({dataset:{action:'cafe-open-planned',id:'mp-uuid',sport:'padel'}});
+ await withScheduleData([
+  ['start_time','18:00'],['duration_minutes','120'],['court_number','C2'],
+  ['customer_name','Adjusted booking name'],['status','confirmed'],
+  ['booking_type','reservation'],['notes','Extend court time if needed'],
+  ['total_amount','0.00'],['cash_amount','0.00'],['whish_amount','0.00']
+ ],()=>finance.submit({dataset:{cafeSave:'schedule-reservation'}}));
+ const req=calls.find(c=>c?.rpc==='club_court_reservation_priced_save');
+ assert(req);
+ assert.equal(req.args.p_id,'mp-uuid');
+ assert.equal(req.args.p_duration,120);
+ assert.equal(req.args.p_update_payments,false);
+ assert.equal(req.args.p_payment_total_cents,0);
+ assert.equal(req.args.p_customer,'Adjusted booking name');
+ assert.equal(calls.some(c=>c?.rpc==='court_payment_split_save'),false);
+});
+test('imported reservation can switch to private client training with the normal client/coach fee RPC',async()=>{
+ const {finance,calls}=setup({allowWrites:true});
+ await finance.load();
+ await finance.action({dataset:{action:'cafe-open-planned',id:'mp-uuid',sport:'padel'}});
+ const selected={name:'booking_type',value:'private_training',closest:()=>({querySelector:()=>null})};
+ assert.equal(finance.schedulerPreviewEnd(selected),true);
+ await withScheduleData([
+  ['start_time','18:00'],['duration_minutes','90'],['court_number','C2'],
+  ['booking_type','private_training'],['status','confirmed'],
+  ['private_client_id','11111111-1111-1111-1111-111111111111'],
+  ['private_session_fee','55.00'],['private_coach_id',''],['notes','Club training']
+ ],()=>finance.submit({dataset:{cafeSave:'schedule-reservation'}}));
+ const write=calls.find(c=>c?.rpc==='club_private_training_save');
+ assert(write);
+ assert.equal(write.args.p_id,'mp-uuid');
+ assert.equal(write.args.p_client_id,'11111111-1111-1111-1111-111111111111');
+ assert.equal(write.args.p_session_fee_cents,5500);
 });
 
 const withScheduleData=async (entries,fn)=>{

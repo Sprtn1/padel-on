@@ -19,6 +19,40 @@ export function matchpointLebanonSlot(now=new Date()){
  return {day:beirutToday(now),hour};
 }
 const keyOf=item=>[item.external_kind,item.external_id].join(':');
+// Only venue/schedule fields belong in the remote snapshot. Never import
+// provider prices, payments, phones, access codes or contact details.
+export function matchpointBookingSnapshot(item){
+ return {
+  business_date:item.business_date,sport:item.sport,court_number:item.court_number,
+  booking_start_time:String(item.booking_start_time||'').slice(0,5),
+  booking_end_time:String(item.booking_end_time||'').slice(0,5),
+  duration_minutes:Number(item.duration_minutes),
+  customer_name:item.customer_name,status:item.status
+ };
+}
+export function matchpointRemoteChanged(before,after){
+ if(!before||typeof before!=='object')return false;
+ return Object.keys(after).some(key=>String(before[key]??'')!==String(after[key]??''));
+}
+// Keep every local edit intact, including private-client links and cancelled
+// status. An API refresh updates only remote metadata and review alerts.
+export function matchpointProtectedPatch(existing,item,now){
+ const snapshot=matchpointBookingSnapshot(item);
+ const previouslySeen=existing.external_remote_snapshot||matchpointBookingSnapshot(existing);
+ const remoteChanged=matchpointRemoteChanged(previouslySeen,snapshot);
+ const providerCancelled=item.status==='cancelled';
+ const localCancelled=existing.status==='cancelled'&&item.status!=='cancelled';
+ const existingAlert=String(existing.external_alert||'');
+ let alert=existingAlert;
+ if(remoteChanged)alert='MatchPoint changed this booking after a local edit. Padel On kept your settings; review both schedules.';
+ if(providerCancelled)alert='MatchPoint cancelled this booking. Local Padel On changes were retained; review it before collecting payments.';
+ if(localCancelled)alert='Cancelled locally in Padel On, but still active in MatchPoint. Cancel it there too if needed.';
+ return {
+  external_status:item.external_status,external_seen_at:now.toISOString(),
+  external_remote_snapshot:snapshot,external_alert:alert||null,
+  providerChangeDetected:remoteChanged||providerCancelled||localCancelled
+ };
+}
 const errorText=x=>typeof x==='string'?x:JSON.stringify(x);
 export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new Date(),logger=console}={}){
  const required=['MATCHPOINT_HOST','MATCHPOINT_API_TOKEN','MATCHPOINT_COURT_MAP_JSON','SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY'];
@@ -131,7 +165,20 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
   const old=byId.get(keyOf(item));
   if(!old&&item.status==='cancelled')continue;
   const paid=old?withMoney.has(old.id):false;
-  const delta={...item,external_seen_at:now.toISOString()};
+  const delta={...item,external_remote_snapshot:matchpointBookingSnapshot(item),external_seen_at:now.toISOString()};
+  if(old?.external_local_override===true){
+   const patch=matchpointProtectedPatch(old,item,now);
+   const {providerChangeDetected,...metadata}=patch;
+   try{
+    // No revision change: a background sync must not invalidate a staff editor.
+    await api('PATCH','padel_court_reservations',{id:'eq.'+old.id},metadata);
+    if(providerChangeDetected)conflicts++;
+   }catch(e){
+    logger.warn('MatchPoint metadata refresh skipped '+keyOf(item)+': '+e.message);
+    conflicts++;
+   }
+   continue;
+  }
   if(old){
    // Do not modify any cash/Whish allocations, checkmarks, private accounts or historical receipts.
    if(item.status==='cancelled'&&paid){
