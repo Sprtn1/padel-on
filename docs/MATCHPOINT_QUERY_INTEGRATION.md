@@ -37,6 +37,34 @@ than `venueCode`, so add those exact venue-name keys as needed. A bare
 `resourceName` mapping is also supported only when unique and verified.
 Unknown courts are logged and **not guessed**.
 
+## Verified bookings-only rollout (November 16, 2026)
+
+The real provider returned PascalCase controls `Ok=true`, `Data=[...]`,
+`HasMore=false`, `Error=null`, `Offset=0` and `Limit=1000`.
+The new strict parser accepts this observed wrapper and the documented
+lowercase wrapper. It rejects ambiguous error/success flags, offset
+mismatches, unknown end-of-pagination, a nonzero HasMore flag, and
+incomplete booking rows. A read-only live check validated **77/77**
+bookings and their actual court mapping. No MatchPoint financial,
+contact, or access-code fields are imported.
+
+Initial production rollout settings:
+`MATCHPOINT_FEEDS=bookings` and `MATCHPOINT_EXTENDED_SCAN=false`.
+That makes one booking API request per allowed slot, looking ahead
+seven days. **Matches and activities remain off** until their record
+schemas are separately verified, and the previous 90-day extended
+scan is temporarily disabled until its paging has been validated.
+The normal service-role request claims and 24/day hard cap remain.
+The booking worker checks true time overlaps, not only identical
+start/end strings, including existing local reservations and times
+with SQL seconds. Overlapping court imports are skipped, not merged
+or allowed to replace staff bookings or accounting.
+
+To stop the rollout, set the GitHub Actions repository variable
+`MATCHPOINT_ENABLED=false` in
+Settings > Secrets and variables > Actions > Variables. Never put
+the service role key or API token in browser code.
+
 ## Data and financial safety
 
 - Service-role-only automated inserts/updates carry external source/kind/id
