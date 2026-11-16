@@ -3,7 +3,20 @@
 -- never becomes a direct payment writer.
 ALTER TABLE public.padel_court_reservations
  ADD COLUMN IF NOT EXISTS external_local_override boolean NOT NULL DEFAULT false,
- ADD COLUMN IF NOT EXISTS external_local_edited_at timestamptz;
+ ADD COLUMN IF NOT EXISTS external_local_edited_at timestamptz,
+ ADD COLUMN IF NOT EXISTS external_remote_snapshot jsonb;
+
+-- Capture original provider details BEFORE any staff customizations. It
+-- stores only booking logistics, never MatchPoint financial/contact fields.
+UPDATE public.padel_court_reservations
+ SET external_remote_snapshot=jsonb_build_object(
+  'business_date',business_date::text,'sport',sport,
+  'court_number',court_number,
+  'booking_start_time',to_char(booking_start_time,'HH24:MI'),
+  'booking_end_time',to_char(booking_end_time,'HH24:MI'),
+  'duration_minutes',duration_minutes,
+  'customer_name',customer_name,'status',status)
+ WHERE external_source='matchpoint' AND external_remote_snapshot IS NULL;
 
 CREATE OR REPLACE FUNCTION public.guard_matchpoint_booking_ownership()
  RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path=public,pg_temp AS $function$
@@ -15,6 +28,9 @@ BEGIN
   RETURN NEW;
  END IF;
  IF OLD.external_source='matchpoint' THEN
+  IF current_setting('request.jwt.claim.role',true) IS DISTINCT FROM 'service_role'
+     AND NEW.external_remote_snapshot IS DISTINCT FROM OLD.external_remote_snapshot
+  THEN RAISE EXCEPTION 'MatchPoint provider snapshots are server-managed';END IF;
   IF (NEW.external_source,NEW.external_kind,NEW.external_id)
       IS DISTINCT FROM (OLD.external_source,OLD.external_kind,OLD.external_id)
   THEN RAISE EXCEPTION 'MatchPoint external identifiers are immutable'; END IF;
