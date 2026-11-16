@@ -35,7 +35,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  }
  const from=slot.day;
  // Wider scan every six hours locally, at 09:17, 15:17 and 21:17.
- const isExtended=[9,15,21].includes(slot.hour);
+ const isExtended=[9,15,21].includes(slot.hour)&&env.MATCHPOINT_EXTENDED_SCAN!=='false';
  const to=addDays(from,isExtended?89:Number(env.MATCHPOINT_LOOKAHEAD_DAYS||7));
  const backend=supabase.origin+'/rest/v1';
  const serviceHeaders={apikey:env.SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':'application/json'};
