@@ -212,3 +212,32 @@ test('the live mismatch diagnostic includes privacy-safe structural summary with
  assert(messages.some(m=>m.includes('MatchPoint safe structural summary:')&&m.includes('"bookingLikeObjects":1')));
  assert(!messages.join(' ').includes('PERSON_DO_NOT_LOG'));
 });
+
+test('deeper structural metadata recognizes case-insensitive English and Spanish timing fields without leaking their values',()=>{
+ const sample={
+  privateCompanyName:'DO_NOT_DISCLOSE_CUSTOMER',
+  calendar:{scope:{days:[{services:{times:[{
+   Fecha:'2026-11-16',HoraInicio:'09:00',HoraFin:'10:00',Pista:'Court 1',
+   participants:[{name:'PRIVATE CLIENT',email:'private@example.com'}]
+  }]}}]}}
+ };
+ const summary=summarizeMatchpointJsonShape(sample);
+ assert.equal(summary.rootKind,'object');
+ assert.equal(summary.objectsWithTimingFields,1);
+ assert.equal(summary.bookingFieldMatches.fecha,1);
+ assert.equal(summary.bookingFieldMatches.horainicio,1);
+ assert.equal(summary.bookingFieldMatches.horafin,1);
+ assert(summary.nonemptyArrays>0);
+ const logged=JSON.stringify(summary);
+ for(const sensitive of ['DO_NOT_DISCLOSE_CUSTOMER','PRIVATE CLIENT','private@example.com','privateCompanyName'])
+  assert(!logged.includes(sensitive));
+});
+test('nested metadata is bounded and reveals shapes but no user-defined root keys',()=>{
+ const obj={['PRIVATE USER NAME']:[{secretValue:'very secret',Slots:[{StartTime:'10:00',EndTime:'11:00'}]}]};
+ const shape=summarizeMatchpointJsonShape(obj);
+ assert.equal(shape.topLevelFieldCount,1);
+ assert.equal(shape.topLevelValueTypes.array,1);
+ assert.equal(shape.objectsWithTimingFields,1);
+ assert(!JSON.stringify(shape).includes('PRIVATE USER NAME'));
+ assert(!JSON.stringify(shape).includes('very secret'));
+});
