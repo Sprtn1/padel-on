@@ -67,6 +67,51 @@ To stop the rollout, set the GitHub Actions repository variable
 Settings > Secrets and variables > Actions > Variables. Never put
 the service role key or API token in browser code.
 
+## Staff-editable MatchPoint reservations — local overrides
+
+The MatchPoint Query API remains **read-only**. An imported booking is a normal
+Padel On reservation after it is created: staff can open **Edit booking** from
+the timetable or the Cafeteria Finances list and locally change its name,
+notes, court, start time, duration/extension, tentative/confirmed/cancelled
+status, player-paid checkmarks, and optional Cash/Whish price allocation.
+The booking-type selector allows changing a MatchPoint reservation to a local
+**Block Court** or, for Padel, **Private Client Training** (client, coach and
+session fee). Converting to private training links the existing booking to
+Private Sessions without charging the client until normal session completion.
+
+Every local customization keeps the original `external_source`,
+`external_kind` and `external_id`. The database records
+`external_local_override=true` and an edited-at timestamp through the
+existing authenticated staff reservation RPCs, with optimistic revision and
+court-overlap checks. Direct updates cannot bypass these controls.
+Existing active court Cash/Whish splits must be reversed appropriately before
+converting to Block Court or Private Training. Posted private training cannot
+be repurposed, preserving the client ledger and audit history.
+
+**Sync behavior after a local edit:** the importer updates the remote
+status, remote booking snapshot and last-seen timestamp, but never silently
+reverts staff-edited booking fields or alters its payments, private-client
+link, checkmarks or notes. If MatchPoint subsequently changes or cancels a
+locally overridden booking, Padel On retains the local version and places a
+review warning on the record. Local cancellation also stays local and requires
+a corresponding MatchPoint change to release that venue slot. The UI explicitly
+warns that an extension or court change in Padel On does not update MatchPoint.
+
+An imported reservation with **no recorded court payment starts at $0** in
+the full editor; editing its details does *not* automatically create a cash
+receipt. Staff may explicitly allocate a court price and Cash/Whish when
+appropriate. Staff cannot convert a paid court reservation into a block or
+private training until the financial allocation is corrected.
+
+### Recovery
+
+Backup branch: `backup/pre-matchpoint-local-edit-20261117`.
+A snapshot of the pre-migration court reservations and payment splits exists
+in the private schema `backup_matchpoint_local_edit_20261117`. Do not drop
+these backups until verifying the live interface. The usual emergency stop
+for the MatchPoint importer is the GitHub Actions variable
+`MATCHPOINT_PAUSED=true`; it does not disable the normal local editor.
+
 ## Data and financial safety
 
 - Service-role-only automated inserts/updates carry external source/kind/id
