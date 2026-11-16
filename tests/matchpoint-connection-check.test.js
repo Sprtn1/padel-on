@@ -165,7 +165,7 @@ test('HTTP 200 JSON that is not the documented envelope is diagnosed without exp
 
 test('the one-time diagnostic uses the unique quota RPC once and forbids reuse',async()=>{
  let claims=0,apiCalls=0;
- const env={...valid,MATCHPOINT_ONE_TIME_DIAGNOSTIC:'2026-11-16-once'};
+ const env={...valid,MATCHPOINT_HOST:'https://padelon-lb.matchpoint.com.es',MATCHPOINT_ONE_TIME_DIAGNOSTIC:'2026-11-16-once'};
  await checkMatchpointConnection({env,now:new Date('2026-11-16T20:10:00+02:00'),logger:{log:()=>{}},
   fetcher:async(url)=>{
    if(String(url).includes('.supabase.co')){
