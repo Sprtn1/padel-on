@@ -37,17 +37,21 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
  if(absent.length)throw Error('Court mapping is missing Padel On targets: '+absent.join(', '));
  logger.log('Required server secrets are present; HTTPS hosts, court map JSON and all five court targets are structurally valid.');
  const slot=matchpointLebanonSlot(now);
- if(!slot){
+ const beirutDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Beirut',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
+ // Single authorized attempt on 2026-11-16 only; it still counts against
+ // the same 24/day quota under a service-role-only atomic database claim.
+ const forced=env.MATCHPOINT_ONE_TIME_DIAGNOSTIC==='2026-11-16-once'&&beirutDate==='2026-11-16';
+ if(!slot&&!forced){
   logger.log('Live MatchPoint request SKIPPED: outside the eight permitted Beirut-time windows; quota preserved.');
   return {checkedSecrets:true,apiChecked:false,reason:'outside_allowed_slot'};
  }
- const claimUrl=new URL('/rest/v1/rpc/matchpoint_claim_query_request',supabase.origin);
+ const claimUrl=new URL('/rest/v1/rpc/'+(forced?'matchpoint_claim_retest_20261116':'matchpoint_claim_query_request'),supabase.origin);
  const claimResponse=await fetcher(claimUrl,{
   method:'POST',
   headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,
    Authorization:'Bearer '+env.SUPABASE_SERVICE_ROLE_KEY,
    'Content-Type':'application/json',Accept:'application/json'},
-  body:JSON.stringify({p_feed:'bookings'}),
+  body:JSON.stringify(forced?{}:{p_feed:'bookings'}),
   redirect:'error',signal:AbortSignal.timeout(20000)
  });
  if(!claimResponse.ok)
@@ -60,8 +64,8 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
  }
  // Exactly one MatchPoint API call, counted BEFORE attempting the request.
  const url=new URL('/api/query/bookings',host.origin);
- url.searchParams.set('dateFrom',slot.day);
- url.searchParams.set('dateTo',nextDay(slot.day,7));
+ url.searchParams.set('dateFrom',beirutDate);
+ url.searchParams.set('dateTo',nextDay(beirutDate,7));
  url.searchParams.set('canceled','yes');
  url.searchParams.set('offset','0');
  url.searchParams.set('limit','1000');
