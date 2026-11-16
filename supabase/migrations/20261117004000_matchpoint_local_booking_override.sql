@@ -1,6 +1,14 @@
 -- Staff may edit imported MatchPoint rows locally using the normal booking and
 -- private-training RPCs. Remote identifiers stay immutable and the integration
 -- never becomes a direct payment writer.
+-- Snapshot the current booked rows and payment splits before changing
+-- existing procedures. This schema is not exposed by the Supabase Data API.
+CREATE SCHEMA IF NOT EXISTS backup_matchpoint_local_edit_20261117;
+CREATE TABLE IF NOT EXISTS backup_matchpoint_local_edit_20261117.padel_court_reservations
+ AS TABLE public.padel_court_reservations WITH DATA;
+CREATE TABLE IF NOT EXISTS backup_matchpoint_local_edit_20261117.court_payment_splits
+ AS TABLE public.court_payment_splits WITH DATA;
+
 ALTER TABLE public.padel_court_reservations
  ADD COLUMN IF NOT EXISTS external_local_override boolean NOT NULL DEFAULT false,
  ADD COLUMN IF NOT EXISTS external_local_edited_at timestamptz,
