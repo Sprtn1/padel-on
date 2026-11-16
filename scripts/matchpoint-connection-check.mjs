@@ -36,15 +36,14 @@ export function summarizeMatchpointJsonShape(root){
    state.htmlText||=/(?:<!doctype html|<html|<body|<form)/i.test(value.slice(0,1000));
    return;
   }
-  if(depth>=3)return;
+  if(k==='object'&&['date','startTime','endTime','resourceName'].every(key=>
+    Object.prototype.hasOwnProperty.call(value,key)))state.bookingLikeObjects++;
+  if(depth>=4)return;
   if(k==='array'){
    if(value.length)state.nonemptyArrays++;
    for(const v of value.slice(0,6))visit(v,depth+1);
   }else if(k==='object'){
-   const keys=Object.keys(value);
-   if(['date','startTime','endTime','resourceName'].every(key=>Object.prototype.hasOwnProperty.call(value,key)))
-    state.bookingLikeObjects++;
-   for(const key of keys.slice(0,30))visit(value[key],depth+1);
+   for(const key of Object.keys(value).slice(0,30))visit(value[key],depth+1);
   }
  };
  visit(root,0);
