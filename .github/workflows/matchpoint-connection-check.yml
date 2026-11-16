@@ -1,9 +1,14 @@
 name: Verify MatchPoint API (manual, read-only, quota-accounted)
 
-# This can only be invoked from the Actions UI. No scheduled/API calls are
-# started by pushes or PRs; regular MatchPoint sync remains disabled.
+# ONE-TIME EXPLICIT USER-AUTHORIZED TEST on 2026-11-16.
+# Merging this workflow on main triggers the diagnostic once. The DB accepts
+# only ONE such claim on that date and still caps ALL API attempts at 24/day.
+# Revert this workflow to manual-only immediately after reviewing the result.
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/matchpoint-connection-check.yml'
 
 permissions:
   contents: read
@@ -19,6 +24,7 @@ jobs:
     env:
       MATCHPOINT_HOST: ${{ secrets.MATCHPOINT_HOST }}
       MATCHPOINT_API_TOKEN: ${{ secrets.MATCHPOINT_API_TOKEN }}
+      MATCHPOINT_ONE_TIME_OVERRIDE: '2026-11-16'
       MATCHPOINT_COURT_MAP_JSON: ${{ secrets.MATCHPOINT_COURT_MAP_JSON }}
       MATCHPOINT_CENTER_CODE: ${{ vars.MATCHPOINT_CENTER_CODE }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -30,5 +36,5 @@ jobs:
           node-version: '22'
       - name: Check MatchPoint website network without calling the Query API
         run: node scripts/matchpoint-network-probe.mjs
-      - name: Check one MatchPoint booking API response if Beirut-time quota allows
+      - name: One-time user-approved booking API response (counts one request against daily quota)
         run: node scripts/matchpoint-connection-check.mjs
