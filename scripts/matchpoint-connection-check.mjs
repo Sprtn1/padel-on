@@ -37,17 +37,23 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
  if(absent.length)throw Error('Court mapping is missing Padel On targets: '+absent.join(', '));
  logger.log('Required server secrets are present; HTTPS hosts, court map JSON and all five court targets are structurally valid.');
  const slot=matchpointLebanonSlot(now);
- if(!slot){
+ const localDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Beirut',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
+ // Explicitly authorized ONE-OFF 2026-11-16 test, counted in existing
+ // 24/day request ledger via service-role-only atomic claim. Expires today.
+ const oneOff=env.MATCHPOINT_ONE_TIME_DIAGNOSTIC==='2026-11-16-now'&&localDate==='2026-11-16';
+ if(oneOff&&host.origin!=='https://padelon-lb.matchpoint.com.es')
+  throw Error('MATCHPOINT_HOST secret does not contain the exact provider HTTPS API origin. No API request made.');
+ if(!slot&&!oneOff){
   logger.log('Live MatchPoint request SKIPPED: outside the eight permitted Beirut-time windows; quota preserved.');
   return {checkedSecrets:true,apiChecked:false,reason:'outside_allowed_slot'};
  }
- const claimUrl=new URL('/rest/v1/rpc/matchpoint_claim_query_request',supabase.origin);
+ const claimUrl=new URL('/rest/v1/rpc/'+(oneOff?'matchpoint_claim_checknow_20261116':'matchpoint_claim_query_request'),supabase.origin);
  const claimResponse=await fetcher(claimUrl,{
   method:'POST',
   headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,
    Authorization:'Bearer '+env.SUPABASE_SERVICE_ROLE_KEY,
    'Content-Type':'application/json',Accept:'application/json'},
-  body:JSON.stringify({p_feed:'bookings'}),
+  body:JSON.stringify(oneOff?{}:{p_feed:'bookings'}),
   redirect:'error',signal:AbortSignal.timeout(20000)
  });
  if(!claimResponse.ok)
@@ -60,8 +66,8 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
  }
  // Exactly one MatchPoint API call, counted BEFORE attempting the request.
  const url=new URL('/api/query/bookings',host.origin);
- url.searchParams.set('dateFrom',slot.day);
- url.searchParams.set('dateTo',nextDay(slot.day,7));
+ url.searchParams.set('dateFrom',localDate);
+ url.searchParams.set('dateTo',nextDay(localDate,7));
  url.searchParams.set('canceled','yes');
  url.searchParams.set('offset','0');
  url.searchParams.set('limit','1000');
@@ -108,9 +114,15 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
   const dataType=typeOf(data?.data);
   const errorType=typeOf(data?.error);
   const hasMoreType=typeOf(data?.hasMore);
+  const knownMetadata=['Message','MessageDetail','ExceptionMessage','error_description','message',
+   'success','status','statusCode','code','result','items','records','bookings','d','Response'];
+  const known=knownMetadata.filter(k=>Object.prototype.hasOwnProperty.call(data||{},k));
+  const contentType=String(response.headers?.get?.('content-type')||'').split(';')[0].trim().toLowerCase();
   logger.log('MatchPoint JSON shape: root='+topLevel+
    '; ok='+okType+(okType==='boolean'?' ('+String(data.ok)+')':'')+
-   '; data='+dataType+'; error='+errorType+'; hasMore='+hasMoreType);
+   '; data='+dataType+'; error='+errorType+'; hasMore='+hasMoreType+
+   '; contentType='+(/^(application\/json|text\/json|application\/problem\+json)$/i.test(contentType)?contentType:'other')+
+   '; known envelope keys present='+JSON.stringify(known));
   throw Error('MatchPoint responded HTTP 200 but JSON does not match documented {ok:true,data:[...]} structure. No bookings imported.');
  }
  const distinct=new Map();

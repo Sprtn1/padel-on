@@ -96,12 +96,15 @@ test('network errors report safe error codes without leaking token or URL creden
  });
  assert.equal(claimed,1);assert.equal(queried,1);
 });
-test('API connection workflow is manual-only after the one-time test',async()=>{
+test('API connection workflow is manual or restricted to single trusted-main diagnostic',async()=>{
  const {readFile}=await import('node:fs/promises');
  const yaml=await readFile(new URL('../.github/workflows/matchpoint-connection-check.yml',import.meta.url),'utf8');
  assert.match(yaml,/node scripts\/matchpoint-connection-check\.mjs/);
- assert.match(yaml,/workflow_dispatch:/);
- assert.doesNotMatch(yaml,/\n\s+(push|pull_request|schedule):/);
+ if(yaml.includes('  push:')){
+  assert.match(yaml,/branches: \[main\]/);
+  assert.match(yaml,/MATCHPOINT_ONE_TIME_DIAGNOSTIC: '2026-11-16-now'/);
+ }else assert.match(yaml,/workflow_dispatch:/);
+ assert.doesNotMatch(yaml,/\n\s+(pull_request|schedule):/);
 });
 
 test('redirect diagnostic classifies same-host login without revealing Location query',async()=>{
@@ -137,7 +140,7 @@ test('workflow pins the explicitly provided API host, not the app login site',as
  const {readFile}=await import('node:fs/promises');
  for(const path of ['matchpoint-connection-check.yml','matchpoint-reservations-sync.yml']){
   const yaml=await readFile(new URL('../.github/workflows/'+path,import.meta.url),'utf8');
-  assert.match(yaml,/MATCHPOINT_HOST: https:\/\/padelon-lb\.matchpoint\.com\.es/);
+  assert.match(yaml,/MATCHPOINT_HOST: (?:https:\/\/padelon-lb\.matchpoint\.com\.es|\$\{\{ secrets\.MATCHPOINT_HOST \}\})/);
   assert.doesNotMatch(yaml,/MATCHPOINT_HOST:.*app-padelon-lb/);
  }
 });
@@ -156,4 +159,33 @@ test('HTTP 200 JSON that is not the documented envelope is diagnosed without exp
  assert.equal(claimed,1);assert.equal(requested,1);
  assert(logs.some(msg=>msg.includes('root=object; ok=boolean (false); data=object; error=string')));
  assert.doesNotMatch(logs.join(' '),/DO_NOT_LEAK_PERSONAL_DATA|Private Person|never-print-me/);
+});
+
+test('2026-11-16 one-off tests configured provider origin once behind atomic claim',async()=>{
+ const env={...valid,MATCHPOINT_HOST:'https://padelon-lb.matchpoint.com.es',MATCHPOINT_ONE_TIME_DIAGNOSTIC:'2026-11-16-now'};
+ let claims=0,remote=0;
+ const result=await checkMatchpointConnection({
+  env,now:new Date('2026-11-16T19:54:00+02:00'),logger:{log:()=>{}},
+  fetcher:async(url,options)=>{
+   if(String(url).includes('.supabase.co')){
+    claims++;assert.match(String(url),/matchpoint_claim_checknow_20261116/);
+    assert.deepEqual(JSON.parse(options.body),{});return response(true);
+   }
+   remote++;assert.equal(options.headers['X-Api-Token'],env.MATCHPOINT_API_TOKEN);
+   return response({ok:true,data:[],hasMore:false});
+  }
+ });
+ assert.equal(result.apiChecked,true);
+ assert.equal(claims,1);assert.equal(remote,1);
+});
+test('2026-11-16 one-off refuses malformed/unexpected secret without charging quota',async()=>{
+ for(const host of ['padelon-lb.matchpoint.com.es','https://app-padelon-lb.matchpoint.com.es']){
+  let calls=0;
+  await assert.rejects(()=>checkMatchpointConnection({
+   env:{...valid,MATCHPOINT_HOST:host,MATCHPOINT_ONE_TIME_DIAGNOSTIC:'2026-11-16-now'},
+   now:new Date('2026-11-16T19:54:00+02:00'),
+   logger:{log:()=>{}},fetcher:async()=>{calls++;throw Error('Network must not be attempted');}
+  }),/Invalid|exact provider HTTPS API origin/);
+  assert.equal(calls,0);
+ }
 });
