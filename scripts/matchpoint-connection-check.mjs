@@ -24,35 +24,63 @@ export function summarizeMatchpointJsonShape(root){
  const kind=v=>v===null?'null':Array.isArray(v)?'array':typeof v;
  const count={object:0,array:0,string:0,number:0,boolean:0,null:0,other:0};
  const state={visited:0,bookingLikeObjects:0,nonemptyArrays:0,
-  authOrPermissionText:false,htmlText:false,truncated:false};
+  authOrPermissionText:false,htmlText:false,truncated:false,
+  arraysByDepth:{},objectsByDepth:{},arrayElementTypes:{},bookingFieldMatches:{},objectsWithTimingFields:0,
+  topLevelValueTypes:{}};
+ const bookingFields=new Set([
+  'date','fecha','bookingdate','starttime','endtime','horainicio','horafin',
+  'resource','resourcename','court','courtname','pista','nombrepista',
+  'status','estado','id','bookingid','reservationid','reserva','reservas',
+  'participants','participantes','payment','payments','pagos','venue','venuecode'
+ ]);
+ const increment=(target,key)=>{target[key]=(target[key]||0)+1;};
+ if(root&&kind(root)==='object'){
+  for(const value of Object.values(root))increment(state.topLevelValueTypes,kind(value));
+ }
  const visit=(value,depth)=>{
-  if(state.visited>=800){state.truncated=true;return;}
+  if(state.visited>=1800){state.truncated=true;return;}
   state.visited++;
   const k=kind(value);
-  count[k in count?k:'other']++;
+  increment(count,k in count?k:'other');
   if(k==='string'){
-   // Classify without retaining or logging any original text, identifiers or PII.
+   // Classify, never store or log private values, identifiers, email, names, access codes.
    state.authOrPermissionText||=/(?:unauthori[sz]ed|forbidden|permission denied|invalid token|expired token|access denied|not enabled|api key)/i.test(value.slice(0,1000));
    state.htmlText||=/(?:<!doctype html|<html|<body|<form)/i.test(value.slice(0,1000));
    return;
   }
-  if(k==='object'&&['date','startTime','endTime','resourceName'].every(key=>
-    Object.prototype.hasOwnProperty.call(value,key)))state.bookingLikeObjects++;
-  if(depth>=4)return;
-  if(k==='array'){
+  if(k==='object'){
+   increment(state.objectsByDepth,String(depth));
+   const keys=Object.keys(value);
+   const matches=keys.filter(key=>bookingFields.has(key.toLowerCase().replace(/[^a-z]/g,'')));
+   for(const key of matches)increment(state.bookingFieldMatches,key.toLowerCase().replace(/[^a-z]/g,''));
+   if(matches.some(key=>/^(starttime|horainicio)$/i.test(key))&&
+      matches.some(key=>/^(endtime|horafin)$/i.test(key)))state.objectsWithTimingFields++;
+   if(['date','startTime','endTime','resourceName'].every(key=>
+     Object.prototype.hasOwnProperty.call(value,key)))state.bookingLikeObjects++;
+   if(depth>=7)return;
+   for(const key of keys.slice(0,40))visit(value[key],depth+1);
+  }else if(k==='array'){
+   increment(state.arraysByDepth,String(depth));
    if(value.length)state.nonemptyArrays++;
-   for(const v of value.slice(0,6))visit(v,depth+1);
-  }else if(k==='object'){
-   for(const key of Object.keys(value).slice(0,30))visit(value[key],depth+1);
+   for(const element of value.slice(0,8)){
+    increment(state.arrayElementTypes,kind(element));
+    if(depth<7)visit(element,depth+1);
+   }
   }
  };
  visit(root,0);
  return {
   rootKind:kind(root),
   topLevelFieldCount:root!==null&&kind(root)==='object'?Object.keys(root).length:0,
+  topLevelValueTypes:state.topLevelValueTypes,
   valueKinds:count,
+  arraysByDepth:state.arraysByDepth,
+  objectsByDepth:state.objectsByDepth,
+  arrayElementTypes:state.arrayElementTypes,
   nonemptyArrays:state.nonemptyArrays,
   bookingLikeObjects:state.bookingLikeObjects,
+  objectsWithTimingFields:state.objectsWithTimingFields,
+  bookingFieldMatches:state.bookingFieldMatches,
   hasAuthOrPermissionText:state.authOrPermissionText,
   hasHtmlText:state.htmlText,
   truncated:state.truncated
