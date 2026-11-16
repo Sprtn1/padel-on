@@ -230,7 +230,8 @@ BEGIN
    PERFORM set_config('app.matchpoint_local_edit','yes',true);
    UPDATE public.padel_court_reservations
     SET private_client_id=NULL,private_coach_id=NULL,
-        private_session_fee_cents=0,private_session_entry_id=NULL
+        private_session_fee_cents=0,private_session_entry_id=NULL,
+        external_local_override=true,external_local_edited_at=now()
     WHERE id=p_id;
   END IF;
   -- When expanding singles to doubles, lift the two-player CHECK before the
