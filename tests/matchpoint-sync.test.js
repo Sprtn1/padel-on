@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {loadCourtMap,normalizeMatchPointRecord,pickNonDuplicate} from '../lib/matchpoint-normalize.js';
+import {loadCourtMap,normalizeMatchPointRecord,pickNonDuplicate,overlapsCourtSlot,minutesForClock} from '../lib/matchpoint-normalize.js';
 import {runMatchPointSync,matchpointLebanonSlot} from '../scripts/matchpoint-sync.mjs';
 
 const mapping=loadCourtMap({'MAIN|Court 1':{sport:'padel',court:'C1'},'MAIN|Pickle 1':{sport:'pickleball',court:'P1'},'MAIN|Basketball':{sport:'basketball',court:'B1'}});
@@ -156,7 +156,7 @@ test('pagination fails closed instead of issuing a 25th API HTTP request',async(
  };
  await assert.rejects(()=>runMatchPointSync({
   env,now:new Date('2026-11-15T09:17:00+02:00'),fetcher,logger:{log:()=>{}}
- }),/has more than 1,000 records/);
+ }),/requires pagination/);
  assert.equal(claims,1);
  assert.equal(requests,1);
 });
@@ -218,4 +218,61 @@ test('capitalized MatchPoint booking fields normalize into existing court and na
  assert.equal(row.amount_cents,undefined);
  assert.equal(row.payments,undefined);
  assert.equal(row.email,undefined);
+});
+
+test('court intervals block partial overlaps, normalize DB :00 seconds and preserve adjacent slots',()=>{
+ const make=(st,end,court='C1',date='2026-11-16')=>({
+  business_date:date,sport:'padel',court_number:court,
+  booking_start_time:st,booking_end_time:end,status:'confirmed'
+ });
+ assert.equal(minutesForClock('18:30:00'),1110);
+ assert.equal(overlapsCourtSlot(make('18:00','19:30'),make('19:00:00','20:00:00')),true);
+ assert.equal(overlapsCourtSlot(make('18:00','19:30'),make('19:30:00','20:00:00')),false);
+ assert.equal(overlapsCourtSlot(make('23:30','00:30'),make('00:15:00','01:00:00')),true);
+ assert.equal(overlapsCourtSlot(make('23:30','00:30'),make('00:30:00','01:00:00')),false);
+ assert.equal(overlapsCourtSlot(make('18:00','19:30'),make('18:30','19:00','C2')),false);
+ assert.equal(overlapsCourtSlot(make('18:00','19:30'),make('18:30','19:00','C1','2026-11-17')),false);
+});
+test('MatchPoint source records deduplicate by partial overlap, preferring booking to match',()=>{
+ const a=normalizeMatchPointRecord('bookings',booking(2,'2026-11-16','18:00','19:00'),mapping);
+ const m=normalizeMatchPointRecord('matches',booking(3,'2026-11-16','18:30','20:00'),mapping);
+ const other=normalizeMatchPointRecord('bookings',booking(4,'2026-11-16','19:00','20:00'),mapping);
+ assert.deepEqual(pickNonDuplicate([m,other,a]).map(x=>x.external_id),['2','4']);
+});
+test('bookings-only production rollout preserves existing local overlapping bookings and finance',async()=>{
+ const req=[],written=[];
+ const env={MATCHPOINT_HOST:'https://padelon-lb.matchpoint.com.es',MATCHPOINT_API_TOKEN:'test-secret',
+  MATCHPOINT_COURT_MAP_JSON:JSON.stringify({'Court 1':{sport:'padel',court:'C1'}}),
+  SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'service',
+  MATCHPOINT_FEEDS:'bookings'};
+ const local={id:'local-1',business_date:'2026-11-16',sport:'padel',court_number:'C1',
+  booking_start_time:'18:00:00',booking_end_time:'19:00:00',duration_minutes:60,
+  status:'confirmed',customer_name:'Existing Local Client'};
+ const b1=booking(101,'2026-11-16','17:30','18:30');
+ const b2=booking(102,'2026-11-16','19:00','20:00');
+ const respond=body=>({ok:true,status:200,text:async()=>JSON.stringify(body),json:async()=>body});
+ const fakeFetch=async(url,options={})=>{
+  const p=new URL(url).pathname;req.push(p);
+  if(p==='/api/query/bookings')return respond({Ok:true,HasMore:false,Error:null,Offset:0,Limit:1000,Data:[b1,b2]});
+  if(p.endsWith('/matchpoint_claim_query_request'))return respond(true);
+  if(p.endsWith('/matchpoint_sync_status'))return respond([{id:1,last_run_at:null}]);
+  if(p.endsWith('/court_payment_splits'))return respond([{id:'payment-local',source_id:'local-1'}]);
+  if(p.endsWith('/padel_court_reservations')){
+   if(!options.method||options.method==='GET')return respond([local]);
+   written.push({method:options.method,record:JSON.parse(options.body)});
+   return respond([{...JSON.parse(options.body)[0],id:'external-2'}]);
+  }
+  throw Error('Unexpected path '+p);
+ };
+ const summary=await runMatchPointSync({env,now:new Date('2026-11-16T23:17:00+02:00'),fetcher:fakeFetch,logger:{log:()=>{},warn:()=>{}}});
+ assert.equal(summary.inserted,1);
+ assert.equal(summary.ignored,1);
+ assert.equal(summary.feeds.bookings,2);
+ assert.equal(req.filter(path=>path.startsWith('/api/query/')).length,1);
+ assert.equal(written.length,1);
+ assert.equal(written[0].method,'POST');
+ assert.equal(written[0].record[0].booking_start_time,'19:00');
+ assert.equal(written[0].record[0].external_source,'matchpoint');
+ for(const forbidden of ['amount_cents','cash_cents','whish_cents','paid','payments','accessCode'])
+  assert.equal(written[0].record[0][forbidden],undefined);
 });
