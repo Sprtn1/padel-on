@@ -1,9 +1,14 @@
-name: Verify MatchPoint API (manual, read-only, quota-accounted)
+name: Verify MatchPoint API (one-time corrected host, quota-accounted)
 
-# This can only be invoked from the Actions UI. No scheduled/API calls are
-# started by pushes or PRs; regular MatchPoint sync remains disabled.
+# ONE-TIME read-only connection test after the corrected API hostname.
+# Triggered solely by merging this workflow on main; then restored to
+# manual-only immediately. The Supabase quota RPC permits at most one
+# bookings call per allowed local slot and 24 actual API calls per day.
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/matchpoint-connection-check.yml'
 
 permissions:
   contents: read
