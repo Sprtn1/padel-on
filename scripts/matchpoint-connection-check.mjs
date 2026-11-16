@@ -88,7 +88,7 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
    try{
     const target=new URL(location,host.origin);
     if(target.origin!==host.origin)destination='different host';
-    else if(/(?:login|sign.?in|default\\.aspx|account)/i.test(target.pathname))
+    else if(/(?:login|sign.?in|account)/i.test(target.pathname)||target.pathname.toLowerCase().includes('default.aspx'))
      destination='same-host login page';
     else destination='same-host non-API page';
    }catch{destination='invalid Location header'}
