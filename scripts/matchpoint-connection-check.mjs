@@ -41,6 +41,8 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
  // Single authorized attempt on 2026-11-16 only; it still counts against
  // the same 24/day quota under a service-role-only atomic database claim.
  const forced=env.MATCHPOINT_ONE_TIME_DIAGNOSTIC==='2026-11-16-once'&&beirutDate==='2026-11-16';
+ if(forced&&host.origin!=='https://padelon-lb.matchpoint.com.es')
+  throw Error('One-time test refused: configured MATCHPOINT_HOST does not match provider Query API origin. No API call attempted.');
  if(!slot&&!forced){
   logger.log('Live MatchPoint request SKIPPED: outside the eight permitted Beirut-time windows; quota preserved.');
   return {checkedSecrets:true,apiChecked:false,reason:'outside_allowed_slot'};
