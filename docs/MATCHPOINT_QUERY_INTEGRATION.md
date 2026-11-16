@@ -11,7 +11,7 @@ In GitHub repo Settings → Secrets and variables → Actions, add:
 
 | Setting | GitHub type | Value |
 | --- | --- | --- |
-| MATCHPOINT_ENABLED | Variable | true **only after verification** |
+| MATCHPOINT_ENABLED | Workflow setting | `true` for the verified bookings-only rollout; the API remains read-only |
 | MATCHPOINT_HOST | Workflow configuration | `https://padelon-lb.matchpoint.com.es` (MatchPoint Query API origin, provided by club, not the app login host) |
 | MATCHPOINT_API_TOKEN | Secret | Query-permission API token (never commit or put in browser) |
 | MATCHPOINT_COURT_MAP_JSON | Secret | JSON mapping of actual MatchPoint venue/court names to Padel On |
@@ -48,8 +48,10 @@ incomplete booking rows. A read-only live check validated **77/77**
 bookings and their actual court mapping. No MatchPoint financial,
 contact, or access-code fields are imported.
 
+**Initial production rollout is now enabled** with an emergency pause control; this does not by itself confirm a successful production import. The first scheduled run must be checked in GitHub Actions and against `matchpoint_sync_status` and reservations.
+
 Initial production rollout settings:
-`MATCHPOINT_FEEDS=bookings` and `MATCHPOINT_EXTENDED_SCAN=false`.
+`MATCHPOINT_FEEDS=bookings`, `MATCHPOINT_EXTENDED_SCAN=false`, and `MATCHPOINT_ENABLED=true`.
 That makes one booking API request per allowed slot, looking ahead
 seven days. **Matches and activities remain off** until their record
 schemas are separately verified, and the previous 90-day extended
@@ -61,7 +63,7 @@ with SQL seconds. Overlapping court imports are skipped, not merged
 or allowed to replace staff bookings or accounting.
 
 To stop the rollout, set the GitHub Actions repository variable
-`MATCHPOINT_ENABLED=false` in
+`MATCHPOINT_PAUSED=true` in
 Settings > Secrets and variables > Actions > Variables. Never put
 the service role key or API token in browser code.
 
