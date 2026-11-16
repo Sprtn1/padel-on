@@ -17,7 +17,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
-      MATCHPOINT_HOST: ${{ secrets.MATCHPOINT_HOST }}
+      # Host supplied by MatchPoint for the Query API; not the separate app-* login site.
+      MATCHPOINT_HOST: https://padelon-lb.matchpoint.com.es
       MATCHPOINT_API_TOKEN: ${{ secrets.MATCHPOINT_API_TOKEN }}
       MATCHPOINT_COURT_MAP_JSON: ${{ secrets.MATCHPOINT_COURT_MAP_JSON }}
       MATCHPOINT_CENTER_CODE: ${{ vars.MATCHPOINT_CENTER_CODE }}
