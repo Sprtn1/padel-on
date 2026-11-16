@@ -93,6 +93,34 @@ The source API's own quota reset time zone may differ from Beirut. If the
 provider enforces a rolling 24-hour cap or resets in another time zone,
 confirm that reset policy with MatchPoint before running at the ceiling.
 
+## Query API document verification (QUERY_API.md, 2026-06-23)
+
+The official Query API document specifies `https://{host}/api/query`,
+requires `X-Api-Token` with `query` permission, and defines read-only
+`GET /bookings`, `GET /matches`, and `GET /activities` (each with
+`dateFrom` and `dateTo`). The maximum date span for these endpoints is
+90 days; `limit` may be at most 1000. `canceled=yes` includes canceled
+records. Padel On's request construction follows these rules.
+
+**The document DOES NOT identify Padel On's production API hostname.**
+The configured MatchPoint website host was inferred from the club login page
+and remains unverified as a Query API origin.
+
+On 2026-11-16, a one-off quota-counted diagnostic reached the website over
+verified TLS but `GET /api/query/bookings` returned **HTTP 302**. The
+documentation lists **400, 401, and 429** API errors, not 302. A redirect
+might indicate website authentication or a different/disabled API route,
+rather than proving the token itself is invalid. Until MatchPoint support
+confirms the API origin and query route, leave `MATCHPOINT_ENABLED` disabled.
+The diagnostic never follows a redirect with an API token.
+
+The document also describes `GET /api/query/availability`, a **different**
+endpoint whose requested *availability slot duration* is limited to 1–600
+minutes. That 600-minute limit does not apply to returned booking durations
+from `/bookings`, `/matches`, or `/activities`. The local MatchPoint import
+normalizer therefore supports court reservations up to Padel On's existing
+**960-minute** (16-hour) database/business limit.
+
 ## Installation and rollback
 
 1. Pre-change code snapshot:
