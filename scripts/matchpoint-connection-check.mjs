@@ -4,6 +4,7 @@
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {loadCourtMap,mappedCourt,matchPointField,normalizeMatchPointRecord} from '../lib/matchpoint-normalize.js';
+import {parseMatchPointPage,matchPointEnvelopeDiagnostics} from '../lib/matchpoint-response.js';
 import {matchpointLebanonSlot} from './matchpoint-sync.mjs';
 
 const nextDay=(date,count)=>{
@@ -203,6 +204,19 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
  if(!response.ok)throw Error('MatchPoint API authentication or endpoint check failed: HTTP '+response.status+'.');
  let data;
  try{data=await response.json()}catch{throw Error('MatchPoint returned non-JSON data.')}
+ const recognized=matchPointEnvelopeDiagnostics(data);
+ logger.log('MatchPoint recognized response controls: '+JSON.stringify(recognized));
+ let parsedPage;
+ try{parsedPage=parseMatchPointPage(data,{feed:'bookings',limit:1000});}
+ catch(err){logger.log('MatchPoint strict page check: NOT READY ('+err.message+')');}
+ if(parsedPage){
+  const counts={validatedRows:parsedPage.count,mappedRows:0,unmappedRows:0,invalidRows:0,paginationConfirmed:parsedPage.paginationConfirmed,format:parsedPage.format};
+  for(const record of parsedPage.rows){
+   try{const normalized=normalizeMatchPointRecord('bookings',record,map);if(normalized)counts.mappedRows++;else counts.unmappedRows++;}
+   catch{counts.invalidRows++;}
+  }
+  logger.log('MatchPoint strict parser dry run (no writes): '+JSON.stringify(counts));
+ }
  if(data?.ok!==true||!Array.isArray(data.data)){
   // Diagnose ONLY the envelope's structural types. Never log the API body,
   // raw error string, participant names, emails, payments or access codes.
