@@ -1,0 +1,37 @@
+name: Verify MatchPoint API connection (read-only, quota-accounted)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/matchpoint-connection-check.yml'
+      - 'scripts/matchpoint-connection-check.mjs'
+      - 'tests/matchpoint-connection-check.test.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: padelon-matchpoint-connection-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    # Never expose credentials to pull requests originating from forks.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      MATCHPOINT_HOST: ${{ secrets.MATCHPOINT_HOST }}
+      MATCHPOINT_API_TOKEN: ${{ secrets.MATCHPOINT_API_TOKEN }}
+      MATCHPOINT_COURT_MAP_JSON: ${{ secrets.MATCHPOINT_COURT_MAP_JSON }}
+      MATCHPOINT_CENTER_CODE: ${{ vars.MATCHPOINT_CENTER_CODE }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check API secrets and booking endpoint without importing data
+        run: node scripts/matchpoint-connection-check.mjs
