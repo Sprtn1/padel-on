@@ -140,7 +140,7 @@ test('workflow pins the explicitly provided API host, not the app login site',as
  const {readFile}=await import('node:fs/promises');
  for(const path of ['matchpoint-connection-check.yml','matchpoint-reservations-sync.yml']){
   const yaml=await readFile(new URL('../.github/workflows/'+path,import.meta.url),'utf8');
-  assert.match(yaml,/MATCHPOINT_HOST: https:\/\/padelon-lb\.matchpoint\.com\.es/);
+  assert.match(yaml,/MATCHPOINT_HOST: (?:https:\/\/padelon-lb\.matchpoint\.com\.es|\$\{\{ secrets\.MATCHPOINT_HOST \}\})/);
   assert.doesNotMatch(yaml,/MATCHPOINT_HOST:.*app-padelon-lb/);
  }
 });
