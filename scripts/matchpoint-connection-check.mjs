@@ -79,8 +79,23 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
   throw Error('MatchPoint API connection failed before receiving HTTP status (network/TLS code: '+code+'). One quota claim consumed.');
  }
  logger.log('MatchPoint /api/query/bookings returned HTTP '+response.status+' (one API request charged to the daily cap).');
- if(response.status>=300&&response.status<400)
-  throw Error('MatchPoint API returned HTTP '+response.status+' redirect (not followed). Confirm the Query API host and query-permission token; a sign-in redirect may indicate the wrong API origin.');
+ if(response.status>=300&&response.status<400){
+  // Safely classify the Location header without exposing its URL, query,
+  // login tokens or any customer data, and without following the redirect.
+  let destination='unknown destination';
+  const location=response.headers?.get?.('location');
+  if(location){
+   try{
+    const target=new URL(location,host.origin);
+    if(target.origin!==host.origin)destination='different host';
+    else if(/(?:login|sign.?in|default\\.aspx|account)/i.test(target.pathname))
+     destination='same-host login page';
+    else destination='same-host non-API page';
+   }catch{destination='invalid Location header'}
+  }
+  throw Error('MatchPoint API returned HTTP '+response.status+' redirect to '+destination+
+   ' (not followed). Confirm the Query API host and query-permission token.');
+ }
  if(!response.ok)throw Error('MatchPoint API authentication or endpoint check failed: HTTP '+response.status+'.');
  let data;
  try{data=await response.json()}catch{throw Error('MatchPoint returned non-JSON data.')}
