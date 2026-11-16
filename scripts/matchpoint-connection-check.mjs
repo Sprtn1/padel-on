@@ -16,6 +16,49 @@ const required=[
  'SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY'
 ];
 
+// Only aggregate data SHAPES, never customer-provided keys or values.
+// This can reveal whether an unknown provider JSON response is empty, contains
+// booking-shaped records under another wrapper, or is an HTML/auth error object.
+// Work is bounded; no payload content leaves the GitHub Actions runner.
+export function summarizeMatchpointJsonShape(root){
+ const kind=v=>v===null?'null':Array.isArray(v)?'array':typeof v;
+ const count={object:0,array:0,string:0,number:0,boolean:0,null:0,other:0};
+ const state={visited:0,bookingLikeObjects:0,nonemptyArrays:0,
+  authOrPermissionText:false,htmlText:false,truncated:false};
+ const visit=(value,depth)=>{
+  if(state.visited>=800){state.truncated=true;return;}
+  state.visited++;
+  const k=kind(value);
+  count[k in count?k:'other']++;
+  if(k==='string'){
+   // Classify without retaining or logging any original text, identifiers or PII.
+   state.authOrPermissionText||=/(?:unauthori[sz]ed|forbidden|permission denied|invalid token|expired token|access denied|not enabled|api key)/i.test(value.slice(0,1000));
+   state.htmlText||=/(?:<!doctype html|<html|<body|<form)/i.test(value.slice(0,1000));
+   return;
+  }
+  if(k==='object'&&['date','startTime','endTime','resourceName'].every(key=>
+    Object.prototype.hasOwnProperty.call(value,key)))state.bookingLikeObjects++;
+  if(depth>=4)return;
+  if(k==='array'){
+   if(value.length)state.nonemptyArrays++;
+   for(const v of value.slice(0,6))visit(v,depth+1);
+  }else if(k==='object'){
+   for(const key of Object.keys(value).slice(0,30))visit(value[key],depth+1);
+  }
+ };
+ visit(root,0);
+ return {
+  rootKind:kind(root),
+  topLevelFieldCount:root!==null&&kind(root)==='object'?Object.keys(root).length:0,
+  valueKinds:count,
+  nonemptyArrays:state.nonemptyArrays,
+  bookingLikeObjects:state.bookingLikeObjects,
+  hasAuthOrPermissionText:state.authOrPermissionText,
+  hasHtmlText:state.htmlText,
+  truncated:state.truncated
+ };
+}
+
 export async function checkMatchpointConnection({env=process.env,now=new Date(),fetcher=fetch,logger=console}={}){
  const missing=required.filter(name=>!String(env[name]||'').trim());
  if(missing.length)throw Error('Missing GitHub Actions secrets: '+missing.join(', '));
@@ -117,6 +160,7 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
    '; data='+dataType+'; error='+errorType+'; hasMore='+hasMoreType+
    '; contentType='+(/^(application\/json|text\/json|application\/problem\+json)$/i.test(contentType)?contentType:'other')+
    '; known envelope keys present='+JSON.stringify(known));
+  logger.log('MatchPoint safe structural summary: '+JSON.stringify(summarizeMatchpointJsonShape(data)));
   throw Error('MatchPoint responded HTTP 200 but JSON does not match documented {ok:true,data:[...]} structure. No bookings imported.');
  }
  const distinct=new Map();

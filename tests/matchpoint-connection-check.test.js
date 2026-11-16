@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {checkMatchpointConnection} from '../scripts/matchpoint-connection-check.mjs';
+import {checkMatchpointConnection,summarizeMatchpointJsonShape} from '../scripts/matchpoint-connection-check.mjs';
 
 const valid={
  MATCHPOINT_HOST:'https://example.matchpoint.com.es',
@@ -166,4 +166,49 @@ test('manual diagnostic does not retain the one-day bypass or auto-trigger',asyn
  assert.doesNotMatch(workflow,/MATCHPOINT_ONE_TIME_DIAGNOSTIC/);
  assert.match(workflow,/workflow_dispatch:/);
  assert.doesNotMatch(workflow,/\n\s+(push|pull_request|schedule):/);
+});
+
+test('undocumented JSON structure summary exposes shapes, not field names or private values',()=>{
+ const data={
+  'Customer Confidential':{
+   'records':[{
+    date:'2026-11-16',startTime:'19:30',endTime:'21:00',resourceName:'Court 1',
+    participants:[{name:'PERSON_DO_NOT_LOG',email:'private@example.test'}],
+    payments:[{amount:500,payMethod:'CARD_SECRET'}]
+   }]
+  },
+  secret:'Example Test User'
+ };
+ const summary=summarizeMatchpointJsonShape(data);
+ assert.equal(summary.rootKind,'object');
+ assert.equal(summary.topLevelFieldCount,2);
+ assert.equal(summary.bookingLikeObjects,1);
+ assert(summary.nonemptyArrays>=1);
+ const logged=JSON.stringify(summary);
+ for(const sensitive of ['Customer Confidential','PERSON_DO_NOT_LOG','private@example.test','Example Test User','CARD_SECRET'])
+  assert(!logged.includes(sensitive),sensitive+' leaked');
+});
+test('empty or permission-error JSON object produces informative shape-only diagnostics',()=>{
+ const empty=summarizeMatchpointJsonShape({});
+ assert.equal(empty.topLevelFieldCount,0);
+ assert.equal(empty.valueKinds.object,1);
+ const denied=summarizeMatchpointJsonShape({unknown:'Invalid token for Query API',blob:'<!doctype html><form>'});
+ assert.equal(denied.topLevelFieldCount,2);
+ assert.equal(denied.hasAuthOrPermissionText,true);
+ assert.equal(denied.hasHtmlText,true);
+ assert.doesNotMatch(JSON.stringify(denied),/Invalid token|doctype html|unknown|blob/);
+});
+test('the live mismatch diagnostic includes privacy-safe structural summary without another request',async()=>{
+ const messages=[];let apiCalls=0;
+ await assert.rejects(()=>checkMatchpointConnection({
+  env:valid,now:allowed,logger:{log:s=>messages.push(s)},
+  fetcher:async(url)=>{
+   if(String(url).includes('.supabase.co'))return response(true);
+   apiCalls++;
+   return response({'undocumentedWrapper':{records:[{date:'2026-11-16',startTime:'09:00',endTime:'10:00',resourceName:'Court 2',name:'PERSON_DO_NOT_LOG'}]}});
+  }
+ }),/HTTP 200 but JSON does not match documented/);
+ assert.equal(apiCalls,1);
+ assert(messages.some(m=>m.includes('MatchPoint safe structural summary:')&&m.includes('"bookingLikeObjects":1')));
+ assert(!messages.join(' ').includes('PERSON_DO_NOT_LOG'));
 });
