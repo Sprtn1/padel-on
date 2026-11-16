@@ -99,8 +99,20 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
  if(!response.ok)throw Error('MatchPoint API authentication or endpoint check failed: HTTP '+response.status+'.');
  let data;
  try{data=await response.json()}catch{throw Error('MatchPoint returned non-JSON data.')}
- if(data?.ok!==true||!Array.isArray(data.data))
-  throw Error('MatchPoint returned an unexpected response structure; confirm Query API endpoint and query-token permissions.');
+ if(data?.ok!==true||!Array.isArray(data.data)){
+  // Diagnose ONLY the envelope's structural types. Never log the API body,
+  // raw error string, participant names, emails, payments or access codes.
+  const typeOf=value=>Array.isArray(value)?'array':value===null?'null':typeof value;
+  const topLevel=typeOf(data);
+  const okType=typeOf(data?.ok);
+  const dataType=typeOf(data?.data);
+  const errorType=typeOf(data?.error);
+  const hasMoreType=typeOf(data?.hasMore);
+  logger.log('MatchPoint JSON shape: root='+topLevel+
+   '; ok='+okType+(okType==='boolean'?' ('+String(data.ok)+')':'')+
+   '; data='+dataType+'; error='+errorType+'; hasMore='+hasMoreType);
+  throw Error('MatchPoint responded HTTP 200 but JSON does not match documented {ok:true,data:[...]} structure. No bookings imported.');
+ }
  const distinct=new Map();
  for(const row of data.data){
   const name=String(row?.resourceName||'').trim();
