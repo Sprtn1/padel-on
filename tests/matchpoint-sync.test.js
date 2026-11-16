@@ -200,3 +200,22 @@ test('production MatchPoint sync does not follow unexpected HTTP 302 redirects w
  assert.equal(quotaClaims,1);
  assert.equal(imports,0,'No bookings may be imported from an undocumented redirect');
 });
+
+test('capitalized MatchPoint booking fields normalize into existing court and name schema without financial imports',()=>{
+ const upper={
+  ID:784,VenueCode:'MAIN',Venue:'Padel On',ResourceName:'Court 1',
+  Date:'2026-11-16',StartTime:'18:00',EndTime:'19:30',Status:'ACTIVE',
+  Participants:[{Name:'PRIVATE TEST CUSTOMER',Email:'hidden@example.test',Paid:true}],
+  Payments:[{Amount:3200,Method:'Whish'}]
+ };
+ const row=normalizeMatchPointRecord('bookings',upper,mapping);
+ assert.equal(row.external_id,'784');
+ assert.equal(row.business_date,'2026-11-16');
+ assert.equal(row.court_number,'C1');
+ assert.equal(row.duration_minutes,90);
+ assert.equal(row.customer_name,'PRIVATE TEST CUSTOMER');
+ assert.equal(row.status,'confirmed');
+ assert.equal(row.amount_cents,undefined);
+ assert.equal(row.payments,undefined);
+ assert.equal(row.email,undefined);
+});
