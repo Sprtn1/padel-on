@@ -28,15 +28,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  if(host.protocol!=='https:')throw Error('MatchPoint host must use HTTPS');
  const supabase=new URL(env.SUPABASE_URL);
  if(supabase.protocol!=='https:'||!supabase.hostname.endsWith('.supabase.co'))throw Error('Invalid Supabase project URL');
- // Temporary, user-authorized one-time import preview. Date-locked to the
- // night of Nov 16/17, with ONE unique claim in the SAME daily 24-call ledger.
- // It must be removed immediately after this run.
- const localDay=beirutToday(now);
- const forced=env.MATCHPOINT_ONE_TIME_WEEK==='2026-11-16'&&
-  ['2026-11-16','2026-11-17'].includes(localDay);
- if(forced&&host.origin!=='https://padelon-lb.matchpoint.com.es')
-  throw Error('Forced weekly import blocked: expected MatchPoint Query API host.');
- const slot=matchpointLebanonSlot(now)||(forced?{day:localDay,hour:0}:null);
+ const slot=matchpointLebanonSlot(now);
  if(!slot){
   logger.log('MatchPoint sync skipped: outside the 09:00–23:44 Beirut allowed slots.');
   return {skipped:true,reason:'outside_venue_hours'};
@@ -74,7 +66,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  const query=async(kind)=>{
   // Reserve this one HTTP request atomically in Supabase *before* touching MatchPoint.
   // A failed request still consumes the quota; retries/manual actions cannot bypass it.
-  const claimed=await api('POST',forced?'rpc/matchpoint_claim_week_preview_20261116':'rpc/matchpoint_claim_query_request',{},forced?{}:{p_feed:kind});
+  const claimed=await api('POST','rpc/matchpoint_claim_query_request',{}, {p_feed:kind});
   if(claimed!==true)throw Error('MatchPoint '+kind+' skipped: daily quota or local time-slot already used.');
   const url=new URL('/api/query/'+kind,host);
   url.searchParams.set('dateFrom',from);url.searchParams.set('dateTo',to);
