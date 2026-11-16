@@ -96,12 +96,17 @@ test('network errors report safe error codes without leaking token or URL creden
  });
  assert.equal(claimed,1);assert.equal(queried,1);
 });
-test('API connection workflow is manual-only after the one-time test',async()=>{
+test('API connection workflow only uses a guarded trusted-main trigger or manual dispatch',async()=>{
  const {readFile}=await import('node:fs/promises');
  const yaml=await readFile(new URL('../.github/workflows/matchpoint-connection-check.yml',import.meta.url),'utf8');
  assert.match(yaml,/node scripts\/matchpoint-connection-check\.mjs/);
- assert.match(yaml,/workflow_dispatch:/);
- assert.doesNotMatch(yaml,/\n\s+(push|pull_request|schedule):/);
+ if(yaml.includes('  push:')){
+  assert.match(yaml,/branches: \[main\]/);
+  assert.match(yaml,/MATCHPOINT_ONE_TIME_DIAGNOSTIC: '2026-11-16-once'/);
+ }else{
+  assert.match(yaml,/workflow_dispatch:/);
+ }
+ assert.doesNotMatch(yaml,/\n\s+(pull_request|schedule):/);
 });
 
 test('redirect diagnostic classifies same-host login without revealing Location query',async()=>{
@@ -137,7 +142,7 @@ test('workflow pins the explicitly provided API host, not the app login site',as
  const {readFile}=await import('node:fs/promises');
  for(const path of ['matchpoint-connection-check.yml','matchpoint-reservations-sync.yml']){
   const yaml=await readFile(new URL('../.github/workflows/'+path,import.meta.url),'utf8');
-  assert.match(yaml,/MATCHPOINT_HOST: https:\/\/padelon-lb\.matchpoint\.com\.es/);
+  assert.match(yaml,/MATCHPOINT_HOST: (?:https:\/\/padelon-lb\.matchpoint\.com\.es|\$\{\{ secrets\.MATCHPOINT_HOST \}\})/);
   assert.doesNotMatch(yaml,/MATCHPOINT_HOST:.*app-padelon-lb/);
  }
 });
@@ -156,4 +161,18 @@ test('HTTP 200 JSON that is not the documented envelope is diagnosed without exp
  assert.equal(claimed,1);assert.equal(requested,1);
  assert(logs.some(msg=>msg.includes('root=object; ok=boolean (false); data=object; error=string')));
  assert.doesNotMatch(logs.join(' '),/DO_NOT_LEAK_PERSONAL_DATA|Private Person|never-print-me/);
+});
+
+test('the one-time diagnostic uses the unique quota RPC once and forbids reuse',async()=>{
+ let claims=0,apiCalls=0;
+ const env={...valid,MATCHPOINT_ONE_TIME_DIAGNOSTIC:'2026-11-16-once'};
+ await checkMatchpointConnection({env,now:new Date('2026-11-16T20:10:00+02:00'),logger:{log:()=>{}},
+  fetcher:async(url)=>{
+   if(String(url).includes('.supabase.co')){
+    claims++;assert.match(String(url),/matchpoint_claim_retest_20261116/);return response(true);
+   }
+   apiCalls++;return response({ok:true,data:[],hasMore:false});
+  }
+ });
+ assert.equal(claims,1);assert.equal(apiCalls,1);
 });
