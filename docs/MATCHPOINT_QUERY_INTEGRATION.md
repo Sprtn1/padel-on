@@ -126,6 +126,25 @@ at the next permitted request window. Keep `MATCHPOINT_ENABLED` disabled
 until the response structure, mapping and import behavior are validated.
 
 
+### Forced preview result — November 16, 2026 at 23:28 Beirut time
+
+The user-authorized single-request diagnostic, counted against the
+existing strict 24-per-day Supabase request ledger, returned HTTP 200.
+The API used an undocumented JSON envelope with a unique top-level
+booking array. The **read-only compatibility preview** found **77
+candidate booking records, all 77 structurally valid and correctly
+mapped to Padel On courts**, with zero invalid/unmapped rows. The
+preview did **not** import data, copy contact/payment information,
+or modify the financial tables. The workflow returned a nonzero exit
+code intentionally because the production parser still requires the
+official `{ok:true,data:[...]}` wrapper.
+
+**Production synchronization stays disabled** until an explicit
+alternative-wrapper parser has safe pagination/hasMore handling,
+error-state validation, and regression tests. These preview counts
+are not evidence that the unknown wrapper's pagination and total
+record semantics match the published document.
+
 ### Live response findings — November 16, 2026
 
 An actual read-only `GET /api/query/bookings` at 23:14 Beirut time
