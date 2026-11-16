@@ -115,6 +115,17 @@ rather than proving the token itself is invalid. Do not interpret that test as a
 Leave `MATCHPOINT_ENABLED` disabled until a read-only request confirms the corrected host.
 The diagnostic never follows a redirect with an API token.
 
+**Correct host verified on 2026-11-16:** a one-time read-only request
+to `https://padelon-lb.matchpoint.com.es/api/query/bookings` returned HTTP
+**200** (rather than the prior login-host HTTP 302). The response was
+parseable JSON but **did not match the documented `{ok:true,data:[...]}`
+envelope**. This does NOT mean bookings can yet be safely imported. The
+manual-only diagnostic now reports only response field *types*, without
+logging private response content, so the exact discrepancy can be isolated
+at the next permitted request window. Keep `MATCHPOINT_ENABLED` disabled
+until the response structure, mapping and import behavior are validated.
+
+
 The document also describes `GET /api/query/availability`, a **different**
 endpoint whose requested *availability slot duration* is limited to 1–600
 minutes. That 600-minute limit does not apply to returned booking durations
