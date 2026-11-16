@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {checkMatchpointConnection,summarizeMatchpointJsonShape} from '../scripts/matchpoint-connection-check.mjs';
+import {checkMatchpointConnection,summarizeMatchpointJsonShape,previewAlternateMatchPointBookings} from '../scripts/matchpoint-connection-check.mjs';
+import {loadCourtMap} from '../lib/matchpoint-normalize.js';
 
 const valid={
  MATCHPOINT_HOST:'https://example.matchpoint.com.es',
@@ -240,4 +241,44 @@ test('nested metadata is bounded and reveals shapes but no user-defined root key
  assert.equal(shape.objectsWithTimingFields,1);
  assert(!JSON.stringify(shape).includes('PRIVATE USER NAME'));
  assert(!JSON.stringify(shape).includes('very secret'));
+});
+
+test('undocumented six-field MatchPoint envelope with capitalized booking properties can be validated privately',()=>{
+ const map=loadCourtMap(valid.MATCHPOINT_COURT_MAP_JSON);
+ const sample={
+  SessionOk:true,SessionActive:false,Unused:null,
+  ActualBookings:[
+   {Id:42,VenueCode:'MAIN',ResourceName:'Court 1',Date:'2026-11-16',
+    StartTime:'18:00',EndTime:'19:30',Status:'ACTIVE',
+    Participants:[{Name:'DO_NOT_LOG_PERSON',Email:'secret@example.test'}],
+    Payments:[{Amount:2500}]},
+   {Id:43,ResourceName:'Court 2 (Indoor)',Date:'2026-11-16',
+    StartTime:'19:30',EndTime:'21:00',Status:'ACTIVE',Participants:[]}
+  ],
+  Count:2,PageSize:1000
+ };
+ const shape=previewAlternateMatchPointBookings(sample,map);
+ assert.deepEqual(shape,{
+  topLevelArrays:1,matchingBookingArrays:1,candidateRows:2,
+  validBookingRows:2,mappedRows:2,unmappedRows:0,invalidRows:0,
+  importEnabled:false,metadataAndPaginationUnverified:true
+ });
+ for(const sensitive of ['DO_NOT_LOG_PERSON','secret@example.test','ActualBookings','Amount'])
+  assert.doesNotMatch(JSON.stringify(shape),new RegExp(sensitive));
+});
+test('alternate envelope fails closed on ambiguous arrays, incomplete records and unknown courts',()=>{
+ const map=loadCourtMap(valid.MATCHPOINT_COURT_MAP_JSON);
+ const make=(id,court)=>({ID:id,Date:'2026-11-16',StartTime:'18:00',
+  EndTime:'19:00',ResourceName:court,Status:'ACTIVE'});
+ const ambiguous=previewAlternateMatchPointBookings({
+  A:[make(1,'Court 1')],B:[make(2,'Court 2 (Indoor)')]
+ },map);
+ assert.equal(ambiguous.matchingBookingArrays,2);
+ assert.equal(ambiguous.candidateRows,0);
+ assert.equal(ambiguous.importEnabled,false);
+ const partial=previewAlternateMatchPointBookings({A:[{ID:1,ResourceName:'Court 1'}]},map);
+ assert.equal(partial.matchingBookingArrays,0);
+ const unmapped=previewAlternateMatchPointBookings({A:[make(3,'MYSTERY COURT')]},map);
+ assert.equal(unmapped.unmappedRows,1);
+ assert.equal(unmapped.mappedRows,0);
 });

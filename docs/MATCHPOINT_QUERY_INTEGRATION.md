@@ -126,6 +126,26 @@ at the next permitted request window. Keep `MATCHPOINT_ENABLED` disabled
 until the response structure, mapping and import behavior are validated.
 
 
+### Live response findings — November 16, 2026
+
+An actual read-only `GET /api/query/bookings` at 23:14 Beirut time
+returned HTTP 200 JSON with **six top-level fields, one top-level array,
+and eight objects containing booking-related field groups** including
+identifier, court, date, time, status, participants, and payments. It did
+**not** contain the documented lowercase `ok` / `data` wrapper. The
+privacy-safe schema diagnostics indicate provider fields may also have
+different capitalization.
+
+A new **preview-only** compatibility detector can validate a unique
+top-level booking array using case-insensitive known field names and
+existing court mappings. It returns only aggregate counts and never
+customer records, financial data, API tokens, or the unknown wrapper key.
+The production importer deliberately still requires the documented page
+envelope, because the alternative wrapper's pagination and error flags
+have not been confirmed. **Do not enable regular synchronization yet**.
+Use only one quota-counted manual connection check per approved time slot
+until the alternate envelope and pagination semantics are verified.
+
 The document also describes `GET /api/query/availability`, a **different**
 endpoint whose requested *availability slot duration* is limited to 1–600
 minutes. That 600-minute limit does not apply to returned booking durations

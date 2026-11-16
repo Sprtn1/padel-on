@@ -3,7 +3,7 @@
 // It does not import, modify or delete any Padel On booking/financial record.
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {loadCourtMap,mappedCourt} from '../lib/matchpoint-normalize.js';
+import {loadCourtMap,mappedCourt,matchPointField,normalizeMatchPointRecord} from '../lib/matchpoint-normalize.js';
 import {matchpointLebanonSlot} from './matchpoint-sync.mjs';
 
 const nextDay=(date,count)=>{
@@ -84,6 +84,39 @@ export function summarizeMatchpointJsonShape(root){
   hasAuthOrPermissionText:state.authOrPermissionText,
   hasHtmlText:state.htmlText,
   truncated:state.truncated
+ };
+}
+
+// Preview only: never return raw booking data and never import anything.
+// The live API had six top-level fields, exactly one array, and booking-like
+// objects. We can validate whether its array represents bookings without
+// knowing the provider's private wrapper key or logging customer data.
+export function previewAlternateMatchPointBookings(payload,map){
+ const obj=payload&&typeof payload==='object'&&!Array.isArray(payload)?payload:null;
+ const arrays=obj?Object.values(obj).filter(Array.isArray):[];
+ const matches=arrays.filter(rows=>rows.length>0&&rows.length<=1000&&rows.every(row=>
+  row&&typeof row==='object'&&!Array.isArray(row)&&
+  ['id','date','startTime','endTime','resourceName'].every(k=>
+   matchPointField(row,k)!==undefined&&matchPointField(row,k)!==null)));
+ const selected=matches.length===1?matches[0]:null;
+ let valid=0,mapped=0,unmapped=0,invalid=0;
+ if(selected)for(const row of selected){
+  try{
+   const normalized=normalizeMatchPointRecord('bookings',row,map);
+   if(normalized){valid++;mapped++;}
+   else{valid++;unmapped++;}
+  }catch{invalid++;}
+ }
+ return {
+  topLevelArrays:arrays.length,
+  matchingBookingArrays:matches.length,
+  candidateRows:selected?.length??0,
+  validBookingRows:valid,
+  mappedRows:mapped,
+  unmappedRows:unmapped,
+  invalidRows:invalid,
+  importEnabled:false,
+  metadataAndPaginationUnverified:true
  };
 }
 
@@ -189,6 +222,7 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
    '; contentType='+(/^(application\/json|text\/json|application\/problem\+json)$/i.test(contentType)?contentType:'other')+
    '; known envelope keys present='+JSON.stringify(known));
   logger.log('MatchPoint safe structural summary: '+JSON.stringify(summarizeMatchpointJsonShape(data)));
+  logger.log('MatchPoint privacy-safe booking preview: '+JSON.stringify(previewAlternateMatchPointBookings(data,map)));
   throw Error('MatchPoint responded HTTP 200 but JSON does not match documented {ok:true,data:[...]} structure. No bookings imported.');
  }
  const distinct=new Map();
