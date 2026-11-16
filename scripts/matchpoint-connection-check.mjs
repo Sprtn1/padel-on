@@ -66,11 +66,21 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
  url.searchParams.set('offset','0');
  url.searchParams.set('limit','1000');
  if(env.MATCHPOINT_CENTER_CODE)url.searchParams.set('center',env.MATCHPOINT_CENTER_CODE);
- const response=await fetcher(url,{
-  headers:{'X-Api-Token':env.MATCHPOINT_API_TOKEN,Accept:'application/json'},
-  redirect:'error',signal:AbortSignal.timeout(20000)
- });
+ let response;
+ try{
+  // Manual redirect handling preserves the token: it is NEVER sent to a
+  // redirected destination. Status 302/301 is reported, not followed.
+  response=await fetcher(url,{
+   headers:{'X-Api-Token':env.MATCHPOINT_API_TOKEN,Accept:'application/json'},
+   redirect:'manual',signal:AbortSignal.timeout(20000)
+  });
+ }catch(e){
+  const code=String(e?.cause?.code||e?.code||e?.name||'UNKNOWN_ERROR').replace(/[^A-Z_0-9]/gi,'').slice(0,48);
+  throw Error('MatchPoint API connection failed before receiving HTTP status (network/TLS code: '+code+'). One quota claim consumed.');
+ }
  logger.log('MatchPoint /api/query/bookings returned HTTP '+response.status+' (one API request charged to the daily cap).');
+ if(response.status>=300&&response.status<400)
+  throw Error('MatchPoint API returned HTTP '+response.status+' redirect (not followed). Confirm the Query API host and query-permission token; a sign-in redirect may indicate the wrong API origin.');
  if(!response.ok)throw Error('MatchPoint API authentication or endpoint check failed: HTTP '+response.status+'.');
  let data;
  try{data=await response.json()}catch{throw Error('MatchPoint returned non-JSON data.')}
