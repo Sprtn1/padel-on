@@ -96,12 +96,18 @@ test('network errors report safe error codes without leaking token or URL creden
  });
  assert.equal(claimed,1);assert.equal(queried,1);
 });
-test('manual verification action cannot automatically call MatchPoint on code push',async()=>{
+test('API connection workflow is restricted to manual or a quota-gated trusted-main one-time push',async()=>{
  const {readFile}=await import('node:fs/promises');
  const yaml=await readFile(new URL('../.github/workflows/matchpoint-connection-check.yml',import.meta.url),'utf8');
- assert.match(yaml,/workflow_dispatch:/);
- assert.doesNotMatch(yaml,/\n\s+(push|pull_request|schedule):/);
  assert.match(yaml,/node scripts\/matchpoint-connection-check\.mjs/);
+ assert.doesNotMatch(yaml,/\n\s+(pull_request|schedule):/);
+ if(yaml.includes('  push:')){
+  assert.match(yaml,/branches: \[main\]/);
+  assert.match(yaml,/\.github\/workflows\/matchpoint-connection-check\.yml/);
+  assert.match(yaml,/quota RPC permits at most one/);
+ }else{
+  assert.match(yaml,/workflow_dispatch:/);
+ }
 });
 
 test('redirect diagnostic classifies same-host login without revealing Location query',async()=>{
@@ -131,4 +137,13 @@ test('redirect to a different host is reported only as different host, without f
   assert.doesNotMatch(err.message,/somewhere.example|secret-code/);
   return true;
  });
+});
+
+test('workflow pins the explicitly provided API host, not the app login site',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ for(const path of ['matchpoint-connection-check.yml','matchpoint-reservations-sync.yml']){
+  const yaml=await readFile(new URL('../.github/workflows/'+path,import.meta.url),'utf8');
+  assert.match(yaml,/MATCHPOINT_HOST: https:\/\/padelon-lb\.matchpoint\.com\.es/);
+  assert.doesNotMatch(yaml,/MATCHPOINT_HOST:.*app-padelon-lb/);
+ }
 });
