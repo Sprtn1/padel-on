@@ -181,6 +181,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  return summary;
 }
 if(process.argv[1]&&new URL('file://'+process.argv[1]).href===import.meta.url){
- if(process.env.MATCHPOINT_ENABLED!=='true')console.log('MatchPoint integration disabled until server/token/court mapping are configured.');
+ if(process.env.MATCHPOINT_ENABLED!=='true')console.log('MatchPoint integration is disabled.');
+ else if(process.env.MATCHPOINT_PAUSED==='true')console.log('MatchPoint integration paused using the GitHub Actions variable MATCHPOINT_PAUSED.');
  else runMatchPointSync().catch(error=>{console.error('MatchPoint sync failed:',error.message);process.exitCode=1});
 }
