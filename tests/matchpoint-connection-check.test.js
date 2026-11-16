@@ -103,3 +103,32 @@ test('manual verification action cannot automatically call MatchPoint on code pu
  assert.doesNotMatch(yaml,/\n\s+(push|pull_request|schedule):/);
  assert.match(yaml,/node scripts\/matchpoint-connection-check\.mjs/);
 });
+
+test('redirect diagnostic classifies same-host login without revealing Location query',async()=>{
+ const messages=[];
+ const response=(value,status=200)=>({ok:status>=200&&status<300,status,json:async()=>value});
+ await assert.rejects(()=>checkMatchpointConnection({
+  env:valid,now:allowed,logger:{log:msg=>messages.push(msg)},
+  fetcher:async(url,opts)=>{
+   if(String(url).includes('.supabase.co'))return response(true);
+   assert.equal(opts.redirect,'manual');
+   return {ok:false,status:302,headers:{get:key=>key==='location'?'/Login.aspx?token=DO_NOT_LEAK':null}};
+  }
+ }),err=>{
+  assert.match(err.message,/302 redirect to same-host login page/);
+  assert.doesNotMatch(err.message,/DO_NOT_LEAK|Login.aspx/);
+  return true;
+ });
+ assert.doesNotMatch(messages.join(' '),/DO_NOT_LEAK/);
+});
+test('redirect to a different host is reported only as different host, without forwarding token',async()=>{
+ await assert.rejects(()=>checkMatchpointConnection({
+  env:valid,now:allowed,logger:{log:()=>{}},
+  fetcher:async url=>String(url).includes('.supabase.co')?response(true):
+   {ok:false,status:302,headers:{get:key=>key==='location'?'https://somewhere.example/Login.aspx?access=secret-code':null}}
+ }),err=>{
+  assert.match(err.message,/302 redirect to different host/);
+  assert.doesNotMatch(err.message,/somewhere.example|secret-code/);
+  return true;
+ });
+});
