@@ -779,3 +779,31 @@
 
 /* Pickleball singles: show only two player-paid markers. */
 .cafe-marks label[hidden]{display:none!important}
+
+/* Imported MatchPoint bookings use the complete local editor, not a narrow
+   read-only badge. Keep mobile amounts/actions legible and clear of the FAB. */
+@media (max-width: 640px) {
+ .cafe-matchpoint-entry .cafe-ledger-row {
+  display:flex; flex-direction:column; align-items:stretch; gap:10px;
+ }
+ .cafe-matchpoint-entry .cafe-entry-description {
+  flex:1 1 auto; width:100%; min-width:0;
+ }
+ .cafe-matchpoint-entry .cafe-entry-actions {
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start;
+  flex:1 1 auto; width:100%; min-width:0; gap:8px;
+ }
+ .cafe-matchpoint-entry .cafe-entry-actions > b {
+  margin-right:auto; min-width:32px;
+ }
+ .cafe-matchpoint-entry .cafe-entry-actions button {
+  white-space:normal; overflow-wrap:anywhere; min-height:36px;
+ }
+ .cafe-matchpoint-entry .cafe-existing-marks {
+  display:flex; flex-wrap:wrap; gap:8px;
+ }
+ .cafe-matchpoint-entry .cafe-marks {
+  display:flex; flex-wrap:wrap; gap:9px;
+ }
+ .cafe-entry-list {padding-bottom:92px;}
+}
