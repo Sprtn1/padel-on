@@ -1,9 +1,13 @@
 name: Verify MatchPoint API (manual, quota-accounted)
 
-# Manual-only, read-only diagnostic. Does not run on pushes or schedules.
-# All real API requests are quota-claimed in Supabase before being sent.
+# ONE-TIME user-requested forced read-only test on 2026-11-16 only.
+# A single main-branch push triggers once, using a unique atomic quota claim.
+# Restore workflow_dispatch immediately after inspecting this run.
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/matchpoint-connection-check.yml'
 
 permissions:
   contents: read
@@ -20,6 +24,7 @@ jobs:
       # Host supplied by MatchPoint for the Query API; not the separate app-* login site.
       MATCHPOINT_HOST: ${{ secrets.MATCHPOINT_HOST }}
       MATCHPOINT_API_TOKEN: ${{ secrets.MATCHPOINT_API_TOKEN }}
+      MATCHPOINT_FORCED_PREVIEW: '2026-11-16-once'
       MATCHPOINT_COURT_MAP_JSON: ${{ secrets.MATCHPOINT_COURT_MAP_JSON }}
       MATCHPOINT_CENTER_CODE: ${{ vars.MATCHPOINT_CENTER_CODE }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
