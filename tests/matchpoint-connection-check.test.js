@@ -96,18 +96,12 @@ test('network errors report safe error codes without leaking token or URL creden
  });
  assert.equal(claimed,1);assert.equal(queried,1);
 });
-test('API connection workflow is restricted to manual or a quota-gated trusted-main one-time push',async()=>{
+test('API connection workflow is manual-only after the one-time test',async()=>{
  const {readFile}=await import('node:fs/promises');
  const yaml=await readFile(new URL('../.github/workflows/matchpoint-connection-check.yml',import.meta.url),'utf8');
  assert.match(yaml,/node scripts\/matchpoint-connection-check\.mjs/);
- assert.doesNotMatch(yaml,/\n\s+(pull_request|schedule):/);
- if(yaml.includes('  push:')){
-  assert.match(yaml,/branches: \[main\]/);
-  assert.match(yaml,/\.github\/workflows\/matchpoint-connection-check\.yml/);
-  assert.match(yaml,/quota RPC permits at most one/);
- }else{
-  assert.match(yaml,/workflow_dispatch:/);
- }
+ assert.match(yaml,/workflow_dispatch:/);
+ assert.doesNotMatch(yaml,/\n\s+(push|pull_request|schedule):/);
 });
 
 test('redirect diagnostic classifies same-host login without revealing Location query',async()=>{
@@ -146,4 +140,20 @@ test('workflow pins the explicitly provided API host, not the app login site',as
   assert.match(yaml,/MATCHPOINT_HOST: https:\/\/padelon-lb\.matchpoint\.com\.es/);
   assert.doesNotMatch(yaml,/MATCHPOINT_HOST:.*app-padelon-lb/);
  }
+});
+
+test('HTTP 200 JSON that is not the documented envelope is diagnosed without exposing secrets or customer data',async()=>{
+ const logs=[];
+ let claimed=0,requested=0;
+ await assert.rejects(()=>checkMatchpointConnection({
+  env:valid,now:allowed,logger:{log:msg=>logs.push(msg)},
+  fetcher:async(url)=>{
+   if(String(url).includes('.supabase.co')){claimed++;return response(true);}
+   requested++;
+   return response({ok:false,error:'DO_NOT_LEAK_PERSONAL_DATA',data:{customer:'Private Person'},hasMore:false});
+  }
+ }),/HTTP 200 but JSON does not match documented/);
+ assert.equal(claimed,1);assert.equal(requested,1);
+ assert(logs.some(msg=>msg.includes('root=object; ok=boolean (false); data=object; error=string')));
+ assert.doesNotMatch(logs.join(' '),/DO_NOT_LEAK_PERSONAL_DATA|Private Person|never-print-me/);
 });
