@@ -160,3 +160,43 @@ test('pagination fails closed instead of issuing a 25th API HTTP request',async(
  assert.equal(claims,1);
  assert.equal(requests,1);
 });
+
+test('MatchPoint Query bookings may span the full 16-hour local operating day',()=>{
+ const fullDay=normalizeMatchPointRecord('bookings',booking(100,'2026-11-16','09:00','01:00'),mapping);
+ assert.equal(fullDay.booking_start_time,'09:00');
+ assert.equal(fullDay.booking_end_time,'01:00');
+ assert.equal(fullDay.duration_minutes,960);
+ assert.equal(fullDay.business_date,'2026-11-16');
+ assert.throws(
+  ()=>normalizeMatchPointRecord('bookings',booking(101,'2026-11-16','08:59','01:00'),mapping),
+  /Unsupported MatchPoint booking duration/
+ );
+});
+test('production MatchPoint sync does not follow unexpected HTTP 302 redirects with API token',async()=>{
+ const env={
+  MATCHPOINT_HOST:'https://matchpoint.example.com',MATCHPOINT_API_TOKEN:'secret',
+  MATCHPOINT_COURT_MAP_JSON:JSON.stringify({'MAIN|Court 1':{sport:'padel',court:'C1'}}),
+  SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'private-key'
+ };
+ let apiRequests=0,quotaClaims=0,imports=0;
+ const response=data=>({ok:true,status:200,text:async()=>JSON.stringify(data),json:async()=>data});
+ const fetcher=async(url,options={})=>{
+  const u=new URL(url);
+  if(u.pathname.endsWith('/matchpoint_sync_status'))return response([{id:1,last_run_at:null}]);
+  if(u.pathname.endsWith('/matchpoint_claim_query_request')){quotaClaims++;return response(true);}
+  if(u.pathname.startsWith('/api/query/')){
+   apiRequests++;
+   assert.equal(options.redirect,'manual','API token must not follow an undocumented redirect');
+   assert.equal(options.headers['X-Api-Token'],'secret');
+   return {ok:false,status:302};
+  }
+  if(u.pathname.endsWith('/padel_court_reservations')){imports++;return response([]);}
+  throw Error('Unexpected network path '+u.pathname);
+ };
+ await assert.rejects(()=>runMatchPointSync({
+  env,now:new Date('2026-11-16T19:17:00+02:00'),fetcher,logger:{log:()=>{},warn:()=>{}}
+ }),/MatchPoint bookings HTTP 302 redirect/);
+ assert.equal(apiRequests,1);
+ assert.equal(quotaClaims,1);
+ assert.equal(imports,0,'No bookings may be imported from an undocumented redirect');
+});
