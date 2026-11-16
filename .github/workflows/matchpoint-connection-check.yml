@@ -1,14 +1,9 @@
 name: Verify MatchPoint API (manual, quota-accounted)
 
-# ONE-TIME user-authorized secret check on 2026-11-16; this trusted main
-# push triggers only this read-only diagnostic. Supabase atomically claims a
-# unique slot in the same 24/day ledger BEFORE making one API request.
-# Remove this trigger immediately after the test.
+# Manual-only, read-only diagnostic. Does not run on pushes or schedules.
+# All real API requests are quota-claimed in Supabase before being sent.
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/matchpoint-connection-check.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -24,7 +19,6 @@ jobs:
     env:
       # Host supplied by MatchPoint for the Query API; not the separate app-* login site.
       MATCHPOINT_HOST: ${{ secrets.MATCHPOINT_HOST }}
-      MATCHPOINT_ONE_TIME_DIAGNOSTIC: '2026-11-16-now'
       MATCHPOINT_API_TOKEN: ${{ secrets.MATCHPOINT_API_TOKEN }}
       MATCHPOINT_COURT_MAP_JSON: ${{ secrets.MATCHPOINT_COURT_MAP_JSON }}
       MATCHPOINT_CENTER_CODE: ${{ vars.MATCHPOINT_CENTER_CODE }}
