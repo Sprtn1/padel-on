@@ -96,12 +96,19 @@ test('network errors report safe error codes without leaking token or URL creden
  });
  assert.equal(claimed,1);assert.equal(queried,1);
 });
-test('manual verification action cannot automatically call MatchPoint on code push',async()=>{
+test('MatchPoint verification workflow is manual-only or has a one-day guarded main-branch trigger',async()=>{
  const {readFile}=await import('node:fs/promises');
  const yaml=await readFile(new URL('../.github/workflows/matchpoint-connection-check.yml',import.meta.url),'utf8');
- assert.match(yaml,/workflow_dispatch:/);
- assert.doesNotMatch(yaml,/\n\s+(push|pull_request|schedule):/);
  assert.match(yaml,/node scripts\/matchpoint-connection-check\.mjs/);
+ assert.doesNotMatch(yaml,/\n\s+(pull_request|schedule):/);
+ if(yaml.includes('  push:')){
+  assert.match(yaml,/branches: \[main\]/);
+  assert.match(yaml,/MATCHPOINT_ONE_TIME_OVERRIDE: '2026-11-16'/);
+  assert.match(yaml,/\.github\/workflows\/matchpoint-connection-check\.yml/);
+ }else{
+  assert.match(yaml,/workflow_dispatch:/);
+  assert.doesNotMatch(yaml,/MATCHPOINT_ONE_TIME_OVERRIDE/);
+ }
 });
 
 test('explicit 2026-11-16 authorization permits one off-window request via dedicated quota claim',async()=>{
