@@ -97,15 +97,12 @@ test('network errors report safe error codes without leaking token or URL creden
  });
  assert.equal(claimed,1);assert.equal(queried,1);
 });
-test('API diagnostic only has a user-authorized one-time trusted-main trigger or manual dispatch',async()=>{
+test('API connection workflow is manual-only after the one-time test',async()=>{
  const {readFile}=await import('node:fs/promises');
  const yaml=await readFile(new URL('../.github/workflows/matchpoint-connection-check.yml',import.meta.url),'utf8');
  assert.match(yaml,/node scripts\/matchpoint-connection-check\.mjs/);
- if(yaml.includes('  push:')){
-  assert.match(yaml,/branches: \[main\]/);
-  assert.match(yaml,/MATCHPOINT_READINESS_ONCE: '2026-11-16-only'/);
- }else assert.match(yaml,/workflow_dispatch:/);
- assert.doesNotMatch(yaml,/\n\s+(pull_request|schedule):/);
+ assert.match(yaml,/workflow_dispatch:/);
+ assert.doesNotMatch(yaml,/\n\s+(push|pull_request|schedule):/);
 });
 
 test('redirect diagnostic classifies same-host login without revealing Location query',async()=>{
@@ -162,18 +159,14 @@ test('HTTP 200 JSON that is not the documented envelope is diagnosed without exp
  assert.doesNotMatch(logs.join(' '),/DO_NOT_LEAK_PERSONAL_DATA|Private Person|never-print-me/);
 });
 
-test('diagnostic has no old one-time override and only trusted-main trigger or manual dispatch',async()=>{
+test('manual diagnostic does not retain the one-day bypass or auto-trigger',async()=>{
  const {readFile}=await import('node:fs/promises');
  const script=await readFile(new URL('../scripts/matchpoint-connection-check.mjs',import.meta.url),'utf8');
  const workflow=await readFile(new URL('../.github/workflows/matchpoint-connection-check.yml',import.meta.url),'utf8');
  assert.doesNotMatch(script,/MATCHPOINT_ONE_TIME_DIAGNOSTIC|matchpoint_claim_checknow_20261116/);
  assert.doesNotMatch(workflow,/MATCHPOINT_ONE_TIME_DIAGNOSTIC/);
- if(workflow.includes('  push:')){
-  assert.match(script,/matchpoint_claim_readiness_20261116/);
-  assert.match(script,/2026-11-16-only/);
-  assert.match(workflow,/branches: \[main\]/);
- }else assert.match(workflow,/workflow_dispatch:/);
- assert.doesNotMatch(workflow,/\n\s+(pull_request|schedule):/);
+ assert.match(workflow,/workflow_dispatch:/);
+ assert.doesNotMatch(workflow,/\n\s+(push|pull_request|schedule):/);
 });
 
 test('undocumented JSON structure summary exposes shapes, not field names or private values',()=>{
@@ -288,23 +281,4 @@ test('alternate envelope fails closed on ambiguous arrays, incomplete records an
  const unmapped=previewAlternateMatchPointBookings({A:[make(3,'MYSTERY COURT')]},map);
  assert.equal(unmapped.unmappedRows,1);
  assert.equal(unmapped.mappedRows,0);
-});
-
-test('November 16 readiness test claims one exact quota row and never writes bookings',async()=>{
- const env={...valid,MATCHPOINT_HOST:'https://padelon-lb.matchpoint.com.es',
-  MATCHPOINT_READINESS_ONCE:'2026-11-16-only'};
- let claim=0,remote=0;const logs=[];
- await assert.rejects(()=>checkMatchpointConnection({env,
-  now:new Date('2026-11-16T23:39:00+02:00'),logger:{log:s=>logs.push(s)},
-  fetcher:async(url,opts)=>{
-   if(String(url).includes('.supabase.co')){
-    claim++;assert.match(String(url),/matchpoint_claim_readiness_20261116/);
-    assert.equal(opts.method,'POST');return response(true);
-   }
-   remote++;return response({Success:true,HasMore:false,Error:null,
-    Data:[{Id:1,Date:'2026-11-16',StartTime:'18:00',EndTime:'19:30',ResourceName:'Court 1'}],Count:1,Limit:1000});
-  }
- }),/HTTP 200 but JSON does not match documented/);
- assert.equal(claim,1);assert.equal(remote,1);
- assert(logs.some(l=>l.includes('strict parser dry run')&&l.includes('"mappedRows":1')));
 });
