@@ -66,3 +66,40 @@ test('one atomic claim means exactly one MatchPoint call, no customer info in lo
  assert(!logs.join(' ').includes('Private Person'));
  assert(!logs.join(' ').includes('never-print-me'));
 });
+
+test('a redirect from MatchPoint is not followed and consumes only one quota claim',async()=>{
+ let claimed=0,queried=0;
+ await assert.rejects(()=>checkMatchpointConnection({
+  env:valid,now:allowed,logger:{log:()=>{}},
+  fetcher:async(url,options)=>{
+   if(String(url).includes('.supabase.co')){claimed++;return response(true);}
+   queried++;
+   assert.equal(options.redirect,'manual','Never forward the API token to a redirected host');
+   return response(null,302);
+  }
+ }),/MatchPoint API returned HTTP 302 redirect/);
+ assert.equal(claimed,1);assert.equal(queried,1);
+});
+test('network errors report safe error codes without leaking token or URL credentials',async()=>{
+ let claimed=0,queried=0;
+ await assert.rejects(()=>checkMatchpointConnection({
+  env:valid,now:allowed,logger:{log:()=>{}},
+  fetcher:async url=>{
+   if(String(url).includes('.supabase.co')){claimed++;return response(true);}
+   queried++;throw Object.assign(new TypeError('fetch failed'),{cause:Object.assign(new Error('broken'),{code:'ECONNRESET'})});
+  }
+ }),error=>{
+  assert.match(error.message,/network\/TLS code: ECONNRESET/);
+  assert.doesNotMatch(error.message,/never-print-me/);
+  assert.doesNotMatch(error.message,/example\.matchpoint\.com/);
+  return true;
+ });
+ assert.equal(claimed,1);assert.equal(queried,1);
+});
+test('manual verification action cannot automatically call MatchPoint on code push',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const yaml=await readFile(new URL('../.github/workflows/matchpoint-connection-check.yml',import.meta.url),'utf8');
+ assert.match(yaml,/workflow_dispatch:/);
+ assert.doesNotMatch(yaml,/\n\s+(push|pull_request|schedule):/);
+ assert.match(yaml,/node scripts\/matchpoint-connection-check\.mjs/);
+});

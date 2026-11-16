@@ -1,14 +1,9 @@
-name: Diagnose MatchPoint network (no API calls)
+name: Verify MatchPoint API (manual, read-only, quota-accounted)
 
-# Temporary one-shot check: run only when this diagnostic lands on main.
-# The workflow will be removed after inspecting the results.
+# This can only be invoked from the Actions UI. No scheduled/API calls are
+# started by pushes or PRs; regular MatchPoint sync remains disabled.
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/matchpoint-connection-check.yml'
-      - 'scripts/matchpoint-connection-check.mjs'
-      - 'tests/matchpoint-connection-check.test.js'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -23,10 +18,17 @@ jobs:
     timeout-minutes: 5
     env:
       MATCHPOINT_HOST: ${{ secrets.MATCHPOINT_HOST }}
+      MATCHPOINT_API_TOKEN: ${{ secrets.MATCHPOINT_API_TOKEN }}
+      MATCHPOINT_COURT_MAP_JSON: ${{ secrets.MATCHPOINT_COURT_MAP_JSON }}
+      MATCHPOINT_CENTER_CODE: ${{ vars.MATCHPOINT_CENTER_CODE }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Check DNS, TLS and website connectivity (zero API requests)
+      - name: Check MatchPoint website network without calling the Query API
         run: node scripts/matchpoint-network-probe.mjs
+      - name: Check one MatchPoint booking API response if Beirut-time quota allows
+        run: node scripts/matchpoint-connection-check.mjs
