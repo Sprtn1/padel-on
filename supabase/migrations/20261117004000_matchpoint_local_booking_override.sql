@@ -201,7 +201,7 @@ BEGIN
   jsonb_build_object('sport',p_sport,'court',p_court,'type',p_booking_type,'date',p_business_date,
    'start',p_start,'duration',p_duration,'status',p_status));
  RETURN v_id;
-END $function$
+END $function$;
 
 
 CREATE OR REPLACE FUNCTION public.club_court_reservation_priced_save(p_id uuid, p_business_date date, p_sport text, p_court text, p_start text, p_duration integer, p_customer text, p_notes text, p_status text, p_booking_type text, p_expected_revision integer, p_payment_total_cents bigint, p_cash_cents bigint, p_whish_cents bigint, p_unpaid_cents bigint, p_split_revision integer, p_update_payments boolean, p_checkmarks boolean[], p_expected_checkmarks boolean[], p_pickleball_player_count integer)
@@ -262,7 +262,7 @@ BEGIN
    jsonb_build_object('pickleball_player_count',p_pickleball_player_count));
  END IF;
  RETURN v_id;
-END $function$
+END $function$;
 
 
 CREATE OR REPLACE FUNCTION public.club_private_training_save(p_id uuid, p_business_date date, p_sport text, p_court text, p_start text, p_duration integer, p_client_id uuid, p_coach_id uuid, p_session_fee_cents bigint, p_notes text, p_status text, p_expected_revision integer)
@@ -314,7 +314,7 @@ BEGIN
   jsonb_build_object('client_id',p_client_id,'coach_id',p_coach_id,
     'fee_cents',p_session_fee_cents,'status',p_status));
  RETURN v_id;
-END $function$
+END $function$;
 
 
 -- Existing staff-only grants are retained. This migration never opens
