@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {loadCourtMap,normalizeMatchPointRecord,pickNonDuplicate,overlapsCourtSlot,minutesForClock} from '../lib/matchpoint-normalize.js';
-import {runMatchPointSync,matchpointLebanonSlot} from '../scripts/matchpoint-sync.mjs';
+import {runMatchPointSync,matchpointLebanonSlot,matchpointBookingSnapshot,matchpointProtectedPatch} from '../scripts/matchpoint-sync.mjs';
 
 const mapping=loadCourtMap({'MAIN|Court 1':{sport:'padel',court:'C1'},'MAIN|Pickle 1':{sport:'pickleball',court:'P1'},'MAIN|Basketball':{sport:'basketball',court:'B1'}});
 const booking=(id,date='2026-11-16',start='18:00',end='19:30')=>({
@@ -275,4 +275,89 @@ test('bookings-only production rollout preserves existing local overlapping book
  assert.equal(written[0].record[0].external_source,'matchpoint');
  for(const forbidden of ['amount_cents','cash_cents','whish_cents','paid','payments','accessCode'])
   assert.equal(written[0].record[0][forbidden],undefined);
+});
+
+test('local MatchPoint overrides retain staff time, court, type, private training and cancellations on sync',async()=>{
+ const env={
+  MATCHPOINT_HOST:'https://padelon-lb.matchpoint.com.es',
+  MATCHPOINT_API_TOKEN:'secret',
+  MATCHPOINT_COURT_MAP_JSON:JSON.stringify({'MAIN|Court 1':{sport:'padel',court:'C1'}}),
+  SUPABASE_URL:'https://example.supabase.co',
+  SUPABASE_SERVICE_ROLE_KEY:'server-secret',
+  MATCHPOINT_FEEDS:'bookings',MATCHPOINT_EXTENDED_SCAN:'false'
+ };
+ const remote=booking(42,'2026-11-17','18:00','19:30');
+ const normalized=normalizeMatchPointRecord('bookings',remote,mapping);
+ const old={
+  ...normalized,id:'saved-uuid',external_source:'matchpoint',
+  external_kind:'bookings',external_id:'42',
+  external_local_override:true,
+  external_remote_snapshot:matchpointBookingSnapshot(normalized),
+  court_number:'C2',booking_start_time:'19:00:00',booking_end_time:'21:00:00',
+  duration_minutes:120,customer_name:'Local client training',
+  private_client_id:'private-client-1',private_coach_id:'coach-1',
+  private_session_fee_cents:5500,booking_type:'reservation',
+  status:'confirmed',revision:5,notes:'Local extension',checkmarks:[true,false,false,false,false,false]
+ };
+ const writes=[];
+ const response=body=>({ok:true,status:200,text:async()=>JSON.stringify(body),json:async()=>body});
+ const fetcher=async(url,opts={})=>{
+  const path=new URL(url).pathname;
+  if(path==='/api/query/bookings')return response({Ok:true,Data:[remote],HasMore:false,Error:null,Total:1});
+  if(path.endsWith('/matchpoint_claim_query_request'))return response(true);
+  if(path.endsWith('/matchpoint_sync_status'))return response(opts.method==='PATCH'?[{id:1}]:[{id:1,last_run_at:null}]);
+  if(path.endsWith('/court_payment_splits'))return response([]);
+  if(path.endsWith('/padel_court_reservations')){
+   if(opts.method==='PATCH'){
+    writes.push(JSON.parse(opts.body));
+    return response([{...old,...JSON.parse(opts.body)}]);
+   }
+   if(opts.method==='POST')throw Error('Must never create duplicate imported booking');
+   return response([old]);
+  }
+  throw Error('Unexpected request '+path);
+ };
+ const result=await runMatchPointSync({
+  env,now:new Date('2026-11-17T09:17:00+02:00'),fetcher,
+  logger:{log:()=>{},warn:()=>{}}
+ });
+ assert.equal(result.inserted,0);
+ assert.equal(writes.length,1);
+ const patch=writes[0];
+ for(const key of ['business_date','court_number','booking_start_time','booking_end_time',
+  'duration_minutes','customer_name','booking_type','status','notes','revision',
+  'private_client_id','private_coach_id','private_session_fee_cents','checkmarks'])
+  assert.equal(Object.hasOwn(patch,key),false,'Sync changed staff field '+key);
+ assert.equal(patch.external_status,'ACTIVE');
+ assert.equal(patch.external_remote_snapshot.customer_name,'Nadine Ahmad');
+ assert.equal(patch.external_local_override,undefined);
+});
+test('a provider change or cancellation warns staff without undoing a local override',()=>{
+ const remote=normalizeMatchPointRecord('bookings',booking(4),mapping);
+ const existing={
+  ...remote,external_local_override:true,external_remote_snapshot:matchpointBookingSnapshot(remote),
+  status:'confirmed',booking_start_time:'19:00',booking_end_time:'20:30',
+  private_client_id:'client-1',private_session_fee_cents:6000
+ };
+ const later={...remote,booking_start_time:'20:00',booking_end_time:'21:30'};
+ const changed=matchpointProtectedPatch(existing,later,new Date('2026-11-17T09:17:00+02:00'));
+ assert.equal(changed.providerChangeDetected,true);
+ assert.match(changed.external_alert,/MatchPoint changed/);
+ assert.equal(changed.booking_start_time,undefined);
+ const cancelled=matchpointProtectedPatch(existing,{...remote,status:'cancelled'},new Date('2026-11-17T09:17:00+02:00'));
+ assert.match(cancelled.external_alert,/MatchPoint cancelled/);
+ assert.equal(cancelled.status,undefined);
+});
+test('migration preserves external identity and uses authenticated staff RPCs for local edits',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const sql=await readFile(new URL('../supabase/migrations/20261117004000_matchpoint_local_booking_override.sql',import.meta.url),'utf8');
+ assert.match(sql,/external_local_override boolean NOT NULL DEFAULT false/);
+ assert.match(sql,/external_remote_snapshot jsonb/);
+ assert.match(sql,/MatchPoint external identifiers are immutable/);
+ assert.match(sql,/app\.matchpoint_local_edit/);
+ assert.match(sql,/external_local_override=CASE WHEN external_source='matchpoint' THEN true/);
+ assert.match(sql,/v_old\.external_source IS DISTINCT FROM 'matchpoint'/);
+ assert.match(sql,/Reverse existing court payments before converting to private training/);
+ assert.match(sql,/Completed private training cannot be converted/);
+ assert.match(sql,/TO authenticated/);
 });
