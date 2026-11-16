@@ -12,7 +12,7 @@ In GitHub repo Settings → Secrets and variables → Actions, add:
 | Setting | GitHub type | Value |
 | --- | --- | --- |
 | MATCHPOINT_ENABLED | Variable | true **only after verification** |
-| MATCHPOINT_HOST | Secret | HTTPS origin of MatchPoint server, e.g. https://club.example.com (example only) |
+| MATCHPOINT_HOST | Workflow configuration | `https://padelon-lb.matchpoint.com.es` (MatchPoint Query API origin, provided by club, not the app login host) |
 | MATCHPOINT_API_TOKEN | Secret | Query-permission API token (never commit or put in browser) |
 | MATCHPOINT_COURT_MAP_JSON | Secret | JSON mapping of actual MatchPoint venue/court names to Padel On |
 | MATCHPOINT_CENTER_CODE | Variable | Optional center code for /bookings |
@@ -102,16 +102,17 @@ requires `X-Api-Token` with `query` permission, and defines read-only
 90 days; `limit` may be at most 1000. `canceled=yes` includes canceled
 records. Padel On's request construction follows these rules.
 
-**The document DOES NOT identify Padel On's production API hostname.**
-The configured MatchPoint website host was inferred from the club login page
-and remains unverified as a Query API origin.
+**The PDF uses a `{host}` placeholder, but MatchPoint has now provided the club's Query API origin:**
+`https://padelon-lb.matchpoint.com.es` (without the `app-` prefix).
+Both GitHub Actions workflows set this public hostname explicitly instead of using the old login-host secret.
+The Query API remains read-only and authentication stays in the encrypted `MATCHPOINT_API_TOKEN` GitHub secret.
 
-On 2026-11-16, a one-off quota-counted diagnostic reached the website over
-verified TLS but `GET /api/query/bookings` returned **HTTP 302**. The
+On 2026-11-16, the original **incorrect** `app-padelon-lb.matchpoint.com.es`
+website hostname returned HTTP 302 for `/api/query/bookings` despite valid TLS. The
 documentation lists **400, 401, and 429** API errors, not 302. A redirect
 might indicate website authentication or a different/disabled API route,
-rather than proving the token itself is invalid. Until MatchPoint support
-confirms the API origin and query route, leave `MATCHPOINT_ENABLED` disabled.
+rather than proving the token itself is invalid. Do not interpret that test as a failure of the **new** `padelon-lb` origin.
+Leave `MATCHPOINT_ENABLED` disabled until a read-only request confirms the corrected host.
 The diagnostic never follows a redirect with an API token.
 
 The document also describes `GET /api/query/availability`, a **different**
