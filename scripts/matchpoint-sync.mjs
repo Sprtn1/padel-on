@@ -71,10 +71,14 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
   url.searchParams.set('dateFrom',from);url.searchParams.set('dateTo',to);
   url.searchParams.set('canceled','yes');url.searchParams.set('offset','0');url.searchParams.set('limit','1000');
   if(kind==='bookings'&&env.MATCHPOINT_CENTER_CODE)url.searchParams.set('center',env.MATCHPOINT_CENTER_CODE);
+  // Do not follow authentication redirects with a privileged token. Returning
+  // the status makes unexpected 30x responses diagnosable without leaking it.
   const response=await fetcher(url.toString(),{
    headers:{'X-Api-Token':env.MATCHPOINT_API_TOKEN,Accept:'application/json'},
-   redirect:'error'
+   redirect:'manual'
   });
+  if(response.status>=300&&response.status<400)
+   throw Error('MatchPoint '+kind+' HTTP '+response.status+' redirect; API host or Query API routing is not verified.');
   if(!response.ok)throw Error('MatchPoint '+kind+' HTTP '+response.status);
   const pageData=await response.json();
   if(pageData?.ok!==true||!Array.isArray(pageData.data))throw Error('Invalid MatchPoint '+kind+' response');
