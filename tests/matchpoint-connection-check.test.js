@@ -103,3 +103,54 @@ test('manual verification action cannot automatically call MatchPoint on code pu
  assert.doesNotMatch(yaml,/\n\s+(push|pull_request|schedule):/);
  assert.match(yaml,/node scripts\/matchpoint-connection-check\.mjs/);
 });
+
+test('explicit 2026-11-16 authorization permits one off-window request via dedicated quota claim',async()=>{
+ let quotaCalls=0,matchpointCalls=0;
+ const logs=[];
+ const r=await checkMatchpointConnection({
+  env:{...valid,MATCHPOINT_ONE_TIME_OVERRIDE:'2026-11-16'},
+  now:new Date('2026-11-16T17:52:00+02:00'),
+  logger:{log:text=>logs.push(text)},
+  fetcher:async(url,options)=>{
+   if(String(url).includes('.supabase.co')){
+    quotaCalls++;
+    assert.match(String(url),/matchpoint_claim_connection_test_20261116/);
+    assert.deepEqual(JSON.parse(options.body),{});
+    return response(true);
+   }
+   matchpointCalls++;
+   assert.equal(options.redirect,'manual');
+   return response({ok:true,data:[{id:1,resourceName:'Court 1'}],hasMore:false});
+  }
+ });
+ assert.equal(r.apiChecked,true);
+ assert.equal(quotaCalls,1);
+ assert.equal(matchpointCalls,1);
+ assert.equal(r.unmapped,0);
+});
+test('an override cannot authorize calls on a different calendar date',async()=>{
+ let calls=0;
+ const r=await checkMatchpointConnection({
+  env:{...valid,MATCHPOINT_ONE_TIME_OVERRIDE:'2026-11-16'},
+  now:new Date('2026-11-17T17:52:00+02:00'),
+  logger:{log:()=>{}},
+  fetcher:async()=>{calls++;throw Error('Forbidden');}
+ });
+ assert.equal(r.apiChecked,false);
+ assert.equal(calls,0);
+});
+test('denied one-time claim results in no MatchPoint request',async()=>{
+ let requests=0,claims=0;
+ const r=await checkMatchpointConnection({
+  env:{...valid,MATCHPOINT_ONE_TIME_OVERRIDE:'2026-11-16'},
+  now:new Date('2026-11-16T18:16:00+02:00'),
+  logger:{log:()=>{}},
+  fetcher:async url=>{
+   if(String(url).includes('.supabase.co')){claims++;return response(false);}
+   requests++;throw Error('Forbidden after claim denied');
+  }
+ });
+ assert.equal(r.apiChecked,false);
+ assert.equal(requests,0);
+ assert.equal(claims,1);
+});
