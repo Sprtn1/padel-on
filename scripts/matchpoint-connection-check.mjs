@@ -142,22 +142,17 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
  if(absent.length)throw Error('Court mapping is missing Padel On targets: '+absent.join(', '));
  logger.log('Required server secrets are present; HTTPS hosts, court map JSON and all five court targets are structurally valid.');
  const slot=matchpointLebanonSlot(now);
- const localDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Beirut',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
- // Exactly one authorized test on this date. Same advisory lock and total 24/day.
- const once=env.MATCHPOINT_READINESS_ONCE==='2026-11-16-only'&&localDate==='2026-11-16';
- if(once&&host.origin!=='https://padelon-lb.matchpoint.com.es')
-  throw Error('Readiness test blocked: wrong MatchPoint API hostname, no quota used.');
- if(!slot&&!once){
+ if(!slot){
   logger.log('Live MatchPoint request SKIPPED: outside the eight permitted Beirut-time windows; quota preserved.');
   return {checkedSecrets:true,apiChecked:false,reason:'outside_allowed_slot'};
  }
- const claimUrl=new URL('/rest/v1/rpc/'+(once?'matchpoint_claim_readiness_20261116':'matchpoint_claim_query_request'),supabase.origin);
+ const claimUrl=new URL('/rest/v1/rpc/matchpoint_claim_query_request',supabase.origin);
  const claimResponse=await fetcher(claimUrl,{
   method:'POST',
   headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,
    Authorization:'Bearer '+env.SUPABASE_SERVICE_ROLE_KEY,
    'Content-Type':'application/json',Accept:'application/json'},
-  body:JSON.stringify(once?{}:{p_feed:'bookings'}),
+  body:JSON.stringify({p_feed:'bookings'}),
   redirect:'error',signal:AbortSignal.timeout(20000)
  });
  if(!claimResponse.ok)
@@ -170,8 +165,8 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
  }
  // Exactly one MatchPoint API call, counted BEFORE attempting the request.
  const url=new URL('/api/query/bookings',host.origin);
- url.searchParams.set('dateFrom',localDate);
- url.searchParams.set('dateTo',nextDay(localDate,7));
+ url.searchParams.set('dateFrom',slot.day);
+ url.searchParams.set('dateTo',nextDay(slot.day,7));
  url.searchParams.set('canceled','yes');
  url.searchParams.set('offset','0');
  url.searchParams.set('limit','1000');
