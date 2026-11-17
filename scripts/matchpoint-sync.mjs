@@ -36,21 +36,44 @@ export function matchpointRemoteChanged(before,after){
 }
 // Keep every local edit intact, including private-client links and cancelled
 // status. An API refresh updates only remote metadata and review alerts.
+export function matchpointReviewAcknowledged(existing,metadata){
+ const ack=existing.external_review_ack;
+ return !!ack&&ack.status===metadata.external_status&&
+   JSON.stringify(Object.entries(ack.snapshot||{}).sort())===JSON.stringify(Object.entries(metadata.external_remote_snapshot||{}).sort());
+}
+export function matchpointNeedsManualCancellation(row,hasMoney=false){
+ return !!(hasMoney||row.external_local_override||row.booking_type==='block'||
+  row.private_client_id||row.private_session_entry_id||row.private_coach_id||
+  (row.checkmarks||[]).some(Boolean)||String(row.notes||'').trim());
+}
+// MatchPoint queries calendar dates, while local business dates use a 1 AM rollover.
+// Check only dates certainly inside the requested range and do not infer a deletion
+// for sessions already started. The upper boundary is deliberately excluded.
+export function matchpointCanCheckMissing(row,from,to,now){
+ const saved=row.external_remote_snapshot||matchpointBookingSnapshot(row);
+ const minutes=minutesForClock(saved.booking_start_time);
+ if(minutes===null||!/^\d{4}-\d{2}-\d{2}$/.test(saved.business_date||''))return false;
+ const providerDate=minutes<=60?addDays(saved.business_date,1):saved.business_date;
+ if(providerDate<from||providerDate>=to)return false;
+ const hm=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Beirut',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(now);
+ return providerDate>from||(providerDate===from&&minutes>minutesForClock(hm));
+}
 export function matchpointProtectedPatch(existing,item,now){
  const snapshot=matchpointBookingSnapshot(item);
  const previouslySeen=existing.external_remote_snapshot||matchpointBookingSnapshot(existing);
  const remoteChanged=matchpointRemoteChanged(previouslySeen,snapshot);
  const providerCancelled=item.status==='cancelled';
  const localCancelled=existing.status==='cancelled'&&item.status!=='cancelled';
- const existingAlert=String(existing.external_alert||'');
+ const existingAlert=existing.external_status==='MISSING'?'':String(existing.external_alert||'');
  let alert=existingAlert;
  if(remoteChanged)alert='MatchPoint changed this booking after a local edit. Padel On kept your settings; review both schedules.';
- if(providerCancelled)alert='MatchPoint cancelled this booking. Local Padel On changes were retained; review it before collecting payments.';
+ if(providerCancelled)alert=existing.status==='cancelled'?'':'MatchPoint cancelled this booking. Local Padel On changes were retained; review it before collecting payments.';
  if(localCancelled)alert='Cancelled locally in Padel On, but still active in MatchPoint. Cancel it there too if needed.';
  return {
   external_status:item.external_status,external_seen_at:now.toISOString(),
-  external_remote_snapshot:snapshot,external_alert:alert||null,
-  providerChangeDetected:remoteChanged||providerCancelled||localCancelled
+  external_remote_snapshot:snapshot,external_missing_count:0,
+  external_alert:matchpointReviewAcknowledged(existing,{external_status:item.external_status,external_remote_snapshot:snapshot})?null:alert||null,
+  providerChangeDetected:!!alert&&!matchpointReviewAcknowledged(existing,{external_status:item.external_status,external_remote_snapshot:snapshot})
  };
 }
 const errorText=x=>typeof x==='string'?x:JSON.stringify(x);
@@ -150,6 +173,12 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
    }catch(e){warnings.push(String(e.message||e))}
   }
  }
+ // Only a strictly parsed, fully normalized page with unique IDs supports
+ // missing-record reconciliation. A failed/incomplete page never cancels anything.
+ const bookingRows=items.filter(x=>x.external_kind==='bookings');
+ const seenBookings=new Set(bookingRows.map(x=>x.external_id));
+ const completeBookings=Array.isArray(fetched.bookings)&&
+  fetched.bookings.length===bookingRows.length&&seenBookings.size===bookingRows.length;
  const unique=pickNonDuplicate(items);
  if(unique.length<items.length)warnings.push('Overlapping source court bookings skipped: '+(items.length-unique.length));
  const existing=await readAll('padel_court_reservations',{and:'(business_date.gte.'+previousDate(from)+',business_date.lte.'+to+')'});
@@ -159,65 +188,103 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  const occupancy=existing.filter(x=>x.status!=='cancelled');
  const findConflict=(item,ignoreId)=>occupancy.find(x=>x.id!==ignoreId&&overlapsCourtSlot(x,item));
  const sameValue=(field,value,previous)=>['booking_start_time','booking_end_time'].includes(field)
-  ?minutesForClock(value)===minutesForClock(previous):value===previous;
+  ?minutesForClock(value)===minutesForClock(previous):field==='external_remote_snapshot'
+   ?JSON.stringify(Object.entries(value||{}).sort())===JSON.stringify(Object.entries(previous||{}).sort())
+   :value===previous;
  let inserted=0,updated=0,cancelled=0,ignored=0,conflicts=0;
- for(const item of unique){
+ const replaceOccupancy=(old,patch)=>{
+  const idx=occupancy.findIndex(x=>x.id===old.id);if(idx>=0)occupancy.splice(idx,1);
+  if((patch.status||old.status)!=='cancelled')occupancy.push({...old,...patch});
+ };
+ const writeExisting=async(old,patch,{metadata=false}={})=>{
+  const filters={id:'eq.'+old.id,...(Number.isInteger(old.revision)?{revision:'eq.'+old.revision}:{})};
+  const changes=metadata?patch:{...patch,updated_at:now.toISOString(),revision:Number(old.revision||1)+1};
+  const result=await api('PATCH','padel_court_reservations',filters,changes);
+  if(!Array.isArray(result)||!result.length)throw Error('Reservation changed during synchronization; retry on next sync');
+  if(!metadata)replaceOccupancy(old,changes);
+  return result[0];
+ };
+ const review=async(old,metadata,message)=>{
+  const alert=matchpointReviewAcknowledged(old,metadata)?null:message;
+  await writeExisting(old,{...metadata,external_alert:alert},{metadata:true});
+  if(alert)conflicts++;
+ };
+ const cancelOrReview=async(old,metadata,{confirmed=true,reason})=>{
+  if(old.status==='cancelled'){
+   await writeExisting(old,{...metadata,external_alert:null},{metadata:true});return;
+  }
+  if(!confirmed||matchpointNeedsManualCancellation(old,withMoney.has(old.id))){
+   await review(old,metadata,reason);return;
+  }
+  try{
+   await writeExisting(old,{...metadata,status:'cancelled',external_alert:null});
+   cancelled++;updated++;
+  }catch(e){
+   // The DB independently blocks service cancellation if a payment, edit or
+   // private training appeared after our read. Do not overwrite the new state.
+   warnings.push('Cancellation requires review: '+keyOf(old));
+   conflicts++;
+  }
+ };
+ if(completeBookings){
+  // Reconcile omissions before adding new bookings, but require two successful
+  // observations. Never infer absence for out-of-range, old or started sessions.
+  for(const old of byId.values()){
+   if(old.external_kind!=='bookings'||seenBookings.has(String(old.external_id))||
+      !matchpointCanCheckMissing(old,from,to,now))continue;
+   const missing=Math.min(2,Number(old.external_missing_count||0)+1);
+   const metadata={external_status:'MISSING',external_missing_count:missing,
+     external_remote_snapshot:old.external_remote_snapshot||matchpointBookingSnapshot(old)};
+   try{
+    await cancelOrReview(old,metadata,{confirmed:missing>=2,
+      reason:missing<2?'Not returned by MatchPoint. Awaiting another complete sync before releasing the court.':
+       'Booking missing from two complete MatchPoint responses. Local edits, training or payment details require review.'});
+   }catch(e){warnings.push('Missing-booking review failed: '+keyOf(old));conflicts++;}
+  }
+ }else if(fetched.bookings)warnings.push('Missing booking detection skipped: booking data was not fully valid.');
+ // Explicit cancellations are applied first to release eligible court slots.
+ for(const item of [...unique].sort((a,b)=>Number(b.status==='cancelled')-Number(a.status==='cancelled'))){
   const old=byId.get(keyOf(item));
   if(!old&&item.status==='cancelled')continue;
-  const paid=old?withMoney.has(old.id):false;
-  const delta={...item,external_remote_snapshot:matchpointBookingSnapshot(item),external_seen_at:now.toISOString()};
-  if(old?.external_local_override===true){
-   const patch=matchpointProtectedPatch(old,item,now);
-   const {providerChangeDetected,...metadata}=patch;
-   try{
-    // No revision change: a background sync must not invalidate a staff editor.
-    await api('PATCH','padel_court_reservations',{id:'eq.'+old.id},metadata);
+  const delta={...item,external_remote_snapshot:matchpointBookingSnapshot(item),external_seen_at:now.toISOString(),external_missing_count:0};
+  const metadata={external_status:item.external_status,external_remote_snapshot:delta.external_remote_snapshot,
+   external_seen_at:delta.external_seen_at,external_missing_count:0};
+  try{
+   if(old&&item.status==='cancelled'){
+    await cancelOrReview(old,metadata,{reason:'Cancelled in MatchPoint. Review local booking changes, training or payments before cancellation.'});
+    continue;
+   }
+   if(old?.external_local_override===true){
+    const {providerChangeDetected,...patch}=matchpointProtectedPatch(old,item,now);
+    await writeExisting(old,patch,{metadata:true});
     if(providerChangeDetected)conflicts++;
-   }catch(e){
-    logger.warn('MatchPoint metadata refresh skipped '+keyOf(item)+': '+e.message);
-    conflicts++;
+    continue;
    }
-   continue;
-  }
-  if(old){
-   // Do not modify any cash/Whish allocations, checkmarks, private accounts or historical receipts.
-   if(item.status==='cancelled'&&paid){
-    delta.status=old.status;
-    delta.external_alert='Canceled in MatchPoint; financial correction requires staff review';
-    conflicts++;
-   }
-   const changes={};
-   for(const [field,value] of Object.entries(delta)){
-    if(field==='notes'||field==='external_seen_at')continue;
-    if(!sameValue(field,value,old[field]))changes[field]=value;
-   }
-   if(!Object.keys(changes).length)continue;
-   // Never silently move a paid booking into a conflicting local booking.
-   if(delta.status!=='cancelled'){
+   if(old){
+    const changes={};
+    for(const [field,value] of Object.entries(delta)){
+     if(field==='notes'||field==='external_seen_at')continue;
+     if(!sameValue(field,value,old[field]))changes[field]=value;
+    }
+    if(!Object.keys(changes).length)continue;
     const occupant=findConflict(item,old.id);
     if(occupant){
-     logger.warn('MatchPoint move conflicts with booking '+occupant.id+' at '+uniqueCourtSlot(item));
-     conflicts++;continue;
+     await review(old,metadata,'MatchPoint changed the booking, but its new time overlaps another Padel On reservation.');
+     continue;
     }
-   }
-   try{
     changes.external_seen_at=now.toISOString();
-    changes.updated_at=now.toISOString();changes.revision=Number(old.revision||1)+1;
-    await api('PATCH','padel_court_reservations',{id:'eq.'+old.id},changes);
-    updated++;if(item.status==='cancelled'&&!paid)cancelled++;
-    const previousIndex=occupancy.findIndex(x=>x.id===old.id);
-    if(previousIndex>=0)occupancy.splice(previousIndex,1);
-    if(delta.status!=='cancelled')occupancy.push({...old,...delta});
-   }catch(e){logger.warn('MatchPoint update skipped '+keyOf(item)+': '+e.message);conflicts++}
-  }else{
-   const occupant=findConflict(item,null);
-   if(occupant){logger.warn('MatchPoint overlaps existing booking at '+uniqueCourtSlot(item));ignored++;continue;}
-   try{
+    await writeExisting(old,changes);updated++;
+   }else{
+    const occupant=findConflict(item,null);
+    if(occupant){
+     warnings.push('New MatchPoint booking '+item.external_id+' overlaps local court '+uniqueCourtSlot(item)+'; open timetable to review.');
+     ignored++;conflicts++;continue;
+    }
     const added=await api('POST','padel_court_reservations',{},[delta]);
     if(!added?.[0]?.id)throw Error('Missing inserted reservation ID');
     occupancy.push(added[0]);inserted++;
-   }catch(e){logger.warn('MatchPoint insert skipped '+keyOf(item)+': '+e.message);conflicts++}
-  }
+   }
+  }catch(e){logger.warn('MatchPoint booking update skipped '+keyOf(item)+': '+e.message);conflicts++;}
  }
  const stamps={last_run_at:now.toISOString(),last_error:warnings.length?warnings.slice(0,12).join('; ').slice(0,1000):null,last_conflict_count:conflicts};
  for(const kind of kinds)stamps['last_'+kind+'_at']=now.toISOString();
