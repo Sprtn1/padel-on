@@ -265,3 +265,32 @@ normalizer therefore supports court reservations up to Padel On's existing
 This integration does **not** automatically back up the whole Supabase
 database offsite; the existing Google Drive daily backup workflow remains
 separate and should be verified independently.
+
+
+## Cancellation reconciliation and Sync Issues (November 17, 2026)
+
+Cafeteria Finances → Court bookings → **List / Timetable / Sync Issues** is
+the central staff review queue. It lists outstanding reservation alerts
+across business dates and individual overlaps that prevented new imports.
+Review booking opens the existing booking editor. Keep local version
+acknowledges the exact observed MatchPoint status and snapshot and preserves
+the local override. If an overlapping new import was skipped, review the
+blocking local reservation; a later sync retries the import.
+
+- Explicit provider cancellations soft-cancel an untouched, unpaid booking.
+  The cancelled row and provider identity remain in PostgreSQL for audit.
+- A missing upcoming booking is flagged on the first fully validated,
+  complete, unique-ID bookings response, and may be soft-cancelled only
+  after a second complete observation. Failed/invalid/partial responses
+  never infer deletion. The worker excludes already-started services and
+  the uncertain upper date boundary from omission checks.
+- Local edits, notes, payment checkmarks, allocated payments, private
+  training and blocks are protected. Staff must resolve these exceptions.
+- Existing finance/cashbook/posted-training cancellation guards remain in
+  place for staff. The service role can soft-cancel only eligible imported
+  bookings, without moving money or changing their booking details.
+- MatchPoint stays read-only; resolving a local issue does not write to
+  MatchPoint. The schedule and the 24-request cap are unchanged.
+
+Backup: `backup/pre-matchpoint-sync-issues-20261117` and private database
+schema `backup_matchpoint_sync_issues_20261117`.
