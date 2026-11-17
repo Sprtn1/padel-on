@@ -143,7 +143,7 @@ export async function checkMatchpointConnection({env=process.env,now=new Date(),
  logger.log('Required server secrets are present; HTTPS hosts, court map JSON and all five court targets are structurally valid.');
  const slot=matchpointLebanonSlot(now);
  if(!slot){
-  logger.log('Live MatchPoint request SKIPPED: outside the eight permitted Beirut-time windows; quota preserved.');
+  logger.log('Live MatchPoint request SKIPPED: outside the fifteen permitted Beirut-time windows; quota preserved.');
   return {checkedSecrets:true,apiChecked:false,reason:'outside_allowed_slot'};
  }
  const claimUrl=new URL('/rest/v1/rpc/matchpoint_claim_query_request',supabase.origin);
