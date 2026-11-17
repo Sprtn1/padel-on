@@ -5,8 +5,16 @@ name: MatchPoint booking sync
 
 on:
   workflow_dispatch:
+  # A trusted workflow configuration change also gets a quota-guarded catch-up.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/matchpoint-reservations-sync.yml'
   schedule:
     - cron: '0,30 6-19 * * *'
+    # Avoid the busy top of each hour. If the primary event was dropped,
+    # the backup can still claim the same half-hour; never spend twice.
+    - cron: '11,41 6-19 * * *'
 
 permissions:
   contents: read
