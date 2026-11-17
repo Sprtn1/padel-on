@@ -90,14 +90,14 @@ test('hourly cooldown avoids a second API pass within 60 minutes',async()=>{
 test('MatchPoint scheduled workflow covers Lebanon DST hours but only allows eight local slots',async()=>{
  const {readFile}=await import('node:fs/promises');
  const yaml=await readFile(new URL('../.github/workflows/matchpoint-reservations-sync.yml',import.meta.url),'utf8');
- assert.equal(yaml.includes("cron: '17 6-21 * * *'"),true);
+ assert.equal(yaml.includes("cron: '0 6-21 * * *'"),true);
  assert.equal(yaml.includes("*/5 * * * *"),false);
 });
 
 test('eight Lebanese odd-hour windows accept winter and summer clocks and exclude midnight',()=>{
  for(const offset of ['+02:00','+03:00']){
   for(const hour of [9,11,13,15,17,19,21,23]){
-   const dt=new Date('2026-'+(offset==='+02:00'?'11-15':'06-15')+'T'+String(hour).padStart(2,'0')+':17:00'+offset);
+   const dt=new Date('2026-'+(offset==='+02:00'?'11-15':'06-15')+'T'+String(hour).padStart(2,'0')+':00:00'+offset);
    assert.equal(matchpointLebanonSlot(dt)?.hour,hour,'valid local slot '+hour);
   }
  }
