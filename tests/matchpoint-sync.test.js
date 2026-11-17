@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {loadCourtMap,normalizeMatchPointRecord,pickNonDuplicate,overlapsCourtSlot,minutesForClock} from '../lib/matchpoint-normalize.js';
-import {runMatchPointSync,matchpointLebanonSlot,matchpointBookingSnapshot,matchpointProtectedPatch} from '../scripts/matchpoint-sync.mjs';
+import {runMatchPointSync,matchpointLebanonSlot,matchpointBookingSnapshot,matchpointProtectedPatch,matchpointCanCheckMissing,matchpointNeedsManualCancellation} from '../scripts/matchpoint-sync.mjs';
 
 const mapping=loadCourtMap({'MAIN|Court 1':{sport:'padel',court:'C1'},'MAIN|Pickle 1':{sport:'pickleball',court:'P1'},'MAIN|Basketball':{sport:'basketball',court:'B1'}});
 const booking=(id,date='2026-11-16',start='18:00',end='19:30')=>({
@@ -360,4 +360,100 @@ test('migration preserves external identity and uses authenticated staff RPCs fo
  assert.match(sql,/Reverse existing court payments before converting to private training/);
  assert.match(sql,/Completed private training cannot be converted/);
  assert.match(sql,/TO authenticated/);
+});
+
+function cancellationFixture({local={},paid=false,remoteStatus='ACTIVE',remoteMissing=false,hasMore=false,remoteRows=null,now='2026-11-17T09:17:00+02:00'}={}){
+ const incoming=booking(700,'2026-11-18','18:00','19:00');
+ const initial=normalizeMatchPointRecord('bookings',incoming,mapping);
+ const existing={...initial,id:'local-mp-700',revision:3,external_remote_snapshot:matchpointBookingSnapshot(initial),
+  external_missing_count:0,external_local_override:false,checkmarks:[false,false,false,false,false,false],...local};
+ const writes=[],statusWrites=[],requests=[];
+ const response=body=>({ok:true,status:200,text:async()=>JSON.stringify(body),json:async()=>body});
+ const env={MATCHPOINT_HOST:'https://padelon-lb.matchpoint.com.es',MATCHPOINT_API_TOKEN:'token',
+  MATCHPOINT_COURT_MAP_JSON:JSON.stringify({'MAIN|Court 1':{sport:'padel',court:'C1'}}),
+  SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'secret',
+  MATCHPOINT_FEEDS:'bookings',MATCHPOINT_EXTENDED_SCAN:'false'};
+ const fetcher=async(url,opts={})=>{
+  const u=new URL(url),path=u.pathname;requests.push(path);
+  if(path==='/api/query/bookings')return response({Ok:true,HasMore:hasMore,Error:null,Data:remoteRows??(remoteMissing?[]:[{...incoming,status:remoteStatus}])});
+  if(path.endsWith('/matchpoint_claim_query_request'))return response(true);
+  if(path.endsWith('/matchpoint_sync_status')){
+   if(opts.method==='PATCH')statusWrites.push(JSON.parse(opts.body));
+   return response([{id:1,last_run_at:null}]);
+  }
+  if(path.endsWith('/court_payment_splits')){
+   assert(!opts.method||opts.method==='GET');return response(paid?[{source_id:existing.id}]:[]);
+  }
+  if(path.endsWith('/padel_court_reservations')){
+   if(opts.method==='PATCH'){
+    const patch=JSON.parse(opts.body);writes.push(patch);
+    assert.equal(u.searchParams.get('revision'),'eq.3');
+    return response([{...existing,...patch}]);
+   }
+   if(opts.method==='POST')throw Error('Existing booking cannot be reinserted');
+   return response([existing]);
+  }
+  throw Error('Unexpected '+path);
+ };
+ return {existing,writes,statusWrites,requests,run:()=>runMatchPointSync({env,fetcher,now:new Date(now),logger:{log:()=>{},warn:()=>{}}})};
+}
+test('explicit MatchPoint cancellation releases untouched unpaid court and retains its row',async()=>{
+ const x=cancellationFixture({remoteStatus:'CANCELED'});
+ const result=await x.run();
+ assert.equal(result.cancelled,1);assert.equal(result.conflicts,0);
+ assert.equal(x.writes.length,1);assert.equal(x.writes[0].status,'cancelled');
+ assert.equal(x.writes[0].external_status,'CANCELED');
+ for(const k of ['customer_name','booking_start_time','court_number','checkmarks','notes','amount_cents'])
+  assert.equal(Object.hasOwn(x.writes[0],k),false);
+ assert.equal(x.requests.filter(p=>p==='/api/query/bookings').length,1);
+});
+test('paid, edited, marked, noted and private training bookings are review-only',async()=>{
+ for(const settings of [{paid:true},{local:{external_local_override:true}},
+  {local:{private_client_id:'private-client'}},{local:{checkmarks:[true,false,false,false,false,false]}},
+  {local:{notes:'local note'}},{local:{booking_type:'block'}}]){
+  const x=cancellationFixture({...settings,remoteStatus:'CANCELLED'});
+  const result=await x.run();
+  assert.equal(result.cancelled,0);assert.equal(result.conflicts,1);
+  assert.equal(x.writes.length,1);assert.match(x.writes[0].external_alert,/Cancelled in MatchPoint/);
+  assert.equal(x.writes[0].status,undefined);assert.equal(x.writes[0].revision,undefined);
+ }
+});
+test('missing upcoming record needs two complete observations before soft cancellation',async()=>{
+ const first=cancellationFixture({remoteMissing:true});
+ const a=await first.run();assert.equal(a.cancelled,0);
+ assert.equal(first.writes[0].external_missing_count,1);
+ assert.match(first.writes[0].external_alert,/Awaiting another complete sync/);
+ const next=cancellationFixture({remoteMissing:true,local:{external_missing_count:1,external_status:'MISSING'}});
+ const b=await next.run();assert.equal(b.cancelled,1);
+ assert.equal(next.writes[0].external_missing_count,2);assert.equal(next.writes[0].status,'cancelled');
+ const paid=cancellationFixture({remoteMissing:true,paid:true,local:{external_missing_count:1}});
+ assert.equal((await paid.run()).cancelled,0);assert.match(paid.writes[0].external_alert,/two complete/);
+});
+test('incomplete, unmapped and duplicate pages cannot infer missing cancellation',async()=>{
+ const partial=cancellationFixture({remoteMissing:true,hasMore:true,local:{external_missing_count:1}});
+ await assert.rejects(partial.run,/requires pagination/);assert.equal(partial.writes.length,0);
+ for(const remoteRows of [[{...booking(701,'2026-11-18'),resourceName:'Unmapped'}],
+  [booking(701,'2026-11-18'),booking(701,'2026-11-18')]]){
+  const x=cancellationFixture({remoteRows,local:{external_missing_count:1}});
+  await x.run();assert.equal(x.writes.some(p=>p.status==='cancelled'),false);
+ }
+});
+test('missing checks exclude started bookings, provider date boundaries and dates outside scan',()=>{
+ const now=new Date('2026-11-17T09:17:00+02:00');
+ const row=(day,start)=>({business_date:day,booking_start_time:start});
+ assert.equal(matchpointCanCheckMissing(row('2026-11-17','09:00'),'2026-11-17','2026-11-24',now),false);
+ assert.equal(matchpointCanCheckMissing(row('2026-11-17','10:00'),'2026-11-17','2026-11-24',now),true);
+ assert.equal(matchpointCanCheckMissing(row('2026-11-24','10:00'),'2026-11-17','2026-11-24',now),false);
+ assert.equal(matchpointCanCheckMissing(row('2026-11-16','00:30'),'2026-11-17','2026-11-24',now),false);
+ assert.equal(matchpointCanCheckMissing(row('2026-11-17','00:30'),'2026-11-17','2026-11-24',now),true);
+ assert.equal(matchpointNeedsManualCancellation({notes:'  '},false),false);
+});
+test('acknowledged remote cancellation stays dismissed until provider changes again',async()=>{
+ const original=normalizeMatchPointRecord('bookings',{...booking(700,'2026-11-18','18:00','19:00'),status:'CANCELED'},mapping);
+ const x=cancellationFixture({remoteStatus:'CANCELED',local:{external_local_override:true,external_status:'CANCELED',
+  external_remote_snapshot:matchpointBookingSnapshot(original),
+  external_review_ack:{status:'CANCELED',snapshot:matchpointBookingSnapshot(original)}}});
+ const r=await x.run();assert.equal(r.cancelled,0);assert.equal(r.conflicts,0);assert.equal(x.writes[0].external_alert,null);
+ const seenAgain=cancellationFixture({remoteStatus:'ACTIVE',local:{external_missing_count:1,external_status:'MISSING',external_alert:'Previously missing'}});
+ await seenAgain.run();assert.equal(seenAgain.writes[0].external_missing_count,0);assert.equal(seenAgain.writes[0].external_alert,null);
 });
