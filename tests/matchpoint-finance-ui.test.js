@@ -9,15 +9,15 @@ const imported={
  external_source:'matchpoint',external_kind:'bookings',external_id:'5432',
  checkmarks:[false,false,false,false,false,false],notes:''
 };
-function setup({matchpointActive=true,allowWrites=false}={}){
+function setup({matchpointActive=true,allowWrites=false,issueRows=[],blockingConflicts=[],importWarnings=null}={}){
  const calls=[];
  const api={
   getSession:()=>({access_token:'token'}),
   rpc:async(name,args)=>{calls.push({rpc:name,args});if(!allowWrites)throw Error('Unexpected write to '+name);return 'saved-booking-id'},
-  listAll:async(table)=>{
+  listAll:async(table,query='')=>{
    calls.push(table);
-   if(table==='padel_court_reservations')return [imported];
-   if(table==='matchpoint_sync_status')return matchpointActive?[{id:1,last_bookings_at:'2026-11-16T08:00:00Z'}]:[];
+   if(table==='padel_court_reservations')return query.includes('external_alert=not.is.null')?issueRows:[imported,...issueRows.filter(row=>row.id!==imported.id)];
+   if(table==='matchpoint_sync_status')return matchpointActive?[{id:1,last_bookings_at:'2026-11-16T08:00:00Z',last_booking_conflicts:blockingConflicts,last_error:importWarnings}]:[];
    if(table==='whish_wallet_settings')return [{opening_balance_cents:60}];
    return [];
   }
@@ -245,4 +245,35 @@ test('maintenance saved from Finance uses block reservation RPC with zero court 
  assert.equal(writes[0].args.p_whish_cents,0);
  assert.equal(writes[0].args.p_update_payments,false);
  assert.equal(writes[0].args.p_duration,960);
+});
+
+test('Sync Issues is a third court view and shows cross-date issues and local resolution controls',async()=>{
+ const issue={...imported,id:'issue-uuid',business_date:'2026-11-20',revision:4,external_status:'CANCELED',
+  external_alert:'Cancelled in MatchPoint. Local changes require review.',
+  external_remote_snapshot:{business_date:'2026-11-20',court_number:'C1',booking_start_time:'18:00',booking_end_time:'19:30',status:'cancelled'}};
+ const blocker={external_id:'mp-999',business_date:'2026-11-16',sport:'padel',court_number:'C2',booking_start_time:'18:30',booking_end_time:'19:30',
+  blocking_id:imported.id,blocking_date:imported.business_date,blocking_sport:'padel',blocking_court:'C2',blocking_start:'18:00',blocking_end:'19:30'};
+ const {finance,calls}=setup({allowWrites:true,issueRows:[issue],blockingConflicts:[blocker]});
+ await finance.load();
+ assert.match(finance.page(),/data-view="sync-issues"/);
+ assert.match(finance.page(),/Sync Issues \(2\)/);
+ await finance.action({dataset:{action:'cafe-court-view',view:'sync-issues'}});
+ const html=finance.page();
+ assert.match(html,/MatchPoint Sync Issues/);assert.match(html,/2026-11-20/);
+ assert.match(html,/Cancelled in MatchPoint/);assert.match(html,/Review booking/);
+ assert.match(html,/Keep local version/);assert.match(html,/Review blocking booking/);
+ assert.doesNotMatch(html,/data-action="cafe-court-new-reservation"/);
+ const old=globalThis.confirm;
+ globalThis.confirm=()=>true;
+ try{await finance.action({dataset:{action:'cafe-sync-keep-local',id:issue.id}});}
+ finally{if(old===undefined)delete globalThis.confirm;else globalThis.confirm=old;}
+ const call=calls.find(x=>x?.rpc==='matchpoint_keep_local');
+ assert.deepEqual(call.args,{p_id:issue.id,p_revision:4,p_alert:issue.external_alert,p_remote_status:'CANCELED',p_snapshot:issue.external_remote_snapshot});
+ assert.equal(calls.filter(x=>x?.rpc).length,1);
+});
+test('Sync Issues shows an explicit empty state without disabling normal finances',async()=>{
+ const {finance}=setup();await finance.load();
+ await finance.action({dataset:{action:'cafe-court-view',view:'sync-issues'}});
+ assert.match(finance.page(),/No booking sync issues requiring review/);
+ assert.match(finance.page(),/Payments &amp; expenses|Payments & expenses/);
 });

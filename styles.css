@@ -807,3 +807,15 @@
  }
  .cafe-entry-list {padding-bottom:92px;}
 }
+
+/* MatchPoint discrepancy review lives beside List and Timetable. */
+.cafe-view-toggle{flex-wrap:wrap;}
+.cafe-sync-review{display:grid;gap:12px;padding:12px 0;}
+.cafe-sync-review-head,.cafe-sync-issue-title,.cafe-sync-issue-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.cafe-sync-review-head h3,.cafe-sync-review-head p,.cafe-sync-issue-card p{margin:0;}
+.cafe-sync-review-head p,.cafe-sync-issue-card small,.cafe-sync-issue-title span{font-size:.82rem;color:inherit;opacity:.84;}
+.cafe-sync-issue-card{display:grid;gap:10px;padding:14px;border:1px solid var(--border,#cfd8d4);border-radius:12px;min-width:0;}
+.cafe-sync-review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.cafe-sync-review-grid>div{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere;border:1px solid var(--border,#cfd8d4);border-radius:8px;padding:10px;}
+.cafe-sync-issue-actions{justify-content:flex-start;}
+@media(max-width:480px){.cafe-sync-review-grid{grid-template-columns:1fr;}.cafe-view-toggle button{flex:1 1 auto;}.cafe-sync-issue-actions button{flex:1 1 auto;}}
