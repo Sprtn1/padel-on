@@ -1,8 +1,7 @@
 name: MatchPoint booking sync
 
-# Check UTC hours 06–21 to cover 09,11,...,23 in Asia/Beirut across DST.
-# Only 8 of these trigger real MatchPoint calls; the worker/DB enforce the slots.
-# Three feed requests x eight slots = at most 24 MatchPoint HTTP requests/day.
+# Check UTC hours 06–21 to cover every local hour 09–23 in Asia/Beirut across DST.
+# 15 local slots; bookings only (one request per slot), hard cap 24 per day.
 
 on:
   workflow_dispatch:

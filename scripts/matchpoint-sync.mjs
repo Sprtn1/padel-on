@@ -14,8 +14,8 @@ export function matchpointLebanonSlot(now=new Date()){
  }).formatToParts(now);
  const hour=Number(parts.find(p=>p.type==='hour')?.value);
  const minute=Number(parts.find(p=>p.type==='minute')?.value);
- // Eight allowed local slots: 09,11,13,15,17,19,21,23.
- if(![9,11,13,15,17,19,21,23].includes(hour)||minute>=45)return null;
+ // Fifteen hourly local slots: 09 through 23, inclusive.
+ if(hour<9||hour>23||minute>=45)return null;
  return {day:beirutToday(now),hour};
 }
 const keyOf=item=>[item.external_kind,item.external_id].join(':');
@@ -147,15 +147,15 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  };
  const state=await api('GET','matchpoint_sync_status',{id:'eq.1',select:'*'});
  const last=state?.[0]||{};
- // An additional manual/early run should not create another API pass within an hour.
- // This checks the last completed sync; failed runs still need manual investigation.
+ // Suppress a repeat in the same local hour, not a new hourly slot after a delayed run.
+ // The database independently claims each feed once per slot, including failed attempts.
  const previousRun=Date.parse(last.last_run_at||'');
- const elapsed=now.getTime()-previousRun;
- if(Number.isFinite(previousRun)&&elapsed>=0&&elapsed<60*60*1000){
-  logger.log('MatchPoint sync skipped: previous completed pass was less than one hour ago.');
+ const previousSlot=Number.isFinite(previousRun)?matchpointLebanonSlot(new Date(previousRun)):null;
+ if(previousSlot?.day===slot.day&&previousSlot?.hour===slot.hour&&previousRun<=now.getTime()){
+  logger.log('MatchPoint sync skipped: this local hourly slot already completed.');
   return {skipped:true,reason:'hourly_cooldown',last_run_at:last.last_run_at};
  }
- // Eight two-hourly passes x three feeds = at most 24 HTTP requests/day.
+ // Production bookings-only: 15 hourly passes/day; hard ceiling remains 24.
  // The database claim RPC enforces the hard ceiling even after manual runs,
  // failed requests, overlapping jobs, or webhook retries.
  const allowed=['bookings','matches','activities'];

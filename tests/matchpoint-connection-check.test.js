@@ -17,7 +17,7 @@ const valid={
  SUPABASE_SERVICE_ROLE_KEY:'never-print-me-either'
 };
 const allowed=new Date('2026-11-16T17:20:00+02:00');
-const offHours=new Date('2026-11-16T16:20:00+02:00');
+const offHours=new Date('2026-11-16T08:20:00+02:00');
 const response=(body,status=200)=>({ok:status>=200&&status<300,status,json:async()=>body});
 test('preflight reports missing secret names only, without making requests',async()=>{
  let calls=0;
