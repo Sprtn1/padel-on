@@ -32,6 +32,7 @@ BEGIN
     OR true=ANY(OLD.checkmarks) OR btrim(coalesce(OLD.notes,''))<>''
     OR NEW.external_status NOT IN ('CANCELED','CANCELLED','MISSING')
     OR NEW.external_status IS NULL
+    OR (NEW.external_status='MISSING' AND NEW.external_missing_count<>2)
     OR (NEW.business_date,NEW.sport,NEW.court_number,NEW.booking_start_time,
         NEW.booking_end_time,NEW.duration_minutes,NEW.customer_name,NEW.booking_type,
         NEW.private_client_id,NEW.checkmarks,NEW.notes)
