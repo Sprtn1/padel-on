@@ -192,7 +192,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
   ?minutesForClock(value)===minutesForClock(previous):field==='external_remote_snapshot'
    ?JSON.stringify(Object.entries(value||{}).sort())===JSON.stringify(Object.entries(previous||{}).sort())
    :value===previous;
- let inserted=0,updated=0,cancelled=0,ignored=0,conflicts=0;
+ let inserted=0,updated=0,cancelled=0,ignored=0,conflicts=0,writeFailures=0;
  const blockingConflicts=[];
  const replaceOccupancy=(old,patch)=>{
   const idx=occupancy.findIndex(x=>x.id===old.id);if(idx>=0)occupancy.splice(idx,1);
@@ -225,7 +225,8 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
    // The DB independently blocks service cancellation if a payment, edit or
    // private training appeared after our read. Do not overwrite the new state.
    warnings.push('Cancellation requires review: '+keyOf(old));
-   conflicts++;
+   logger.warn('MatchPoint cancellation write rejected '+keyOf(old)+': '+e.message);
+   writeFailures++;conflicts++;
   }
  };
  if(completeBookings){
@@ -241,7 +242,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
     await cancelOrReview(old,metadata,{confirmed:missing>=2,
       reason:missing<2?'Not returned by MatchPoint. Awaiting another complete sync before releasing the court.':
        'Booking missing from two complete MatchPoint responses. Local edits, training or payment details require review.'});
-   }catch(e){warnings.push('Missing-booking review failed: '+keyOf(old));conflicts++;}
+   }catch(e){warnings.push('Missing-booking review failed: '+keyOf(old));writeFailures++;conflicts++;}
   }
  }else if(fetched.bookings)warnings.push('Missing booking detection skipped: booking data was not fully valid.');
  // Explicit cancellations are applied first to release eligible court slots.
@@ -287,12 +288,15 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
     if(!added?.[0]?.id)throw Error('Missing inserted reservation ID');
     occupancy.push(added[0]);inserted++;
    }
-  }catch(e){logger.warn('MatchPoint booking update skipped '+keyOf(item)+': '+e.message);conflicts++;}
+  }catch(e){logger.warn('MatchPoint booking update skipped '+keyOf(item)+': '+e.message);writeFailures++;conflicts++;}
  }
+ if(writeFailures)warnings.unshift(writeFailures+' reservation write(s) failed; synchronization incomplete.');
  const stamps={last_run_at:now.toISOString(),last_error:warnings.length?warnings.slice(0,12).join('; ').slice(0,1000):null,last_conflict_count:conflicts,last_booking_conflicts:blockingConflicts};
- for(const kind of kinds)stamps['last_'+kind+'_at']=now.toISOString();
+ // Do not mark a failed import as a successful bookings refresh. The attempted
+ // slot is still recorded; the next slot can retry without duplicate API calls.
+ if(!writeFailures)for(const kind of kinds)stamps['last_'+kind+'_at']=now.toISOString();
  await api('PATCH','matchpoint_sync_status',{id:'eq.1'},stamps);
- const summary={from,to,extended:isExtended,feeds:Object.fromEntries(kinds.map(k=>[k,fetched[k].length])),inserted,updated,cancelled,ignored,conflicts,warnings:warnings.length};
+ const summary={from,to,extended:isExtended,feeds:Object.fromEntries(kinds.map(k=>[k,fetched[k].length])),inserted,updated,cancelled,ignored,conflicts,writeFailures,warnings:warnings.length};
  logger.log('MatchPoint sync result',JSON.stringify(summary));
  if(warnings.length)logger.warn('MatchPoint mapping/validation warnings:',warnings.slice(0,20).join(' | '));
  return summary;
