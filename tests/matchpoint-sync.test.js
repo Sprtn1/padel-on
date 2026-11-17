@@ -87,13 +87,15 @@ test('cooldown avoids a second API pass in the same local half-hour',async()=>{
  assert.equal(result.reason,'hourly_cooldown');
  assert.equal(matchpointRequests,0);
 });
-test('MatchPoint scheduled workflow covers Lebanon DST hours but allows 25 local slots',async()=>{
+test('native Supabase cron covers Lebanese DST hours and retires GitHub scheduling',async()=>{
  const {readFile}=await import('node:fs/promises');
  const yaml=await readFile(new URL('../.github/workflows/matchpoint-reservations-sync.yml',import.meta.url),'utf8');
- assert.equal(yaml.includes("cron: '0,30 6-19 * * *'"),true);
- assert.equal(yaml.includes("cron: '11,41 6-19 * * *'"),true);
- assert.match(yaml,/push:\s*\n\s*branches: \[main\]\s*\n\s*paths:\s*\n\s*- '\.github\/workflows\/matchpoint-reservations-sync\.yml'/);
- assert.equal(yaml.includes("*/5 * * * *"),false);
+ const sql=await readFile(new URL('../supabase/migrations/20261117153200_matchpoint_activate_cron.sql',import.meta.url),'utf8');
+ assert.doesNotMatch(yaml,/\n\s+schedule:/);
+ assert.doesNotMatch(yaml,/run: node scripts\/matchpoint-sync\.mjs/);
+ assert.match(sql,/cron\.schedule\(/);
+ assert.match(sql,/'0,11,30,41 6-19 \* \* \*'/);
+ assert.match(sql,/club_internal\.dispatch_matchpoint_sync\(\)/);
 });
 
 test('25 Lebanese half-hour windows accept winter and summer clocks and exclude off-hours',()=>{

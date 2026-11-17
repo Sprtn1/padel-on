@@ -4,6 +4,15 @@ import {readFile} from 'node:fs/promises';
 const read=path=>readFile(new URL('../'+path,import.meta.url),'utf8');
 test('MatchPoint live rollout is restricted to validated bookings and seven-day window',async()=>{
  const workflow=await read('.github/workflows/matchpoint-reservations-sync.yml');
+ const edge=await read('supabase/functions/matchpoint-sync/index.ts');
+ assert.match(edge,/MATCHPOINT_ENABLED:\"true\"/);
+ assert.match(edge,/MATCHPOINT_FEEDS:\"bookings\"/);
+ assert.match(edge,/MATCHPOINT_EXTENDED_SCAN:\"false\"/);
+ assert.match(edge,/MATCHPOINT_LOOKAHEAD_DAYS:\"7\"/);
+ assert.match(edge,/cfg\.paused!==false/);
+ assert.match(edge,/matchpoint_get_cron_config/);
+ assert.match(workflow,/matchpoint_set_cron_config/);
+ assert.doesNotMatch(workflow,/\n\s+schedule:/);
  assert.match(workflow,/MATCHPOINT_ENABLED: 'true'/);
  assert.match(workflow,/MATCHPOINT_FEEDS: 'bookings'/);
  assert.match(workflow,/MATCHPOINT_EXTENDED_SCAN: 'false'/);
