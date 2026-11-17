@@ -5,13 +5,14 @@ const json=(value:object,status=200)=>new Response(JSON.stringify(value),{status
 const root="https://qonscbdbawmvhcdfcvlo.supabase.co";
 Deno.serve(async(req:Request)=>{
  if(req.method!=="POST")return json({error:"Method not allowed"},405);
- const key=req.headers.get("X-Padelon-Cron-Key");
- if(!key||key.length!==72)return json({error:"Unauthorized"},401);
+ const timestamp=req.headers.get("X-Padelon-Cron-Time");
+ const signature=req.headers.get("X-Padelon-Cron-Signature");
+ if(!timestamp||!/^\d{10}$/.test(timestamp)||!signature||!(/^[0-9a-f]{64}$/.test(signature)))return json({error:"Unauthorized"},401);
  const service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
  if(!service)return json({error:"Server credential unavailable"},503);
  const headers={apikey:service,Authorization:"Bearer "+service,"Content-Type":"application/json"};
  try{
-  const res=await fetch(root+"/rest/v1/rpc/matchpoint_get_cron_config",{method:"POST",headers,body:JSON.stringify({p_key:key}),redirect:"error"});
+  const res=await fetch(root+"/rest/v1/rpc/matchpoint_get_cron_config",{method:"POST",headers,body:JSON.stringify({p_timestamp:timestamp,p_signature:signature}),redirect:"error"});
   if(!res.ok)return json({error:"Server configuration unavailable"},503);
   const cfg=await res.json();
   if(!cfg)return json({error:"Unauthorized or not configured"},401);
