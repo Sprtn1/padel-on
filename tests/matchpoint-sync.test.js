@@ -482,3 +482,40 @@ test('backup scheduler triggers share the original half-hour slot in both season
   }
  }
 });
+
+test('database rejection is recorded as incomplete and does not advance successful booking sync timestamp',async()=>{
+ const env={MATCHPOINT_HOST:'https://matchpoint.example.com',MATCHPOINT_API_TOKEN:'test',MATCHPOINT_COURT_MAP_JSON:JSON.stringify({'MAIN|Court 1':{sport:'padel',court:'C1'}}),SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'private-key',MATCHPOINT_FEEDS:'bookings',MATCHPOINT_EXTENDED_SCAN:'false'};
+ const reply=(body,status=200)=>({ok:status>=200&&status<300,status,text:async()=>JSON.stringify(body),json:async()=>body});
+ const stateWrites=[];
+ const fetcher=async(url,options={})=>{
+  const p=new URL(url).pathname;
+  if(p.endsWith('/api/query/bookings'))return reply({ok:true,data:[booking(901,'2026-11-18','18:00','19:00')],hasMore:false});
+  if(p.endsWith('/matchpoint_claim_query_request'))return reply(true);
+  if(p.endsWith('/matchpoint_sync_status')){
+   if(options.method==='PATCH'){stateWrites.push(JSON.parse(options.body));return reply([{id:1}]);}
+   return reply([{id:1,last_run_at:null,last_bookings_at:'2026-11-16T22:02:20Z'}]);
+  }
+  if(p.endsWith('/court_payment_splits'))return reply([]);
+  if(p.endsWith('/padel_court_reservations')){
+   if(options.method==='POST')return reply({message:'Only the MatchPoint integration can import external reservations'},400);
+   return reply([]);
+  }
+  throw Error('Unexpected network request '+p);
+ };
+ const result=await runMatchPointSync({env,fetcher,now:new Date('2026-11-17T15:00:00+02:00'),logger:{log:()=>{},warn:()=>{}}});
+ assert.equal(result.writeFailures,1);
+ assert.equal(result.inserted,0);
+ assert.equal(stateWrites.length,1);
+ assert.equal(stateWrites[0].last_bookings_at,undefined);
+ assert.match(stateWrites[0].last_error,/1 reservation write\(s\) failed/);
+ assert.equal(stateWrites[0].last_run_at,new Date('2026-11-17T15:00:00+02:00').toISOString());
+});
+test('ownership migration uses actual invoker role, not legacy individual JWT settings',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const sql=await readFile(new URL('../supabase/migrations/20261117143500_matchpoint_actual_server_role.sql',import.meta.url),'utf8');
+ assert.match(sql,/current_user <> 'service_role'/);
+ assert.doesNotMatch(sql,/current_setting\('request\.jwt\.claim\.role'/);
+ assert.doesNotMatch(sql,/SECURITY DEFINER/);
+ assert.match(sql,/MatchPoint external identifiers are immutable/);
+ assert.match(sql,/auth\.uid\(\) IS NULL OR NOT public\.is_staff\(\)/);
+});
