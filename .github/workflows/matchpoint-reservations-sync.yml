@@ -12,6 +12,7 @@ on:
       - '.github/workflows/matchpoint-reservations-sync.yml'
   schedule:
     - cron: '0,30 6-19 * * *'
+    # Recovery: database ownership guard now uses the trusted PostgreSQL role.
     # Avoid the busy top of each hour. If the primary event was dropped,
     # the backup can still claim the same half-hour; never spend twice.
     - cron: '11,41 6-19 * * *'
