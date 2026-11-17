@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS backup_matchpoint_sync_issues_20261117.court_payment_
 ALTER TABLE public.padel_court_reservations
  ADD COLUMN IF NOT EXISTS external_missing_count integer NOT NULL DEFAULT 0 CHECK(external_missing_count BETWEEN 0 AND 2),
  ADD COLUMN IF NOT EXISTS external_review_ack jsonb;
+ALTER TABLE public.matchpoint_sync_status
+ ADD COLUMN IF NOT EXISTS last_booking_conflicts jsonb NOT NULL DEFAULT '[]'::jsonb;
 CREATE INDEX IF NOT EXISTS matchpoint_pending_review_idx ON public.padel_court_reservations(business_date)
  WHERE external_source='matchpoint' AND external_alert IS NOT NULL;
 
@@ -27,7 +29,7 @@ BEGIN
     OR OLD.external_local_override
     OR OLD.booking_type IS DISTINCT FROM 'reservation'
     OR OLD.private_client_id IS NOT NULL OR OLD.private_session_entry_id IS NOT NULL
-    OR true=ANY(OLD.checkmarks) OR coalesce(OLD.notes,'')<>''
+    OR true=ANY(OLD.checkmarks) OR btrim(coalesce(OLD.notes,''))<>''
     OR NEW.external_status NOT IN ('CANCELED','CANCELLED','MISSING')
     OR NEW.external_status IS NULL
     OR (NEW.business_date,NEW.sport,NEW.court_number,NEW.booking_start_time,
@@ -75,7 +77,7 @@ BEGIN
 END $function$;
 
 -- Staff explicitly choose to retain the local reservation. No payment is changed.
-CREATE OR REPLACE FUNCTION public.matchpoint_keep_local(p_id uuid,p_revision integer,p_alert text)
+CREATE OR REPLACE FUNCTION public.matchpoint_keep_local(p_id uuid,p_revision integer,p_alert text,p_remote_status text,p_snapshot jsonb)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
 DECLARE v_row public.padel_court_reservations%rowtype;
 BEGIN
@@ -84,6 +86,8 @@ BEGIN
  IF NOT FOUND OR v_row.external_source IS DISTINCT FROM 'matchpoint'
    OR v_row.revision IS DISTINCT FROM p_revision OR v_row.external_alert IS NULL
    OR v_row.external_alert IS DISTINCT FROM p_alert
+   OR v_row.external_status IS DISTINCT FROM p_remote_status
+   OR v_row.external_remote_snapshot IS DISTINCT FROM p_snapshot
  THEN RAISE EXCEPTION 'This issue changed. Refresh before resolving it.'; END IF;
  PERFORM set_config('app.matchpoint_local_edit','yes',true);
  UPDATE public.padel_court_reservations SET
@@ -97,5 +101,5 @@ BEGIN
    jsonb_build_object('resolution','keep_local','external_status',v_row.external_status));
 END;
 $$;
-REVOKE ALL ON FUNCTION public.matchpoint_keep_local(uuid,integer,text) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.matchpoint_keep_local(uuid,integer,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.matchpoint_keep_local(uuid,integer,text,text,jsonb) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.matchpoint_keep_local(uuid,integer,text,text,jsonb) TO authenticated;
