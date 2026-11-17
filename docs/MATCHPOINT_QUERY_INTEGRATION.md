@@ -56,7 +56,7 @@ That makes one booking API request per allowed slot, looking ahead
 seven days. **Matches and activities remain off** until their record
 schemas are separately verified, and the previous 90-day extended
 scan is temporarily disabled until its paging has been validated.
-The normal service-role request claims and 24/day hard cap remain.
+The normal service-role request claims apply, with a 25/day hard cap.
 The booking worker checks true time overlaps, not only identical
 start/end strings, including existing local reservations and times
 with SQL seconds. Overlapping court imports are skipped, not merged
@@ -135,16 +135,17 @@ for the MatchPoint importer is the GitHub Actions variable
 
 ## Frequency and strict API-request limit
 
-**Hard maximum: 24 actual MatchPoint HTTP requests per Beirut calendar day.**
+**Padel On hard maximum: 25 actual MatchPoint HTTP requests per Beirut calendar day.**
 An API *request* is a call to MatchPoint, not a sync run or a Supabase call.
 
-Fifteen sync passes are scheduled hourly from **09:00 through 23:00 Asia/Beirut**.
-The production workflow uses `/bookings` only: 15 x 1 = 15 scheduled
-requests per day, leaving nine of the 24-request daily allowance unused.
+Twenty-five sync passes are scheduled every 30 minutes from **09:00 through 21:00 Asia/Beirut**, inclusive.
+The production workflow uses `/bookings` only: 25 x 1 = 25 scheduled
+requests per day, with no spare requests. This is Padel On's internal cap,
+not a change to the provider's configured quota.
 Matches and activities remain disabled.
 
-GitHub Actions runs a UTC hour-range cron (`0 6-21 * * *`), while the
-worker enforces the valid local hourly slots. This covers Lebanon's
+GitHub Actions runs a UTC hour-range cron (`0,30 6-19 * * *`), while the
+worker enforces the valid local half-hour slots. This covers Lebanon's
 winter (UTC+2) and summer (UTC+3) time, without duplicating calls.
 Cron execution is best-effort: delayed runs outside a valid slot are
 skipped, not retried into an extra slot.
@@ -153,7 +154,7 @@ Every MatchPoint HTTP call must first claim an entry in the Supabase
 `matchpoint_query_request_claims` table using the server-role-only RPC
 `matchpoint_claim_query_request`. Its primary key allows one request per
 feed per time slot and its transactionally checked daily count is capped at
-24. Requests are counted **before** they are attempted, including failed
+25. Requests are counted **before** they are attempted, including failed
 connections and requests rejected by MatchPoint. Manual runs, retries,
 failed jobs, and overlapping GitHub workers cannot exceed the cap.
 
@@ -291,7 +292,7 @@ blocking local reservation; a later sync retries the import.
   place for staff. The service role can soft-cancel only eligible imported
   bookings, without moving money or changing their booking details.
 - MatchPoint stays read-only; resolving a local issue does not write to
-  MatchPoint. The schedule and the 24-request cap are unchanged.
+  MatchPoint. The schedule and request cap are controlled by the quota guard described above.
 
 Backup: `backup/pre-matchpoint-sync-issues-20261117` and private database
 schema `backup_matchpoint_sync_issues_20261117`.

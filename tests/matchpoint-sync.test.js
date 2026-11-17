@@ -69,8 +69,8 @@ test('worker inserts one amount-free record even if another feed repeats the cou
  assert(requests.filter(r=>r.url.pathname.includes('/rest/v1/')).every(r=>r.options.headers['X-Api-Token']===undefined));
 });
 
-test('hourly cooldown avoids a second API pass in the same local hour',async()=>{
- const now=new Date('2026-11-15T17:30:00+02:00');
+test('cooldown avoids a second API pass in the same local half-hour',async()=>{
+ const now=new Date('2026-11-15T17:40:00+02:00');
  const env={
   MATCHPOINT_HOST:'https://matchpoint.example.com',MATCHPOINT_API_TOKEN:'secret',
   MATCHPOINT_COURT_MAP_JSON:JSON.stringify({'MAIN|Court 1':{sport:'padel',court:'C1'}}),
@@ -80,33 +80,35 @@ test('hourly cooldown avoids a second API pass in the same local hour',async()=>
  const response=body=>({ok:true,status:200,text:async()=>JSON.stringify(body),json:async()=>body});
  const fetcher=async url=>{
   if(new URL(url).pathname.includes('/api/query/'))matchpointRequests++;
-  return response([{id:1,last_run_at:new Date(now.getTime()-30*60*1000).toISOString()}]);
+  return response([{id:1,last_run_at:new Date(now.getTime()-5*60*1000).toISOString()}]);
  };
  const result=await runMatchPointSync({env,fetcher,now,logger:{log:()=>{},warn:()=>{}}});
  assert.equal(result.skipped,true);
  assert.equal(result.reason,'hourly_cooldown');
  assert.equal(matchpointRequests,0);
 });
-test('MatchPoint scheduled workflow covers Lebanon DST hours but allows fifteen local slots',async()=>{
+test('MatchPoint scheduled workflow covers Lebanon DST hours but allows 25 local slots',async()=>{
  const {readFile}=await import('node:fs/promises');
  const yaml=await readFile(new URL('../.github/workflows/matchpoint-reservations-sync.yml',import.meta.url),'utf8');
- assert.equal(yaml.includes("cron: '0 6-21 * * *'"),true);
+ assert.equal(yaml.includes("cron: '0,30 6-19 * * *'"),true);
  assert.equal(yaml.includes("*/5 * * * *"),false);
 });
 
-test('fifteen Lebanese hourly windows accept winter and summer clocks and exclude midnight',()=>{
+test('25 Lebanese half-hour windows accept winter and summer clocks and exclude off-hours',()=>{
  for(const offset of ['+02:00','+03:00']){
-  for(const hour of Array.from({length:15},(_,i)=>9+i)){
-   const dt=new Date('2026-'+(offset==='+02:00'?'11-15':'06-15')+'T'+String(hour).padStart(2,'0')+':00:00'+offset);
-   assert.equal(matchpointLebanonSlot(dt)?.hour,hour,'valid local slot '+hour);
+  for(let i=0;i<25;i++){
+   const hour=9+Math.floor(i/2),minute=i%2*30;
+   const dt=new Date('2026-'+(offset==='+02:00'?'11-15':'06-15')+'T'+String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')+':00'+offset);
+   const slot=matchpointLebanonSlot(dt);
+   assert.equal(slot?.hour,hour);assert.equal(slot?.minute,minute);
   }
  }
- for(const local of ['08:17','09:45','10:55','22:59','23:55','00:17']){
+ for(const local of ['08:17','08:59','21:30','22:59','23:55','00:17']){
   assert.equal(matchpointLebanonSlot(new Date('2026-11-15T'+local+':00+02:00')),null,local);
  }
 });
 test('off-hours and manually retriggered sync produce zero MatchPoint HTTP requests',async()=>{
- const now=new Date('2026-11-15T20:55:00+02:00');
+ const now=new Date('2026-11-15T21:55:00+02:00');
  let calls=0;
  const env={
   MATCHPOINT_HOST:'https://matchpoint.example.com',MATCHPOINT_API_TOKEN:'test',
@@ -139,7 +141,7 @@ test('rejected database claim forbids API requests without any network request t
  assert.equal(claims,1);
  assert.equal(requests,0);
 });
-test('pagination fails closed instead of issuing a 25th API HTTP request',async()=>{
+test('pagination fails closed instead of issuing an extra API HTTP request',async()=>{
  let requests=0,claims=0;
  const env={
   MATCHPOINT_HOST:'https://matchpoint.example.com',MATCHPOINT_API_TOKEN:'test',
@@ -264,7 +266,7 @@ test('bookings-only production rollout preserves existing local overlapping book
   }
   throw Error('Unexpected path '+p);
  };
- const summary=await runMatchPointSync({env,now:new Date('2026-11-16T23:17:00+02:00'),fetcher:fakeFetch,logger:{log:()=>{},warn:()=>{}}});
+ const summary=await runMatchPointSync({env,now:new Date('2026-11-16T21:17:00+02:00'),fetcher:fakeFetch,logger:{log:()=>{},warn:()=>{}}});
  assert.equal(summary.inserted,1);
  assert.equal(summary.ignored,1);
  assert.equal(summary.feeds.bookings,2);
@@ -458,11 +460,11 @@ test('acknowledged remote cancellation stays dismissed until provider changes ag
  await seenAgain.run();assert.equal(seenAgain.writes[0].external_missing_count,0);assert.equal(seenAgain.writes[0].external_alert,null);
 });
 
-test('previous delayed sync does not suppress the next hourly slot',async()=>{
+test('previous delayed sync does not suppress the next half-hour slot',async()=>{
  const env={MATCHPOINT_HOST:'https://matchpoint.example.com',MATCHPOINT_API_TOKEN:'test',MATCHPOINT_COURT_MAP_JSON:JSON.stringify({'MAIN|Court 1':{sport:'padel',court:'C1'}}),SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'private-key',MATCHPOINT_FEEDS:'bookings'};
  let claims=0,remote=0;
  const reply=body=>({ok:true,status:200,text:async()=>JSON.stringify(body),json:async()=>body});
  const fetcher=async url=>{const path=new URL(url).pathname;if(path.endsWith('/matchpoint_sync_status'))return reply([{id:1,last_run_at:'2026-11-15T17:20:00+02:00'}]);if(path.endsWith('/matchpoint_claim_query_request')){claims++;return reply(false);}remote++;throw Error('Unexpected request');};
- await assert.rejects(()=>runMatchPointSync({env,fetcher,now:new Date('2026-11-15T18:00:00+02:00'),logger:{log:()=>{},warn:()=>{}}}),/daily quota or local time-slot already used/);
+ await assert.rejects(()=>runMatchPointSync({env,fetcher,now:new Date('2026-11-15T17:30:00+02:00'),logger:{log:()=>{},warn:()=>{}}}),/daily quota or local time-slot already used/);
  assert.equal(claims,1);assert.equal(remote,0);
 });
