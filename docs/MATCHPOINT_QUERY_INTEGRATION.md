@@ -296,3 +296,18 @@ blocking local reservation; a later sync retries the import.
 
 Backup: `backup/pre-matchpoint-sync-issues-20261117` and private database
 schema `backup_matchpoint_sync_issues_20261117`.
+
+
+## Scheduler recovery — November 17, 2026
+
+The primary schedule remains on the hour and half-hour. GitHub Actions may
+delay or drop scheduled events. A redundant trigger at minute 11 and 41
+attempts the same half-hour slot if the primary trigger did not run. The
+existing worker cooldown and atomic database claim prevent duplicate calls;
+the 25-request daily cap, 09:00–21:00 business schedule, and seven-day
+lookahead are unchanged. A change to this workflow file on trusted main
+also triggers a catch-up attempt within an eligible slot, subject to the
+same guard and pause flag. A successful workflow that explicitly skips is
+not evidence of a completed synchronization; check last_bookings_at and
+the request claims. Both schedules still depend on GitHub's scheduler;
+backup triggers improve resilience but do not guarantee execution.

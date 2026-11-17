@@ -91,6 +91,8 @@ test('MatchPoint scheduled workflow covers Lebanon DST hours but allows 25 local
  const {readFile}=await import('node:fs/promises');
  const yaml=await readFile(new URL('../.github/workflows/matchpoint-reservations-sync.yml',import.meta.url),'utf8');
  assert.equal(yaml.includes("cron: '0,30 6-19 * * *'"),true);
+ assert.equal(yaml.includes("cron: '11,41 6-19 * * *'"),true);
+ assert.match(yaml,/push:\s*\n\s*branches: \[main\]\s*\n\s*paths:\s*\n\s*- '\.github\/workflows\/matchpoint-reservations-sync\.yml'/);
  assert.equal(yaml.includes("*/5 * * * *"),false);
 });
 
@@ -467,4 +469,16 @@ test('previous delayed sync does not suppress the next half-hour slot',async()=>
  const fetcher=async url=>{const path=new URL(url).pathname;if(path.endsWith('/matchpoint_sync_status'))return reply([{id:1,last_run_at:'2026-11-15T17:20:00+02:00'}]);if(path.endsWith('/matchpoint_claim_query_request')){claims++;return reply(false);}remote++;throw Error('Unexpected request');};
  await assert.rejects(()=>runMatchPointSync({env,fetcher,now:new Date('2026-11-15T17:30:00+02:00'),logger:{log:()=>{},warn:()=>{}}}),/daily quota or local time-slot already used/);
  assert.equal(claims,1);assert.equal(remote,0);
+});
+
+test('backup scheduler triggers share the original half-hour slot in both seasons',()=>{
+ for(const offset of ['+02:00','+03:00']){
+  const day=offset==='+02:00'?'2026-11-17':'2026-06-15';
+  for(let i=0;i<25;i++){
+   const h=String(9+Math.floor(i/2)).padStart(2,'0');
+   const m=i%2*30;
+   const time=n=>new Date(day+'T'+h+':'+String(n).padStart(2,'0')+':00'+offset);
+   assert.deepEqual(matchpointLebanonSlot(time(m)),matchpointLebanonSlot(time(m+11)));
+  }
+ }
 });
