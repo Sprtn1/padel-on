@@ -92,7 +92,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
   return {skipped:true,reason:'outside_venue_hours'};
  }
  const from=slot.day;
- // Wider scan every six hours locally, at 09:17, 15:17 and 21:17.
+ // Wider scan every six hours locally, at 09:00, 15:00 and 21:00.
  const isExtended=[9,15,21].includes(slot.hour)&&env.MATCHPOINT_EXTENDED_SCAN!=='false';
  const to=addDays(from,isExtended?89:Number(env.MATCHPOINT_LOOKAHEAD_DAYS||7));
  const backend=supabase.origin+'/rest/v1';
