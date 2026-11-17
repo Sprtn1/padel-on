@@ -1,12 +1,12 @@
 name: MatchPoint booking sync
 
-# Check UTC hours 06–21 to cover every local hour 09–23 in Asia/Beirut across DST.
-# 15 local slots; bookings only (one request per slot), hard cap 24 per day.
+# Check UTC hours 06–19 to cover 09:00–21:00 in Asia/Beirut across DST.
+# 25 local half-hour slots; bookings only, hard cap 25 per day.
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 6-21 * * *'
+    - cron: '0,30 6-19 * * *'
 
 permissions:
   contents: read
