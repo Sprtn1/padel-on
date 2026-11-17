@@ -138,11 +138,11 @@ for the MatchPoint importer is the GitHub Actions variable
 **Hard maximum: 24 actual MatchPoint HTTP requests per Beirut calendar day.**
 An API *request* is a call to MatchPoint, not a sync run or a Supabase call.
 
-Eight sync passes occur at **09:17, 11:17, 13:17, 15:17, 17:17, 19:17,
-21:17 and 23:17 Asia/Beirut**. Each pass makes **one request each** to
+Eight sync passes occur at **09:00, 11:00, 13:00, 15:00, 17:00, 19:00,
+21:00 and 23:00 Asia/Beirut**. Each pass makes **one request each** to
 `/bookings`, `/matches`, and `/activities`: 8 x 3 = 24.
 
-GitHub Actions runs a UTC hour-range cron (`17 6-21 * * *`), while the
+GitHub Actions runs a UTC hour-range cron (`0 6-21 * * *`), while the
 worker enforces the valid local two-hour slots. This covers Lebanon's
 winter (UTC+2) and summer (UTC+3) time, without duplicating calls.
 Cron execution is best-effort: delayed runs outside a valid slot are
@@ -161,7 +161,7 @@ To avoid unbudgeted pagination, each endpoint requests only its first
 error instead of silently importing an incomplete result or issuing an
 additional HTTP request. In that case shorten the date window or request
 a larger MatchPoint quota; imported financial rows are never overwritten.
-The regular feed covers seven days ahead, and 09:17, 15:17 and 21:17
+The regular feed covers seven days ahead, and 09:00, 15:00 and 21:00
 perform a 90-day forward scan.
 
 The source API's own quota reset time zone may differ from Beirut. If the
