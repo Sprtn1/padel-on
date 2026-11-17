@@ -14,9 +14,9 @@ export function matchpointLebanonSlot(now=new Date()){
  }).formatToParts(now);
  const hour=Number(parts.find(p=>p.type==='hour')?.value);
  const minute=Number(parts.find(p=>p.type==='minute')?.value);
- // Fifteen hourly local slots: 09 through 23, inclusive.
- if(hour<9||hour>23||minute>=45)return null;
- return {day:beirutToday(now),hour};
+ // 25 half-hour slots, 09:00 through 21:00 inclusive (Beirut local time).
+ if(hour<9||hour>21||(hour===21&&minute>=30))return null;
+ return {day:beirutToday(now),hour,minute:minute<30?0:30};
 }
 const keyOf=item=>[item.external_kind,item.external_id].join(':');
 // Only venue/schedule fields belong in the remote snapshot. Never import
@@ -88,7 +88,7 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  if(supabase.protocol!=='https:'||!supabase.hostname.endsWith('.supabase.co'))throw Error('Invalid Supabase project URL');
  const slot=matchpointLebanonSlot(now);
  if(!slot){
-  logger.log('MatchPoint sync skipped: outside the 09:00–23:44 Beirut allowed slots.');
+  logger.log('MatchPoint sync skipped: outside the 09:00–21:29 Beirut allowed slots.');
   return {skipped:true,reason:'outside_venue_hours'};
  }
  const from=slot.day;
@@ -147,15 +147,15 @@ export async function runMatchPointSync({env=process.env,fetcher=fetch,now=new D
  };
  const state=await api('GET','matchpoint_sync_status',{id:'eq.1',select:'*'});
  const last=state?.[0]||{};
- // Suppress a repeat in the same local hour, not a new hourly slot after a delayed run.
+ // Suppress a repeat in the same local half-hour, not the next slot after a delayed run.
  // The database independently claims each feed once per slot, including failed attempts.
  const previousRun=Date.parse(last.last_run_at||'');
  const previousSlot=Number.isFinite(previousRun)?matchpointLebanonSlot(new Date(previousRun)):null;
- if(previousSlot?.day===slot.day&&previousSlot?.hour===slot.hour&&previousRun<=now.getTime()){
-  logger.log('MatchPoint sync skipped: this local hourly slot already completed.');
+ if(previousSlot?.day===slot.day&&previousSlot?.hour===slot.hour&&previousSlot?.minute===slot.minute&&previousRun<=now.getTime()){
+  logger.log('MatchPoint sync skipped: this local half-hour slot already completed.');
   return {skipped:true,reason:'hourly_cooldown',last_run_at:last.last_run_at};
  }
- // Production bookings-only: 15 hourly passes/day; hard ceiling remains 24.
+ // Production bookings-only: 25 half-hour passes/day; hard ceiling is 25.
  // The database claim RPC enforces the hard ceiling even after manual runs,
  // failed requests, overlapping jobs, or webhook retries.
  const allowed=['bookings','matches','activities'];
