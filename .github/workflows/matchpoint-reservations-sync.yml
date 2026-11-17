@@ -46,5 +46,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Provision encrypted backend MatchPoint configuration
+        if: github.event_name != 'schedule'
+        run: |
+          node --input-type=module <<'JS'
+          const e=process.env;
+          const response=await fetch(e.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/rpc/matchpoint_set_cron_config',{
+            method:'POST',
+            headers:{apikey:e.SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+e.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':'application/json'},
+            body:JSON.stringify({p_token:e.MATCHPOINT_API_TOKEN,p_map:e.MATCHPOINT_COURT_MAP_JSON,p_center:e.MATCHPOINT_CENTER_CODE||'',p_paused:e.MATCHPOINT_PAUSED==='true'}),
+            redirect:'error'
+          });
+          if(!response.ok||await response.json()!==true)throw Error('Backend configuration provisioning failed (HTTP '+response.status+')');
+          console.log('Encrypted backend configuration provisioned.');
+          JS
       - name: Sync reservations (read only from MatchPoint; financial amounts never imported)
+        if: github.event_name == 'schedule'
         run: node scripts/matchpoint-sync.mjs
