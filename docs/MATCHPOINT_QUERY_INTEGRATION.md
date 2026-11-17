@@ -48,7 +48,7 @@ incomplete booking rows. A read-only live check validated **77/77**
 bookings and their actual court mapping. No MatchPoint financial,
 contact, or access-code fields are imported.
 
-**Initial production rollout is now enabled** with an emergency pause control; this does not by itself confirm a successful production import. The first scheduled run must be checked in GitHub Actions and against `matchpoint_sync_status` and reservations.
+**Initial production rollout is now enabled** with an emergency pause control; this does not by itself confirm a successful production import. Verify the native Cron job, Edge response and `matchpoint_sync_status` against actual bookings.
 
 Initial production rollout settings:
 `MATCHPOINT_FEEDS=bookings`, `MATCHPOINT_EXTENDED_SCAN=false`, and `MATCHPOINT_ENABLED=true`.
@@ -110,7 +110,7 @@ A snapshot of the pre-migration court reservations and payment splits exists
 in the private schema `backup_matchpoint_local_edit_20261117`. Do not drop
 these backups until verifying the live interface. The usual emergency stop
 for the MatchPoint importer is the GitHub Actions variable
-`MATCHPOINT_PAUSED=true`; it does not disable the normal local editor.
+`MATCHPOINT_PAUSED=true`, followed by a manual run of MatchPoint backend configuration; it does not disable the normal local editor.
 
 ## Data and financial safety
 
@@ -139,7 +139,7 @@ for the MatchPoint importer is the GitHub Actions variable
 An API *request* is a call to MatchPoint, not a sync run or a Supabase call.
 
 Twenty-five sync passes are scheduled every 30 minutes from **09:00 through 21:00 Asia/Beirut**, inclusive.
-The production workflow uses `/bookings` only: 25 x 1 = 25 scheduled
+The production Edge Function uses `/bookings` only: 25 x 1 = 25 scheduled
 requests per day, with no spare requests. This is Padel On's internal cap,
 not a change to the provider's configured quota.
 Matches and activities remain disabled.
@@ -156,7 +156,7 @@ Every MatchPoint HTTP call must first claim an entry in the Supabase
 feed per time slot and its transactionally checked daily count is capped at
 25. Requests are counted **before** they are attempted, including failed
 connections and requests rejected by MatchPoint. Manual runs, retries,
-failed jobs, and overlapping GitHub workers cannot exceed the cap.
+failed jobs, and overlapping backend invocations cannot exceed the cap.
 
 To avoid unbudgeted pagination, each endpoint requests only its first
 (up to 1,000 records) page. If `hasMore=true`, it **fails closed** with an
@@ -298,16 +298,27 @@ Backup: `backup/pre-matchpoint-sync-issues-20261117` and private database
 schema `backup_matchpoint_sync_issues_20261117`.
 
 
-## Scheduler recovery — November 17, 2026
+## Native Supabase scheduler — November 17, 2026
 
-The primary schedule remains on the hour and half-hour. GitHub Actions may
-delay or drop scheduled events. A redundant trigger at minute 11 and 41
-attempts the same half-hour slot if the primary trigger did not run. The
-existing worker cooldown and atomic database claim prevent duplicate calls;
-the 25-request daily cap, 09:00–21:00 business schedule, and seven-day
-lookahead are unchanged. A change to this workflow file on trusted main
-also triggers a catch-up attempt within an eligible slot, subject to the
-same guard and pause flag. A successful workflow that explicitly skips is
-not evidence of a completed synchronization; check last_bookings_at and
-the request claims. Both schedules still depend on GitHub's scheduler;
-backup triggers improve resilience but do not guarantee execution.
+The GitHub Actions scheduler repeatedly missed booking runs. The native
+Supabase Cron job `padelon-matchpoint-bookings` invokes the existing importer
+through the `matchpoint-sync` Edge Function. Its primary trigger is at
+minutes 00 and 30; minutes 11 and 41 are backups for unclaimed slots only.
+The DB checks the Beirut local business hours, 25-request cap, pause
+configuration, and existing claims before dispatching. Edge requests use a
+short-lived HMAC signature, with the durable key and provider configuration
+stored in Vault. No browser role can retrieve the configuration or sign jobs.
+
+The GitHub workflow is configuration-only (manual or trusted main changes
+to the workflow). To rotate the token or update the court mapping, change
+the repository secret and manually run **MatchPoint backend configuration**.
+To pause, set the repository variable MATCHPOINT_PAUSED to true and run that
+workflow; alternatively disable the native job directly. After updating
+the importer or shared modules in GitHub, redeploy the Edge Function using
+the entrypoint and its relative dependencies.
+
+Inspect `cron.job`, `cron.job_run_details`, Edge Function logs,
+`net._http_response`, and `matchpoint_sync_status` when diagnosing issues.
+The successful timestamp indicates actual import completion, not just a
+successful scheduler command. A lost request or provider error can still
+delay a booking update; no retry spends quota twice in the same slot.
