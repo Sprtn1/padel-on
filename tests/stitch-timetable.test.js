@@ -64,3 +64,33 @@ test('current-time indicator is an overlay and cannot create an extra grid row',
  assert.match(css,/\.ck-schedule-now\{position:absolute;left:0;right:0;/);
  assert.doesNotMatch(css,/\.ck-schedule-now\{[^}]*grid-row:/);
 });
+
+
+test('all visible player ticks are required across sports, regardless of cash allocation',async()=>{
+ const {courtBookingAllPlayersMarked:paid}=await import('../lib/court-scheduler-ui.js');
+ const t=true,f=false;
+ assert.equal(paid({checkmarks:[t,t,t,t,f,f]},'padel'),true);
+ assert.equal(paid({checkmarks:[t,t,t,f,f,f]},'padel'),false);
+ assert.equal(paid({checkmarks:[t,t]},'padel'),false);
+ assert.equal(paid({checkmarks:[]},'padel'),false);
+ assert.equal(paid({checkmarks:null,amount_cents:3200},'padel'),false);
+ assert.equal(paid({checkmarks:[t,t,f,f,f,f],pickleball_player_count:2},'pickleball'),true);
+ assert.equal(paid({checkmarks:[t,f,f,f,f,f],pickleball_player_count:2},'pickleball'),false);
+ assert.equal(paid({checkmarks:[t,t,f,f,f,f],pickleball_player_count:4},'pickleball'),false);
+ assert.equal(paid({checkmarks:[t,t,t,t,f,f],pickleball_player_count:4},'pickleball'),true);
+ assert.equal(paid({checkmarks:[t,t,t,t,t,t]},'basketball'),true);
+ assert.equal(paid({checkmarks:[t,t,t,t,t,f]},'basketball'),false);
+ assert.equal(paid({checkmarks:[t,t]},'pickleball',{ledger:true}),true);
+ assert.equal(paid({checkmarks:[t,t]},'pickleball'),false);
+ assert.equal(paid({checkmarks:['true',t,t,t]},'padel'),false);
+});
+test('fully marked bookings use distinct color with a matching legend and dark theme',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const js=readFileSync(new URL('../lib/court-scheduler-ui.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../styles/stitch-timetable.css',import.meta.url),'utf8');
+ assert.match(js,/const allMarked=!isTraining&&!isBlock&&courtBookingAllPlayersMarked\(row,sport/);
+ assert.match(js,/isTraining\?'schedule-training':isBlock\?'schedule-block':allMarked\?'schedule-paid':planned/);
+ assert.match(js,/class="schedule-paid">All players marked paid/);
+ assert.match(css,/\.cafe-timeboard-booking\.schedule-paid\{background:#176847/);
+ assert.match(css,/html\[data-theme="dark"\] \.cafe-scheduler \.cafe-timeboard-booking\.schedule-paid\{background:#087447/);
+});
