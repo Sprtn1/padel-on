@@ -253,7 +253,7 @@ test('special named income and expense categories map only to their own lines',(
   {entry_date:DAY,category:'general_payment',amount_cents:500}
  );
  const sheet=prepareArabicDailySheet(x);
- const row=label=>sheet.amountRows.find(r=>r[0]===label);
+ const row=label=>[...sheet.amountRows,...sheet.overflowIncome].find(r=>r[0]===label);
  const paid=label=>sheet.expenseRows.find(r=>r[0]===label);
  assert.equal(row('ملعب بيكل بول')[1],1200);
  assert.equal(row('صف تدريب طابق أول')[1],2200);
@@ -372,7 +372,7 @@ test('dedicated categories and older miscellaneous entries share their matching 
  assert.equal(sheet.amountRows.find(r=>r[0]==='دورة الصيف')[1],2000);
  assert.equal(sheet.amountRows.find(r=>r[0]==='أحذية')[1],3000);
  assert.equal(sheet.amountRows.find(r=>r[0]==='أكاديمية باسكت'),undefined);
- assert.equal(sheet.amountRows.find(r=>r[0]==='إيرادات أخرى')[1],1000);
+ assert.equal([...sheet.amountRows,...sheet.overflowIncome].find(r=>r[0]==='إيرادات أخرى')[1],1000);
  assert.equal(sheet.expenseRows.find(r=>r[0]==='دين عائلة')[1],1150);
  assert.equal(sheet.receipts,31500+1800+2700+900+600);
  assert.equal(sheet.expenses,27500+900+250);
@@ -628,8 +628,8 @@ test('retired PDF categories never take dedicated rows and still reconcile old r
  );
  const sheet=prepareArabicDailySheet(x);
  assert.equal(sheet.amountRows.find(r=>r[0]==='صف جم')[1],3500);
- assert.equal(sheet.amountRows.find(r=>r[0]==='إيرادات أخرى')[1],1800);
- assert.ok(!sheet.amountRows.some(r=>['اشتراك جم','أكاديمية باسكت'].includes(r[0])));
+ assert.equal([...sheet.amountRows,...sheet.overflowIncome].find(r=>r[0]==='إيرادات أخرى')[1],1800);
+ assert.ok(![...sheet.amountRows,...sheet.overflowIncome].some(r=>['اشتراك جم','أكاديمية باسكت'].includes(r[0])));
  assert.deepEqual(sheet.amountRows.slice(0,4).map(r=>r[0]),['ملعب بادل','ملعب بيكل بول','ملعب باسكت','مبيع متفرقات']);
  assert.equal(sheet.receipts,31500+2500+1000+1800);
  assert.equal(sheet.totalGenerated,67500);
