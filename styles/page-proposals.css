@@ -1,0 +1,297 @@
+/* PADEL ON page-by-page UX pass.
+   Presentation only: data, calculations, integrations and permission checks remain unchanged. */
+:root{
+  --po-radius-control:10px;
+  --po-radius-panel:14px;
+  --po-shadow-panel:0 1px 2px rgba(20,45,37,.045),0 8px 22px rgba(20,45,37,.025);
+  --po-line:#dfe8e4;
+  --po-soft:#f5f8f7;
+  --po-focus:#087c57;
+}
+
+.workspace[data-page] .eyebrow{
+  font-family:inherit;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.035em;
+  line-height:1.35;
+  text-transform:none;
+}
+.workspace[data-page] .heading-row h1{
+  font-family:inherit;
+  font-weight:650;
+  letter-spacing:-.035em;
+  line-height:1.12;
+}
+.workspace[data-page] :where(.panel,.summary-card,.member-card,.other-card,.settings-box){
+  border-radius:var(--po-radius-panel);
+  box-shadow:var(--po-shadow-panel);
+}
+.workspace[data-page] :where(.btn,.select,.form-input,.search){border-radius:var(--po-radius-control)}
+.workspace[data-page] :where(button,a,input,select,textarea):focus-visible{
+  outline:3px solid color-mix(in srgb,var(--po-focus) 38%,transparent);
+  outline-offset:2px;
+}
+.workspace[data-page] :where(.metric,.num,.debt-total,.private-client-balance,.cpay-amounts strong,.inv-quantity,.order-metric strong){
+  font-variant-numeric:tabular-nums;
+}
+.workspace[data-page] .empty-prompt{min-height:180px;padding:32px 22px}
+.workspace[data-page] .panel-empty{line-height:1.55}
+
+/* Sign-in: one clear entry point, quieter supporting decoration, explicit errors. */
+.auth-wrap{background:linear-gradient(135deg,#102a21 0%,#0b1d17 56%,#07130f 100%)}
+.auth-lead h1{font-weight:650}
+.auth-card{border:1px solid rgba(255,255,255,.42);box-shadow:0 20px 65px rgba(3,19,11,.34)}
+.auth-card .eyebrow{font-family:inherit;text-transform:none;letter-spacing:.035em}
+.auth-error{border:1px solid #f0b8b8;line-height:1.5}
+.auth-foot{border-top:1px solid #edf1ee;padding-top:18px}
+
+/* Overview: make today's operating picture the first scan and keep account types distinct. */
+.workspace[data-page="dashboard"] .management-section-label:first-of-type{
+  padding:14px 16px;
+  border:1px solid var(--po-line);
+  border-radius:12px;
+  background:var(--po-soft);
+}
+.workspace[data-page="dashboard"] .management-summary{grid-template-columns:repeat(4,minmax(0,1fr))}
+.workspace[data-page="dashboard"] .management-summary .summary-card:first-child{border-top:3px solid #087c57}
+.workspace[data-page="dashboard"] .management-summary .summary-card:nth-child(2){border-top:3px solid #4e7893}
+.workspace[data-page="dashboard"] .management-summary .summary-card:nth-child(n+3){border-top:3px solid #b77b2b}
+.workspace[data-page="dashboard"] .management-alert,
+.workspace[data-page="dashboard"] .management-commission-total{min-height:72px}
+
+/* Court timetable: keep controls attached to the grid and expose appropriate input guidance. */
+.scheduler-touch-help{display:none}
+.workspace[data-page="court-timetable"] .ck-timetable-page{display:grid;gap:12px}
+.workspace[data-page="court-timetable"] .cafe-scheduler-toolbar{margin-bottom:0}
+.workspace[data-page="court-timetable"] .cafe-scheduler-stats{margin:0}
+.workspace[data-page="court-timetable"] .cafe-scheduler-hint{
+  margin:0;
+  padding:10px 12px;
+  border:1px solid var(--po-line);
+  border-radius:10px;
+  background:var(--po-soft);
+}
+.workspace[data-page="court-timetable"] .cafe-timeboard-corner,
+.workspace[data-page="court-timetable"] .cafe-timeboard-axis{box-shadow:5px 0 9px rgba(20,45,37,.07)}
+.workspace[data-page="court-timetable"] .cafe-scheduler-sync{
+  padding:6px 9px;
+  border-radius:999px;
+  border:1px solid #cfe6d9;
+}
+
+/* Cafeteria finances: reinforce the daily ledger, handover and close sequence. */
+.workspace[data-page="cafeteria-finances"] .cafe-summary{margin-bottom:12px}
+.workspace[data-page="cafeteria-finances"] .cafe-fold>summary{font-size:14px;min-height:56px}
+.workspace[data-page="cafeteria-finances"] .cafe-fold[open]>summary{box-shadow:inset 3px 0 0 #087c57}
+.workspace[data-page="cafeteria-finances"] :where(.cafe-closing-box,.cafe-day-status,.cafe-goods-pending){padding:17px}
+.workspace[data-page="cafeteria-finances"] .cafe-quick-fab{min-width:48px;min-height:48px}
+.workspace[data-page="cafeteria-finances"] [dir="rtl"]{line-height:1.7}
+
+/* Payments and tasks: separate the two workflows and keep status/action clusters readable. */
+.workspace[data-page="cafeteria-payments"] .ctodo-section{
+  margin-top:40px;
+  padding-top:28px;
+  border-top:2px solid var(--po-line);
+}
+.workspace[data-page="cafeteria-payments"] .cpay-card{border-left:3px solid #aabbb3}
+.workspace[data-page="cafeteria-payments"] .cpay-card:has(.cpay-paid){border-left-color:#16845a}
+.workspace[data-page="cafeteria-payments"] .cpay-card:has(.cpay-partial){border-left-color:#bd7b22}
+.workspace[data-page="cafeteria-payments"] .cpay-card:has(.cpay-unpaid){border-left-color:#bc4b41}
+.workspace[data-page="cafeteria-payments"] .ctodo-toolbar select{min-height:44px}
+
+/* Debts: visually bind the selected account and its running balance. */
+.workspace[data-page="debts"] .debt-person-item.selected{box-shadow:inset 3px 0 0 #087c57}
+.workspace[data-page="debts"] .debt-details>.debt-total{border-top:3px solid #087c57}
+.workspace[data-page="debts"] .debt-daily-panel{margin-top:22px}
+.workspace[data-page="debts"] .debt-transactions :where(td,th):nth-child(n+3){font-variant-numeric:tabular-nums}
+
+/* Consignment: prioritize item, variant and stock while keeping filters together. */
+.workspace[data-page="consignment"] .inv-toolbar{
+  padding:14px;
+  border:1px solid var(--po-line);
+  border-radius:12px;
+  background:var(--po-soft);
+}
+.workspace[data-page="consignment"] .inv-table td:first-child{font-size:13px}
+.workspace[data-page="consignment"] .inv-quantity{min-width:58px;justify-content:center}
+
+/* Private sessions: connect selected day, session ledger and account balance. */
+.workspace[data-page="private-clients"] .private-day-summary{border-left:3px solid #087c57}
+.workspace[data-page="private-clients"] .private-client-row.selected{box-shadow:inset 3px 0 0 #087c57}
+.workspace[data-page="private-clients"] :where(.private-client-heading,.private-client-row strong,.private-account-note){overflow-wrap:anywhere}
+.workspace[data-page="private-clients"] .private-balance-box{border-top:3px solid #087c57}
+.workspace[data-page="private-clients"] .private-ledger-table :where(td,th):nth-child(n+3){font-variant-numeric:tabular-nums}
+
+/* Team and special benefits: mobile-first action hierarchy and explanatory empty states. */
+.workspace[data-page="team"] .team-empty-state,
+.workspace[data-page="other"] .other-first-use{grid-column:1/-1}
+.workspace[data-page="team"] .period-control{
+  border-left:3px solid #087c57;
+  box-shadow:var(--po-shadow-panel);
+}
+.workspace[data-page="team"] .toolbar{align-items:flex-end}
+.workspace[data-page="team"] .team-category-heading{position:relative}
+.workspace[data-page="other"] .other-first-use .btn{margin-top:8px}
+
+/* Matchmaking: selected person/month and settlement status stay in one visual system. */
+.workspace[data-page="finance"] .matchmaker-tabs{
+  padding:5px;
+  border:1px solid var(--po-line);
+  border-radius:12px;
+  background:var(--po-soft);
+}
+.workspace[data-page="finance"] .month-control{border-left:3px solid #087c57}
+.workspace[data-page="finance"] .matchmaking-streak-grid .summary-card{border-top:3px solid #91a9a0}
+.workspace[data-page="finance"] .matchmaking-streak-grid .summary-card:first-child{border-top-color:#087c57}
+.workspace[data-page="finance"] .matchmaking-breakdown{margin-top:18px}
+
+/* Tournament: reduce chrome, preserve identity and keep the active workspace view visible. */
+.workspace[data-page="tournament"] .tm-workspace-tabs{
+  display:flex;
+  gap:4px;
+  overflow-x:auto;
+  scroll-snap-type:x proximity;
+  scrollbar-width:thin;
+  padding:5px;
+  border-radius:12px;
+  background:var(--po-soft);
+}
+.workspace[data-page="tournament"] .tm-workspace-tab{flex:0 0 auto;min-height:42px;scroll-snap-align:center}
+.workspace[data-page="tournament"] .tm-workspace-tab.active{background:#e7f4ed;box-shadow:inset 0 -2px 0 #087c57}
+.workspace[data-page="tournament"] .tm-wizard-preview{border-left:3px solid #087c57}
+.workspace[data-page="tournament"] :where(.tm-payment-table-scroll,.tm-v2-paychart){overscroll-behavior-inline:contain}
+
+/* Game activity: search and result count read as one control group. */
+.workspace[data-page="activity"] .toolbar{
+  padding:10px;
+  border:1px solid var(--po-line);
+  border-radius:12px;
+  background:var(--po-soft);
+}
+.workspace[data-page="activity"] .toolbar .search{flex:1}
+.workspace[data-page="activity"] .toolbar .tiny{white-space:nowrap}
+
+/* Reports: make primary/comparison periods explicit before the figures. */
+.workspace[data-page="reports"] :where(.period-control,.report-compare-control,.report-compare-toolbar){
+  border-left:3px solid #087c57;
+}
+.workspace[data-page="reports"] .report-compare-control{border-left-color:#4e7893}
+.workspace[data-page="reports"] .report-comparison-panel{margin-top:18px}
+.workspace[data-page="reports"] .report-difference{font-variant-numeric:tabular-nums}
+
+/* Settings: scan by section; destructive tools remain visibly separate. */
+.workspace[data-page="settings"] .settings-box{border-top:3px solid #a7b8b0}
+.workspace[data-page="settings"] .settings-box:has(.btn-danger){border-top-color:#c45a50}
+.workspace[data-page="settings"] .settings-box .btn-danger{margin-top:8px}
+.workspace[data-page="settings"] .admin-account-box{background:linear-gradient(180deg,#fff 0,#fff 80%,#fff9f8 100%)}
+
+/* Ordering tools: readable metrics, touch-safe counters and reachable preview actions. */
+.workspace[data-page="order-counter"] .order-metrics,
+.workspace[data-page="reem-items"] .order-metrics{margin-bottom:14px}
+.workspace[data-page="order-counter"] .order-quantity,
+.workspace[data-page="reem-items"] .order-quantity{min-width:48px;min-height:44px;font-variant-numeric:tabular-nums}
+.workspace[data-page="order-counter"] .order-filter,
+.workspace[data-page="reem-items"] .order-filter{min-height:42px}
+.workspace[data-page="order-counter"] .order-actions,
+.workspace[data-page="reem-items"] .order-actions{padding-top:12px}
+
+html[data-theme="dark"]{
+  --po-line:#34464d;
+  --po-soft:#17252b;
+  --po-focus:#66d6a4;
+}
+html[data-theme="dark"] .workspace[data-page] :where(.management-section-label:first-of-type,.cafe-scheduler-hint,.inv-toolbar,.matchmaker-tabs,.tm-workspace-tabs,.toolbar){
+  background:var(--po-soft);
+  border-color:var(--po-line);
+}
+html[data-theme="dark"] .workspace[data-page="tournament"] .tm-workspace-tab.active{background:#244239;color:#9ce2be}
+html[data-theme="dark"] .workspace[data-page="settings"] .admin-account-box{background:#17242a}
+html[data-theme="dark"] .auth-foot{border-top-color:#34464d}
+
+@media (pointer:coarse){
+  .scheduler-pointer-help{display:none}
+  .scheduler-touch-help{display:inline}
+  .workspace[data-page] :where(.btn,.link,button[role="tab"]){min-height:44px}
+}
+
+@media (max-width:830px){
+  .workspace[data-page="dashboard"] .management-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .workspace[data-page="court-timetable"] .cafe-scheduler-toolbar{position:relative;top:auto}
+  .workspace[data-page="court-timetable"] .cafe-scheduler-hint{font-size:12px}
+  .workspace[data-page="tournament"] .tm-workspace-tabs{margin-inline:-2px}
+}
+
+@media (max-width:560px){
+  .workspace[data-page] .heading-row{gap:12px}
+  .workspace[data-page] .heading-row h1{font-size:26px}
+  .workspace[data-page] .heading-actions{display:grid;grid-template-columns:1fr 1fr}
+  .workspace[data-page] .heading-actions .btn-primary{grid-column:1/-1;grid-row:1}
+  .workspace[data-page] .empty-prompt{min-height:150px;padding:26px 16px}
+
+  .workspace[data-page="dashboard"] .management-section-label:first-of-type{padding:12px}
+  .workspace[data-page="dashboard"] .management-summary{gap:9px}
+  .workspace[data-page="dashboard"] .management-summary .summary-card{min-height:112px;padding:14px}
+  .workspace[data-page="dashboard"] .management-summary .summary-card .card-top{margin-bottom:12px}
+
+  .workspace[data-page="court-timetable"] .cafe-scheduler-toolbar{padding:12px}
+  .workspace[data-page="court-timetable"] .cafe-scheduler-date-controls{width:100%}
+  .workspace[data-page="court-timetable"] .cafe-scheduler-date-controls>input{flex:1;min-width:132px}
+  .workspace[data-page="court-timetable"] .cafe-scheduler-stats{grid-template-columns:repeat(3,minmax(92px,1fr));overflow-x:auto}
+
+  .workspace[data-page="cafeteria-payments"] .cpay-amounts{grid-template-columns:repeat(3,minmax(92px,1fr));overflow-x:auto}
+  .workspace[data-page="cafeteria-payments"] .ctodo-heading{align-items:flex-start}
+  .workspace[data-page="cafeteria-payments"] .ctodo-toolbar{justify-content:stretch}
+  .workspace[data-page="cafeteria-payments"] .ctodo-toolbar label,
+  .workspace[data-page="cafeteria-payments"] .ctodo-toolbar select{width:100%}
+
+  .workspace[data-page="debts"] .debt-directory,
+  .workspace[data-page="private-clients"] .private-directory{max-height:48vh}
+
+  .workspace[data-page="consignment"] .inv-toolbar{grid-template-columns:1fr}
+  .workspace[data-page="consignment"] .inv-table :is(th,td):is(:nth-child(2),:nth-child(3),:nth-child(4),:nth-child(6)){display:none}
+  .workspace[data-page="consignment"] .inv-table td:first-child{min-width:145px}
+
+  .workspace[data-page="team"] .heading-actions{grid-template-columns:1fr}
+  .workspace[data-page="team"] .heading-actions .btn-primary{grid-column:auto}
+  .workspace[data-page="team"] .toolbar-left{display:grid;grid-template-columns:1fr 1fr}
+  .workspace[data-page="team"] .toolbar-left .search{grid-column:1/-1}
+  .workspace[data-page="team"] .toolbar-left :where(.select,select){min-width:0;width:100%}
+
+  .workspace[data-page="finance"] .matchmaker-tabs{overflow-x:auto;flex-wrap:nowrap}
+  .workspace[data-page="finance"] .matchmaker-tab{flex:0 0 auto;min-height:44px}
+
+  .workspace[data-page="tournament"] .tm-workspace-tabs{margin-inline:-8px;padding-inline:8px}
+  .workspace[data-page="tournament"] .tm-workspace-panel{padding:14px}
+
+  .workspace[data-page="activity"] .toolbar{display:grid;grid-template-columns:1fr auto;align-items:center}
+  .workspace[data-page="activity"] .toolbar .search{min-width:0;width:100%}
+  .workspace[data-page="activity"] .data-table{min-width:540px}
+
+  .workspace[data-page="reports"] .report-compare-toolbar{align-items:stretch}
+  .workspace[data-page="reports"] .report-compare-picker{width:100%}
+
+  .workspace[data-page="settings"] .settings-box{padding:18px}
+  .workspace[data-page="settings"] .settings-box :where(.btn){width:100%;margin-inline:0}
+
+  .workspace[data-page="order-counter"] .order-preview-panel,
+  .workspace[data-page="reem-items"] .order-preview-panel{padding-bottom:calc(74px + env(safe-area-inset-bottom))}
+  .workspace[data-page="order-counter"] .order-actions,
+  .workspace[data-page="reem-items"] .order-actions{
+    position:sticky;
+    bottom:calc(68px + env(safe-area-inset-bottom));
+    z-index:5;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    padding:10px;
+    margin-inline:-10px;
+    background:color-mix(in srgb,var(--card,#fff) 94%,transparent);
+    border:1px solid var(--po-line);
+    border-radius:12px;
+    backdrop-filter:blur(8px);
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .workspace[data-page] *{scroll-behavior:auto!important;transition-duration:.01ms!important}
+}
