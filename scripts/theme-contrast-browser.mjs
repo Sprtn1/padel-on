@@ -18,6 +18,12 @@ const fixture=readFileSync(join(root,'tests/theme-contrast-fixture.html'),'utf8'
 const screenshotDir=join(root,'theme-contrast-artifacts');
 mkdirSync(screenshotDir,{recursive:true});
 
+const firstPassSamples=[
+ 'order-metric-value','order-metric-label','reem-metric-value','reem-metric-label','debt-date',
+ 'tournament-count','wizard-done','wizard-current','wizard-next','wizard-preview-label',
+ 'wizard-preview-title','tournament-publication'
+];
+
 const tests=[
  ['topbar',4.5],['overview-heading',4.5],['overview-total',4.5],['overview-label',3],
  ['overview-alert',3],['scheduler-heading',4.5],
@@ -54,7 +60,8 @@ const tests=[
  ['quick-title-1',4.5],['quick-note-1',4.5],['quick-icon-1',3],
  ['quick-title-2',4.5],['quick-note-2',4.5],['quick-icon-2',3],
  ['quick-title-3',4.5],['quick-note-3',4.5],['quick-icon-3',3],
- ['quick-title-4',4.5],['quick-note-4',4.5],['quick-icon-4',3]
+ ['quick-title-4',4.5],['quick-note-4',4.5],['quick-icon-4',3],
+ ...firstPassSamples.map(id=>[id,4.5])
 ];
 
 // The added checks target dark-mode defects. In light mode the existing small
@@ -208,7 +215,8 @@ try{
     // (about 2.8:1); test that baseline without demanding a light redesign.
     const required=theme==='light'&&id.startsWith('quick-note-')?2.5:
      theme==='light'&&deepContrastIds.has(id)?Math.min(min,3):min;
-    if(value.error||value.contrast<required){
+    const verifyContrast=theme==='dark'||!firstPassSamples.includes(id);
+    if(value.error||(verifyContrast&&value.contrast<required)){
      failures.push({width,theme,id,required,...value});
     }
    }
@@ -216,10 +224,11 @@ try{
    for(const [id,maxDark,minLight] of [['timetable-hour',.2,.65],['court-amount',.2,.65],['ledger-box',.2,.65],
      ['overview-kpi-box',.2,.65],['private-summary-box',.2,.65],
      ['report-cash-box',.2,.65],['inventory-history-box',.2,.65],
+     ...firstPassSamples.map(id=>[id,.2,null]),
      ...Array.from({length:5},(_,i)=>['quick-action-'+i,.2,.65])]){
     const v=values[id];
     if(theme==='dark'&&v.bgLuminance>maxDark)failures.push({width,theme,id,error:'Background remained light',...v});
-    if(theme==='light'&&v.bgLuminance<minLight)failures.push({width,theme,id,error:'Background remained dark',...v});
+    if(theme==='light'&&minLight!==null&&v.bgLuminance<minLight)failures.push({width,theme,id,error:'Background remained dark',...v});
    }
    if(theme==='light'&&originals.size===0){
     for(const [id] of tests)originals.set(id,values[id].foreground+'|'+values[id].backdrop.join(','));
