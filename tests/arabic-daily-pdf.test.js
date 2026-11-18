@@ -81,7 +81,7 @@ test('Arabic daily PDF renders separate balls and grips rows with each quantity 
   const ballsIndex=sheet.amountRows.findIndex(r=>r[0]==='طابات (2)');
   const gripsIndex=sheet.amountRows.findIndex(r=>r[0]==='جربات (3)');
   assert.equal(gripsIndex,ballsIndex+1,'Separate rows are adjacent');
-  assert.equal(sheet.amountRows.length,16,'Two income rows are reassigned to the Reem cash-box section');
+  assert.equal(sheet.amountRows.length,18,'Original one-page income table size is preserved');
   const {pages}=makeArabicDailySheetPdf(sample());
   assert.equal(pages,1);
   for(const value of ['طابات (2)','جربات (3)','20','14'])
@@ -104,7 +104,7 @@ test('Separated balls and grips rows aggregate transactions without changing day
  assert.equal(sheet.ballsQuantity,5);
  assert.equal(sheet.gripsQuantity,5);
  assert.equal(sheet.receipts,32650,'Total income still includes both sales exactly once');
- assert.equal(sheet.amountRows.length,16);
+ assert.equal(sheet.amountRows.length,18);
  assert.equal(sheet.amountRows.find(x=>x[0].includes('Client 1'))[1],2500);
  assert.equal(sheet.amountRows.find(x=>x[0].includes('Client 2'))[1],1000);
  const empty=sample();
@@ -166,8 +166,6 @@ test('Local PDF has exactly one letter-sized Arabic accounting sheet without upl
   assert.match(content,/\/Count 1/);
   assert.match(content,/startxref\n\d+\n%%EOF/);
   assert.ok(calls.some(label=>label.includes('مبيعات في الصندوق')));
-  assert.ok(calls.some(label=>label.includes('خروج صندوق ريم')));
-  assert.ok(calls.some(label=>label.includes('دخول صندوق ريم')));
   assert.ok(calls.some(label=>label.includes('مجموع خروج صندوق وش')));
   assert.ok(calls.some(label=>label.includes('الصندوق القديم')));
   assert.ok(!calls.some(label=>label.includes('تفاصيل القيود النقدية')));
@@ -253,7 +251,7 @@ test('special named income and expense categories map only to their own lines',(
   {entry_date:DAY,category:'general_payment',amount_cents:500}
  );
  const sheet=prepareArabicDailySheet(x);
- const row=label=>[...sheet.amountRows,...sheet.overflowIncome].find(r=>r[0]===label);
+ const row=label=>sheet.amountRows.find(r=>r[0]===label);
  const paid=label=>sheet.expenseRows.find(r=>r[0]===label);
  assert.equal(row('ملعب بيكل بول')[1],1200);
  assert.equal(row('صف تدريب طابق أول')[1],2200);
@@ -284,12 +282,12 @@ test('extra client payments and miscellaneous entries survive overflow into deta
   x.rows.push({entry_date:DAY,category:'other_expense',name:'Expense '+i,amount_cents:500+i});
  }
  const sheet=prepareArabicDailySheet(x);
- assert.equal(sheet.amountRows.length,16);
+ assert.equal(sheet.amountRows.length,18);
  assert.equal(sheet.expenseRows.length,8);
  assert.equal(sheet.trainingRows.length,14);
  assert.ok(sheet.overflowIncome.length>0);
  assert.ok(sheet.overflowExpenses.length>0);
- assert.equal(sheet.overflowTraining.length,8);
+ assert.equal(sheet.overflowTraining.length,6);
  assert.ok(sheet.details.some(d=>d.section==='ساعات تدريب'&&d.identifier==='111'&&/[ء-ي]/.test(d.name)));
  assert.ok(sheet.details.some(d=>d.name==='Expense 11'));
  assert.ok(sheet.details.some(d=>d.name.includes('Person 11')));
@@ -372,7 +370,7 @@ test('dedicated categories and older miscellaneous entries share their matching 
  assert.equal(sheet.amountRows.find(r=>r[0]==='دورة الصيف')[1],2000);
  assert.equal(sheet.amountRows.find(r=>r[0]==='أحذية')[1],3000);
  assert.equal(sheet.amountRows.find(r=>r[0]==='أكاديمية باسكت'),undefined);
- assert.equal([...sheet.amountRows,...sheet.overflowIncome].find(r=>r[0]==='إيرادات أخرى')[1],1000);
+ assert.equal(sheet.amountRows.find(r=>r[0]==='إيرادات أخرى')[1],1000);
  assert.equal(sheet.expenseRows.find(r=>r[0]==='دين عائلة')[1],1150);
  assert.equal(sheet.receipts,31500+1800+2700+900+600);
  assert.equal(sheet.expenses,27500+900+250);
@@ -628,8 +626,8 @@ test('retired PDF categories never take dedicated rows and still reconcile old r
  );
  const sheet=prepareArabicDailySheet(x);
  assert.equal(sheet.amountRows.find(r=>r[0]==='صف جم')[1],3500);
- assert.equal([...sheet.amountRows,...sheet.overflowIncome].find(r=>r[0]==='إيرادات أخرى')[1],1800);
- assert.ok(![...sheet.amountRows,...sheet.overflowIncome].some(r=>['اشتراك جم','أكاديمية باسكت'].includes(r[0])));
+ assert.equal(sheet.amountRows.find(r=>r[0]==='إيرادات أخرى')[1],1800);
+ assert.ok(!sheet.amountRows.some(r=>['اشتراك جم','أكاديمية باسكت'].includes(r[0])));
  assert.deepEqual(sheet.amountRows.slice(0,4).map(r=>r[0]),['ملعب بادل','ملعب بيكل بول','ملعب باسكت','مبيع متفرقات']);
  assert.equal(sheet.receipts,31500+2500+1000+1800);
  assert.equal(sheet.totalGenerated,67500);
