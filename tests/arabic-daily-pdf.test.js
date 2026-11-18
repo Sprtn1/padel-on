@@ -81,7 +81,7 @@ test('Arabic daily PDF renders separate balls and grips rows with each quantity 
   const ballsIndex=sheet.amountRows.findIndex(r=>r[0]==='طابات (2)');
   const gripsIndex=sheet.amountRows.findIndex(r=>r[0]==='جربات (3)');
   assert.equal(gripsIndex,ballsIndex+1,'Separate rows are adjacent');
-  assert.equal(sheet.amountRows.length,18,'Original one-page income table size is preserved');
+  assert.equal(sheet.amountRows.length,16,'Two income rows are reassigned to the Reem cash-box section');
   const {pages}=makeArabicDailySheetPdf(sample());
   assert.equal(pages,1);
   for(const value of ['طابات (2)','جربات (3)','20','14'])
@@ -104,7 +104,7 @@ test('Separated balls and grips rows aggregate transactions without changing day
  assert.equal(sheet.ballsQuantity,5);
  assert.equal(sheet.gripsQuantity,5);
  assert.equal(sheet.receipts,32650,'Total income still includes both sales exactly once');
- assert.equal(sheet.amountRows.length,18);
+ assert.equal(sheet.amountRows.length,16);
  assert.equal(sheet.amountRows.find(x=>x[0].includes('Client 1'))[1],2500);
  assert.equal(sheet.amountRows.find(x=>x[0].includes('Client 2'))[1],1000);
  const empty=sample();
@@ -166,6 +166,8 @@ test('Local PDF has exactly one letter-sized Arabic accounting sheet without upl
   assert.match(content,/\/Count 1/);
   assert.match(content,/startxref\n\d+\n%%EOF/);
   assert.ok(calls.some(label=>label.includes('مبيعات في الصندوق')));
+  assert.ok(calls.some(label=>label.includes('خروج صندوق ريم')));
+  assert.ok(calls.some(label=>label.includes('دخول صندوق ريم')));
   assert.ok(calls.some(label=>label.includes('مجموع خروج صندوق وش')));
   assert.ok(calls.some(label=>label.includes('الصندوق القديم')));
   assert.ok(!calls.some(label=>label.includes('تفاصيل القيود النقدية')));
@@ -282,12 +284,12 @@ test('extra client payments and miscellaneous entries survive overflow into deta
   x.rows.push({entry_date:DAY,category:'other_expense',name:'Expense '+i,amount_cents:500+i});
  }
  const sheet=prepareArabicDailySheet(x);
- assert.equal(sheet.amountRows.length,18);
+ assert.equal(sheet.amountRows.length,16);
  assert.equal(sheet.expenseRows.length,8);
  assert.equal(sheet.trainingRows.length,14);
  assert.ok(sheet.overflowIncome.length>0);
  assert.ok(sheet.overflowExpenses.length>0);
- assert.equal(sheet.overflowTraining.length,6);
+ assert.equal(sheet.overflowTraining.length,8);
  assert.ok(sheet.details.some(d=>d.section==='ساعات تدريب'&&d.identifier==='111'&&/[ء-ي]/.test(d.name)));
  assert.ok(sheet.details.some(d=>d.name==='Expense 11'));
  assert.ok(sheet.details.some(d=>d.name.includes('Person 11')));
