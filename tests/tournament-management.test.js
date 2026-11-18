@@ -264,7 +264,14 @@ test('Admins can export and begin archive closure, but deletion requires confirm
   globalThis.URL={createObjectURL:()=> 'blob:tournament',revokeObjectURL(){}};
   globalThis.setTimeout=()=>0;
   globalThis.window={confirm:()=>true};
+  await widget.action({dataset:{action:'tm-workspace',section:'payments'}});
+  assert.match(widget.page(),/aria-selected="true" id="tm-tab-payments"/);
   await widget.action({dataset:{action:'tm-close-start'}});
+  const archiveHtml=widget.page();
+  assert.ok(archiveHtml.indexOf('class="panel tm-close-confirm"')>=0);
+  assert.ok(archiveHtml.indexOf('class="panel tm-close-confirm"')<archiveHtml.indexOf('class="tm-workspace-tabs"'),
+   'Archive confirmation must be outside all tab panels, including hidden Overview');
+  assert.match(archiveHtml,/aria-selected="true" id="tm-tab-payments"/);
   assert.equal(clicked.length,1);
   assert.equal(backing.length,1);
   assert.match(widget.page(),/Confirm PDF Saved &amp; Delete Tournament|Confirm PDF Saved & Delete Tournament/);
