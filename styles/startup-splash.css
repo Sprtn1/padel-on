@@ -51,6 +51,10 @@
     linear-gradient(180deg,transparent 67%,rgba(1,8,5,.22));
   pointer-events:none;
 }
+
+/* Keep the branded first paint calm enough for an operational workspace. */
+#app .startup-glow{opacity:.42;filter:blur(26px)}
+#app .startup::before{opacity:.55}
 #app .startup-content{
   position:relative;
   z-index:1;
