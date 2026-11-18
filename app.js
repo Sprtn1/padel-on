@@ -50,6 +50,7 @@ function noteInitialViewRendered(){
 }
 let sidebarCollapsed=false;
 let mobileMenuOpen=false;
+const mobileNavigationViewport=window.matchMedia('(max-width: 830px)');
 let themeStorage=null;
 try{themeStorage=window.localStorage;}catch{}
 let currentTheme=readTheme(themeStorage);
@@ -216,7 +217,8 @@ function selectedMatchmaker(){return state.matchmakers.find(x=>x.id===state.matc
 function personMatchmakingRows(person){return state.finance.filter(g=>(g.matchmaker_id||LEGACY_MATCHMAKER_ID)===person.id)}
 // Compatibility for installations that have not yet loaded matchmaker accounts.
 function matchmakerRate(){return 1500}
-function matchmakingFee(cents){return Math.round(Number(cents||0)*.15)}
+const LEGACY_MATCHMAKING_SHARE_PERCENT=15;
+function matchmakingFee(cents){return Math.round(Number(cents||0)*(LEGACY_MATCHMAKING_SHARE_PERCENT/100))}
 function personFinancials(ym,person){
  return getMatchmakingFinance(personMatchmakingRows(person),ym);
 }
@@ -234,9 +236,11 @@ function syncBrowserRoute(tab,{replace=false}={}){
 }
 async function navigateToTab(tab){
  if(!api.getSession()?.access_token||!state.staff||!canAccessTab(tab,state.staff.role))return;
+ const fromOverlay=mobileMenuOpen||state.globalSearchOpen;
  if(mobileMenuOpen)setMobileMenuOpen(false,{restoreFocus:false});
  state.tab=tab;state.modal=null;state.globalSearchOpen=false;state.globalSearchQuery='';
  render();window.scrollTo({top:0,behavior:'instant'});
+ if(fromOverlay)focusPageHeading();
  if(tab==='reports'){void loadClubSources();await loadReport();}
  if(tab==='dashboard'){loadClubSources();void clubInsights.loadOverview(true);}
  if(tab==='debts')await loadDebtData();
@@ -260,6 +264,33 @@ async function applyLocationRoute(){
 }
 window.addEventListener('popstate',()=>{void applyLocationRoute().catch(err=>toast(err.message||'Navigation failed',true));});
 window.addEventListener('hashchange',()=>{void applyLocationRoute().catch(err=>toast(err.message||'Navigation failed',true));});
+function focusPageHeading(){
+ const heading=app.querySelector('.workspace h1')||app.querySelector('.topbar-main');
+ if(!heading)return;
+ heading.tabIndex=-1;
+ heading.focus({preventScroll:true});
+}
+function activeNavigationOverlay(){
+ if(mobileMenuOpen)return app.querySelector('.mobile-drawer-panel');
+ if(state.globalSearchOpen)return app.querySelector('.global-search-dialog');
+ return null;
+}
+function overlayTabStops(overlay){
+ return [...overlay.querySelectorAll('button,input,a[href],select,textarea,[tabindex]')]
+  .filter(control=>control.tabIndex>=0&&!control.matches(':disabled')&&control.getClientRects().length);
+}
+function updateNavigationInert(){
+ const layout=app.querySelector('.app-layout');
+ if(!layout)return;
+ layout.inert=Boolean(state.globalSearchOpen);
+ for(const background of app.querySelectorAll('.app-layout > .sidebar,.app-layout > .main,#modal-root'))
+  background.inert=mobileMenuOpen;
+}
+function closeGlobalSearch(){
+ state.globalSearchOpen=false;state.globalSearchQuery='';
+ render();
+ app.querySelector('[data-action="global-search-open"]')?.focus();
+}
 // Drawer operates in place so opening navigation never clears a half-filled form.
 function setMobileMenuOpen(open,{restoreFocus=true}={}){
  mobileMenuOpen=Boolean(open);
@@ -270,11 +301,18 @@ function setMobileMenuOpen(open,{restoreFocus=true}={}){
  if(mobileMenuOpen)drawer.removeAttribute('inert');
  else drawer.setAttribute('inert','');
  document.body.classList.toggle('mobile-menu-open',mobileMenuOpen);
+ updateNavigationInert();
  const trigger=app.querySelector('[data-action="mobile-menu-toggle"]');
  trigger?.setAttribute('aria-expanded',String(mobileMenuOpen));
- if(mobileMenuOpen)drawer.querySelector('[data-action="mobile-menu-close"]')?.focus();
+ if(mobileMenuOpen)drawer.querySelector('.mobile-menu-close')?.focus();
  else if(restoreFocus)trigger?.focus();
 }
+mobileNavigationViewport.addEventListener('change',event=>{
+ if(!event.matches&&mobileMenuOpen){
+  setMobileMenuOpen(false,{restoreFocus:false});
+  app.querySelector('[data-action="sidebar-toggle"]')?.focus();
+ }
+});
 function toggleDesktopSidebar(){
  // Change layout in place to preserve forms, drafts, and scroll positions.
  sidebarCollapsed=!sidebarCollapsed;
@@ -324,7 +362,7 @@ function globalSearchOverlay(){
 }
 function shell(){
  const name=state.staff?.email?.split('@')[0]||'Staff';
- return `<div class="app-layout ${sidebarCollapsed?'sidebar-collapsed':''}"><aside class="sidebar" aria-label="Primary navigation"><div class="sidebar-panel"><div class="sidebar-header"><div class="sidebar-brand"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><span class="brand-compact" aria-hidden="true">PO</span></div><button type="button" class="sidebar-toggle" data-action="sidebar-toggle" aria-controls="sidebar-menu" aria-label="${sidebarToggleLabel(sidebarCollapsed)}" title="${sidebarToggleLabel(sidebarCollapsed)}" aria-expanded="${!sidebarCollapsed}">${icon(sidebarCollapsed?'chevronRight':'chevronLeft')}</button></div><div class="brand-sub">Club management</div><nav class="menu" id="sidebar-menu" aria-label="Sections">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></div></aside><main class="main"><header class="topbar"><button type="button" class="mobile-menu-toggle" data-action="mobile-menu-toggle" aria-label="Open navigation menu" aria-controls="mobile-drawer" aria-expanded="${mobileMenuOpen}">${icon("menu")}</button><div class="topbar-identity"><div class="crumb">PADEL ON / ${esc(navSectionForTab(state.tab)?.label||"Club Management")}</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}${themeButton()}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div data-page="${esc(state.tab)}" class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='consignment'||state.tab==='tournament'||state.tab==='court-timetable'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><div id="mobile-drawer" class="mobile-drawer ${mobileMenuOpen?'is-open':''}" aria-hidden="${!mobileMenuOpen}" ${mobileMenuOpen?'':'inert'}><button type="button" class="mobile-drawer-backdrop" data-action="mobile-menu-close" aria-label="Close navigation menu"></button><aside class="mobile-drawer-panel" aria-label="Mobile sections"><div class="mobile-drawer-header"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><button class="mobile-menu-close" type="button" data-action="mobile-menu-close" aria-label="Close menu">${icon('close')}</button></div><div class="mobile-drawer-title">Workspace navigation</div><nav class="mobile-drawer-links" aria-label="All sections">${navMarkup(false,'drawer')}</nav><div class="mobile-drawer-account"><span class="avatar">${esc(initials(name))}</span><div><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div></div></aside></div></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
+ return `<div class="app-layout ${sidebarCollapsed?'sidebar-collapsed':''}"><aside class="sidebar" aria-label="Primary navigation"><div class="sidebar-panel"><div class="sidebar-header"><div class="sidebar-brand"><div class="brand"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/></div><span class="brand-compact" aria-hidden="true">PO</span></div><button type="button" class="sidebar-toggle" data-action="sidebar-toggle" aria-controls="sidebar-menu" aria-label="${sidebarToggleLabel(sidebarCollapsed)}" title="${sidebarToggleLabel(sidebarCollapsed)}" aria-expanded="${!sidebarCollapsed}">${icon(sidebarCollapsed?'chevronRight':'chevronLeft')}</button></div><div class="brand-sub">Club management</div><nav class="menu" id="sidebar-menu" aria-label="Sections">${navMarkup()}</nav><div class="menu-footer"><div class="sidebar-bottom">© ${new Date().getFullYear()} PADEL ON</div></div></div></aside><main class="main"><header class="topbar"><button type="button" class="mobile-menu-toggle" data-action="mobile-menu-toggle" aria-label="Open navigation menu" aria-controls="mobile-drawer" aria-expanded="${mobileMenuOpen}">${icon("menu")}</button><div class="topbar-identity"><div class="crumb">PADEL ON / ${esc(navSectionForTab(state.tab)?.label||"Club Management")}</div><div class="topbar-main">${titleFor()}</div></div><div class="top-right">${btn(icon('search'),'global-search-open','btn-light btn-icon','aria-label="Search PADEL ON" title="Search PADEL ON (Ctrl+K)"')}${btn(icon('refresh'),'refresh','btn-light btn-icon','aria-label="Refresh data" title="Refresh data"')}${themeButton()}<div class="user-meta"><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div><div class="avatar">${esc(initials(name))}</div></div></header><div data-page="${esc(state.tab)}" class="workspace ${state.tab==='private-clients'||state.tab==='debts'||state.tab==='consignment'||state.tab==='tournament'||state.tab==='court-timetable'?'workspace-wide':''}">${renderPage()}<div class="page-footer">PADEL ON · Beirut time</div></div></main><div id="mobile-drawer" class="mobile-drawer ${mobileMenuOpen?'is-open':''}" aria-hidden="${!mobileMenuOpen}" ${mobileMenuOpen?'':'inert'}><button type="button" class="mobile-drawer-backdrop" data-action="mobile-menu-close" tabindex="-1" aria-hidden="true"></button><aside class="mobile-drawer-panel" role="dialog" aria-modal="true" aria-label="Mobile sections"><div class="mobile-drawer-header"><img src="./assets/logo.svg?v=${assetVersion}" alt="PADEL ON"/><button class="mobile-menu-close" type="button" data-action="mobile-menu-close" aria-label="Close menu">${icon('close')}</button></div><div class="mobile-drawer-title">Workspace navigation</div><nav class="mobile-drawer-links" aria-label="All sections">${navMarkup(false,'drawer')}</nav><div class="mobile-drawer-account"><span class="avatar">${esc(initials(name))}</span><div><strong>${esc(name)}</strong><small>${esc(state.staff?.role||'staff')} account</small></div></div></aside></div></div><div id="modal-root">${state.modal?modalMarkup():''}</div>${globalSearchOverlay()}`;
 }
 function heading(eyebrow,title,desc,actions=''){return `<div class="heading-row"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${desc}</p></div>${actions?`<div class="heading-actions">${actions}</div>`:''}</div>`}
 function summaryCard(label,num,sub,ico,feature=false){return `<article class="summary-card ${feature?'feature':''}"><div class="card-top"><span class="label">${label}</span><span class="metric-icon">${icon(ico)}</span></div><div class="metric num">${num}</div><div class="submetric">${sub}</div></article>`}
@@ -998,11 +1036,11 @@ function financePage(){
  <article class="panel"><div class="panel-head"><div><h2>Matchmaking history</h2><p>${esc(person.name)} · ${monthLabel(state.month)} · ${f.rows.length} records</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Players / Notes</th><th>Revenue</th><th>Streak day</th><th>Rate</th><th>Commission</th><th>Actions</th></tr></thead><tbody>${f.rows.length?f.rows.map(row=>`<tr><td>${niceDay(row.played_on)}</td><td><strong>${esc(row.players||'Matchmaking game')}</strong><br/><small>${esc(row.notes||'—')}</small></td><td><strong class="num">${amount(row.amount_cents)}</strong></td><td class="num">Day ${row.streakDay}</td><td class="num">${row.commissionBps/100}%</td><td class="num">${amount(row.commission_cents)}</td><td>${btn(icon('edit'),'edit-nazih','btn-light btn-icon btn-xs',`data-id="${row.id}" title="Edit"`)} ${btn(icon('trash'),'delete-nazih','btn-danger btn-icon btn-xs',`data-id="${row.id}" title="Remove"`)}</td></tr>`).join(''):'<tr><td colspan="7"><div class="empty-prompt"><strong>No matchmaking records</strong><span>Add a game for this person to track the monthly revenue.</span></div></td></tr>'}</tbody></table></div></article>
  <div class="archive-note">Rolling seven-day schedule: 15%, 15%, 20%, 20%, 25%, 25%, 30%. Each matchmaker’s first active day starts Day 1, and the cycle restarts after Day 7. Multiple matches on one day share one rate. A missed day resets the next active day to 15%.</div>`;
 }
-function legacyFinancePage(){const person=selectedMatchmaker(),f=getMatchmakingFinance(state.finance,state.month),streak=getMatchmakingCurrentStreak(state.finance,today()),sel=state.settlements.find(s=>s.month_key===state.month+'-01');const paid=sel?.status==='paid';const diff=Number(sel?.amount_paid_cents||0)-f.fee;return `${heading('Matchmaking / Nazih Sonbol','Revenue & Commission','Record and review matchmaking revenue by month.',btn(`${icon('plus')} Add Matchmaking Game`,'add-nazih','btn-primary'))}
+function legacyFinancePage(){const f=getMatchmakingFinance(state.finance,state.month),streak=getMatchmakingCurrentStreak(state.finance,today()),sel=state.settlements.find(s=>s.month_key===state.month+'-01');const paid=sel?.status==='paid';const diff=Number(sel?.amount_paid_cents||0)-f.fee;return `${heading('Matchmaking / Nazih Sonbol','Revenue & Commission','Record and review matchmaking revenue by month.',btn(`${icon('plus')} Add Matchmaking Game`,'add-nazih','btn-primary'))}
 <div class="toolbar"><div class="money-note">Revenue collected from other players · all figures USD</div><div class="month-control"><button data-action="prev-month" title="Previous month" aria-label="Previous month">${icon('chevronLeft')}</button><strong>${monthLabel(state.month)}</strong><button data-action="next-month" ${state.month>=monthKey(today())?'disabled':''} title="Next month" aria-label="Next month">${icon('chevronRight')}</button></div></div>
 <section class="finance-grid four-up matchmaking-streak-grid">${summaryCard('Revenue collected',amount(f.total),'From other players','wallet',true)}${summaryCard('Commission this month',amount(f.fee),'Daily streak rates','coins')}${summaryCard('Current streak',streak.currentStreak+' day'+(streak.currentStreak===1?'':'s'),'Per active day','activity')}${summaryCard('Current commission',streak.currentCommissionBps/100+'%','Rate applicable today','spark')}</section>
 <div class="settlement"><div><strong>Monthly settlement · ${monthLabel(state.month)}</strong><small>${paid?`Marked paid on ${niceDay(sel.paid_on||sel.month_key)}`:'Not marked as paid'}${paid&&diff!==0?' · ⚠ Paid amount differs from current commission':''}</small></div><div class="inline-info">${tag(paid?'Paid':'Unpaid',paid?'green':'amber')}${state.staff?.role==='admin'?btn(`${icon('edit')} ${paid?'Edit Settlement':'Record Payment'}`,'settlement','btn-light'):''}</div></div>
-<article class="panel"><div class="panel-head"><div><h2>Matchmaking history</h2><p>${monthLabel(state.month)} · ${f.rows.length} records</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Players / Notes</th><th>Revenue collected</th><th>Game's ${rate}% share*</th><th>Actions</th></tr></thead><tbody>${f.rows.length?f.rows.map(r=>`<tr><td>${niceDay(r.played_on)}</td><td><strong>${esc(r.players||'Matchmaking game')}</strong><br/><small>${esc(r.notes||'—')}</small></td><td><strong class="num">${amount(r.amount_cents)}</strong></td><td class="num">${amount(matchmakingFee(r.amount_cents,person))}</td><td>${btn(icon('edit'),'edit-nazih','btn-light btn-icon btn-xs',`data-id="${r.id}" title="Edit"`)} ${btn(icon('trash'),'delete-nazih','btn-danger btn-icon btn-xs',`data-id="${r.id}" title="Delete"`)}</td></tr>`).join(''):`<tr><td colspan="5"><div class="empty-prompt">${icon('wallet')}<strong>No matchmaking records</strong><span>Add a game to start tracking revenue for this month.</span></div></td></tr>`}</tbody></table></div></article><div class="archive-note">* Monthly commission is based on total revenue and rounded once.</div>`}
+<article class="panel"><div class="panel-head"><div><h2>Matchmaking history</h2><p>${monthLabel(state.month)} · ${f.rows.length} records</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Players / Notes</th><th>Revenue collected</th><th>Game's ${LEGACY_MATCHMAKING_SHARE_PERCENT}% share*</th><th>Actions</th></tr></thead><tbody>${f.rows.length?f.rows.map(r=>`<tr><td>${niceDay(r.played_on)}</td><td><strong>${esc(r.players||'Matchmaking game')}</strong><br/><small>${esc(r.notes||'—')}</small></td><td><strong class="num">${amount(r.amount_cents)}</strong></td><td class="num">${amount(matchmakingFee(r.amount_cents))}</td><td>${btn(icon('edit'),'edit-nazih','btn-light btn-icon btn-xs',`data-id="${r.id}" title="Edit"`)} ${btn(icon('trash'),'delete-nazih','btn-danger btn-icon btn-xs',`data-id="${r.id}" title="Delete"`)}</td></tr>`).join(''):`<tr><td colspan="5"><div class="empty-prompt">${icon('wallet')}<strong>No matchmaking records</strong><span>Add a game to start tracking revenue for this month.</span></div></td></tr>`}</tbody></table></div></article><div class="archive-note">* The legacy history shows a fixed share per game. Monthly commission uses the daily streak rates.</div>`}
 function activityPage(){const recent=recentActivity(10000,state.activitySearch),showReference=state.staff?.role==='admin';return `${heading('History','Game Activity','Review recent games and benefit usage.',btn(`${icon('refresh')} Refresh`,'refresh','btn-light'))}<div class="toolbar"><label class="search">${icon('search')}<input id="activity-search" placeholder="Search player…" value="${esc(state.activitySearch)}"/></label><span class="tiny">${recent.length} entries</span></div><article class="panel"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Player(s)</th><th>Benefit type</th>${showReference?'<th>Reference</th>':''}<th>Action</th></tr></thead><tbody>${recent.length?recent.map(r=>`<tr><td>${niceDay(r.date)}</td><td><strong>${esc(r.names)}</strong></td><td>${tag(r.type,r.type==='Paid Game'?'gray':'green')}</td>${showReference?`<td><small>${esc(r.ref.slice(0,8))}…</small></td>`:''}<td>${r.kind==='team'?btn('Void match','void-match','btn-danger btn-xs',`data-id="${r.key}"`):'<span class="tiny">Recorded</span>'}</td></tr>`).join(''):`<tr><td colspan="${showReference?5:4}" class="panel-empty">No activity found.</td></tr>`}</tbody></table></div></article>`}
 function adminAccountManagementCards(section='all'){
  const privReady=state.privateLoaded&&!state.privateError;
@@ -1089,6 +1127,9 @@ function render(){
  const html=shell();
  // Ignore identical poll results rather than replacing the whole DOM.
  if(autoRefreshRunning&&lastRenderedTab===state.tab&&html===lastRenderedMarkup)return;
+ const overlay=activeNavigationOverlay();
+ const overlayFocus=overlay?overlayTabStops(overlay).indexOf(document.activeElement):-1;
+ const pageFocus=document.activeElement?.matches('.workspace h1[tabindex="-1"],.topbar-main[tabindex="-1"]');
  const searchFocus=state.globalSearchOpen&&document.activeElement?.id==='global-search-input';
  const cursor=searchFocus?document.activeElement.selectionStart:null;
  const scroll=lastRenderedTab===state.tab?
@@ -1097,9 +1138,17 @@ function render(){
  noteInitialViewRendered();
  enhanceResponsiveTables(app);
  document.body.classList.toggle('mobile-menu-open',mobileMenuOpen);
+ updateNavigationInert();
  lastRenderedMarkup=html;lastRenderedTab=state.tab;
  if(scroll)scrollPreservation.restoreScrollPosition(app,window,scroll);
  if(searchFocus){const input=document.getElementById('global-search-input');input?.focus();if(cursor!==null)input?.setSelectionRange(cursor,cursor);}
+ else if(overlayFocus>=0){
+  const nextOverlay=activeNavigationOverlay();
+  if(nextOverlay){
+   const tabStops=overlayTabStops(nextOverlay);
+   (tabStops[overlayFocus]||tabStops[0])?.focus({preventScroll:true});
+  }
+ }else if(pageFocus)focusPageHeading();
 }
 function field(name,label,value='',type='text',attr=''){return `<label class="form-field"><span>${label}</span><input class="form-input" name="${name}" type="${type}" value="${esc(value)}" ${attr}/></label>`}
 function selectField(name,label,options,selected){return `<label class="form-field"><span>${label}</span><select class="form-input" name="${name}">${options.map(([val,lbl])=>`<option value="${esc(val)}" ${val===selected?'selected':''}>${esc(lbl)}</option>`).join('')}</select></label>`}
@@ -1647,10 +1696,9 @@ async function handleAction(target,event){const act=target.dataset.action,id=tar
   if(!state.staff||!api.getSession()?.access_token)throw Error('Sign in before searching.');
   state.modal=null;state.globalSearchOpen=true;state.globalSearchQuery='';
   render();
-  setTimeout(()=>document.getElementById('global-search-input')?.focus(),0);
+  document.getElementById('global-search-input')?.focus();
   loadClubSources();break;
- case 'global-search-close':
-  state.globalSearchOpen=false;state.globalSearchQuery='';render();break;
+ case 'global-search-close':closeGlobalSearch();break;
  case 'global-search-open-result':{
   const kind=target.dataset.kind;
   const candidate=globalSearchCandidates().find(x=>x.kind===kind&&x.id===id);
@@ -1668,7 +1716,7 @@ async function handleAction(target,event){const act=target.dataset.action,id=tar
   }else if(kind==='other'){
    state.tab='other';
   }
-  render();window.scrollTo({top:0,behavior:'instant'});break;
+  render();window.scrollTo({top:0,behavior:'instant'});focusPageHeading();break;
  }
  case 'settings-private-remove':case 'settings-private-restore':
  case 'settings-cafe-remove':case 'settings-cafe-restore':{
@@ -2076,16 +2124,29 @@ document.addEventListener('change',e=>{
  }
 if(e.target.id==='debt-filter'){state.debtFilter=e.target.value;render()}if(e.target.id==='private-show-archived'){state.privateShowArchived=e.target.checked;render()}if(e.target.classList?.contains('quick-seat')||(e.target.name==='played_on'&&state.modal?.type==='quick-team'))updateQuickPreview();if(e.target.name==='played_on'&&state.modal?.type==='other-game')updateOtherGamePreview();if(e.target.id==='team-sort'){state.teamSort=e.target.value;render()}if(e.target.id==='team-filter'){state.teamFilter=e.target.value;render()}if(e.target.id==='team-category'){state.teamCategoryFilter=e.target.value;render()}});
 document.addEventListener('keydown',e=>{
+ if(e.key==='Tab'){
+  const overlay=activeNavigationOverlay();
+  if(overlay){
+   const tabStops=overlayTabStops(overlay);
+   const edge=e.shiftKey?tabStops.at(-1):tabStops[0];
+   const boundary=e.shiftKey?tabStops[0]:tabStops.at(-1);
+   if(document.activeElement===boundary||!tabStops.includes(document.activeElement)){
+    e.preventDefault();
+    edge?.focus();
+   }
+  }
+ }
  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
   e.preventDefault();
   if(api.getSession()?.access_token){
+   if(mobileMenuOpen)setMobileMenuOpen(false,{restoreFocus:false});
    if(!state.globalSearchOpen)void handleAction({dataset:{action:'global-search-open'}}).catch(err=>toast(err.message,true));
    else document.getElementById('global-search-input')?.focus();
   }
   return;
  }
  if(e.key==='Escape'&&mobileMenuOpen){setMobileMenuOpen(false);return;}
- if(e.key==='Escape'&&state.globalSearchOpen){state.globalSearchOpen=false;state.globalSearchQuery='';render();return;}
+ if(e.key==='Escape'&&state.globalSearchOpen){closeGlobalSearch();return;}
  if(e.key==='Escape'&&state.modal)closeModal();
 });
 async function start(){if(!api.configured){renderAuth();return}if(api.getSession()?.access_token){if(idleExpired()){await autoSignOut();return}await loadData()}else renderAuth();}

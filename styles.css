@@ -819,3 +819,13 @@
 .cafe-sync-review-grid>div{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere;border:1px solid var(--border,#cfd8d4);border-radius:8px;padding:10px;}
 .cafe-sync-issue-actions{justify-content:flex-start;}
 @media(max-width:480px){.cafe-sync-review-grid{grid-template-columns:1fr;}.cafe-view-toggle button{flex:1 1 auto;}.cafe-sync-issue-actions button{flex:1 1 auto;}}
+
+.global-search-dialog :is(button,input):focus-visible {
+ outline:2px solid #006948;
+ outline-offset:2px;
+}
+.mobile-drawer-panel button:focus-visible,
+html[data-theme="dark"] .global-search-dialog :is(button,input):focus-visible {
+ outline:2px solid #79e4ae;
+ outline-offset:2px;
+}

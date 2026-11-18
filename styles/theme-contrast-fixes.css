@@ -748,3 +748,43 @@ html[data-theme="dark"] .workspace[data-page="consignment"] .inv-removal>label{
   color:#a4f1cc;
  }
 }
+
+/* Order summaries, the debt date picker, and tournament creation surfaces. */
+html[data-theme="dark"] .workspace[data-page] :is(.order-metric,.tm-wizard-preview),
+html[data-theme="dark"] .workspace[data-page] .tm-wizard-step-label b {
+ background:var(--dm-card2);
+ border-color:var(--dm-border);
+ color:var(--dm-text);
+}
+html[data-theme="dark"] .workspace[data-page] :is(.order-metric,.tm-wizard-preview,.tm-wizard-review) :is(strong,h4) {
+ color:var(--dm-text);
+}
+html[data-theme="dark"] .workspace[data-page] .order-metric span,
+html[data-theme="dark"] .workspace[data-page] .tm-wizard-preview :is(h3,p,small),
+html[data-theme="dark"] .workspace[data-page] :is(.tm-wizard-step-label,.tm-wizard-step-label>span,.tm-wizard-actions>span,.tm-wizard-review small) {
+ color:var(--dm-muted);
+}
+html[data-theme="dark"] .tm-wizard-preview>div,
+html[data-theme="dark"] .tm-wizard-actions {
+ border-color:var(--dm-border);
+}
+html[data-theme="dark"] .workspace[data-page] .tm-wizard-step-label.current>span {
+ color:var(--dm-accent);
+}
+html[data-theme="dark"] .workspace[data-page] .tm-wizard-step-label:is(.current,.done) b,
+html[data-theme="dark"] .workspace[data-page] .tm-browser-heading>span,
+html[data-theme="dark"] .workspace[data-page] .tm-v2-settings .tm-head>.tm-v2-status {
+ background:#24513f;
+ border-color:#5d9c81;
+ color:#e8fff1;
+}
+html[data-theme="dark"] #debt-day-date {
+ background:var(--dm-input);
+ border-color:#748a95;
+ color:var(--dm-text);
+ color-scheme:dark;
+}
+html[data-theme="dark"] #debt-day-date:focus-visible {
+ outline:2px solid var(--dm-accent);
+ outline-offset:2px;
+}

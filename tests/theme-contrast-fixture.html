@@ -68,7 +68,7 @@
   <div class="shift-section"><div class="shift-check-result"><strong data-audit="shift-total">Cash verification: $80</strong></div></div>
  </div>
  <div class="workspace" data-page="cafeteria-payments"><article class="panel cpay-card"><div class="cpay-card-head"><h3 data-audit="payments-title">Outstanding payment</h3></div><div class="cpay-amounts"><div><strong data-audit="payments-amount">$48</strong></div></div></article></div>
- <div class="workspace" data-page="debts"><div class="debt-directory"><div class="debt-person-item"><strong data-audit="debts-name">Client debt</strong></div><div class="debt-total"><strong data-audit="debts-total">$80</strong></div></div></div>
+ <div class="workspace" data-page="debts"><input id="debt-day-date" type="date" value="2026-11-18" data-audit="debt-date" aria-label="Choose debt entry date"><div class="debt-directory"><div class="debt-person-item"><strong data-audit="debts-name">Client debt</strong></div><div class="debt-total"><strong data-audit="debts-total">$80</strong></div></div></div>
  <div class="workspace" data-page="consignment">
   <section class="inv-summary"><article class="summary-card"><span class="label">Stock products</span><strong class="metric" data-audit="inventory-total">14</strong></article></section>
   <div class="inv-toolbar"><label data-audit="inventory-toolbar-label">Search inventory<input class="form-input" type="search" value="Shoes"/></label></div>
@@ -107,7 +107,16 @@
  <div class="workspace" data-page="team"><article class="panel member-card"><strong data-audit="team-title">Team player</strong><span>Available games: 1</span></article></div>
  <div class="workspace" data-page="other"><article class="panel other-card"><strong data-audit="benefit-title">Other Benefits</strong><div class="other-count" data-audit="benefit-number">3</div></article></div>
  <div class="workspace" data-page="finance"><div class="matchmaker-tabs"><button class="matchmaker-tab active" data-audit="matchmaker-tab">Matchmaking</button></div></div>
- <div class="workspace" data-page="tournament"><article class="tm-browser-card"><h3 data-audit="tournament-title">Tournament details</h3><section class="tm-v2-fixture"><strong data-audit="tournament-fixture">Fixture #12</strong></section></article></div>
+ <div class="workspace" data-page="tournament">
+  <div class="tm-browser-heading"><span data-audit="tournament-count">2 tournaments</span></div>
+  <div class="tm-wizard-steps">
+   <span class="tm-wizard-step-label done"><b data-audit="wizard-done">01</b><span>Basics</span></span>
+   <span class="tm-wizard-step-label current"><b data-audit="wizard-current">02</b><span>Format</span></span>
+   <span class="tm-wizard-step-label"><b data-audit="wizard-next">03</b><span>Dates &amp; Entry</span></span>
+  </div>
+  <aside class="tm-wizard-preview"><h3 data-audit="wizard-preview-label">Live preview</h3><h4 data-audit="wizard-preview-title">New tournament</h4></aside>
+  <section class="tm-v2-settings"><div class="tm-head"><span class="tm-v2-status" data-audit="tournament-publication">Draft</span></div></section>
+  <article class="tm-browser-card"><h3 data-audit="tournament-title">Tournament details</h3><section class="tm-v2-fixture"><strong data-audit="tournament-fixture">Fixture #12</strong></section></article></div>
  <div class="workspace" data-page="activity"><article class="panel"><div class="activity-line"><strong data-audit="activity-text">Game Activity</strong></div></article></div>
  <div class="workspace" data-page="reports">
   <div class="report-mode"><button class="btn btn-light">Weekly report</button></div>
@@ -128,7 +137,7 @@
   </section>
  </div>
  <div class="workspace" data-page="settings"><section class="settings-box"><h3 data-audit="settings-title">Settings</h3><label>Default amount<input type="number" value="5" data-audit="settings-input"/></label></section></div>
- <div class="workspace" data-page="order-counter"><section class="order-result"><strong data-audit="order-title">Order counter</strong></section></div>
- <div class="workspace" data-page="reem-items"><div class="order-item selected"><strong data-audit="reem-title">Reem's Items List</strong></div></div>
+ <div class="workspace" data-page="order-counter"><div class="order-metric"><strong data-audit="order-metric-value">1</strong><span data-audit="order-metric-label">Products selected</span></div><section class="order-result"><strong data-audit="order-title">Order counter</strong></section></div>
+ <div class="workspace" data-page="reem-items"><div class="order-metric"><strong data-audit="reem-metric-value">2</strong><span data-audit="reem-metric-label">Pieces / packs</span></div><div class="order-item selected"><strong data-audit="reem-title">Reem's Items List</strong></div></div>
  </main>
 </div></body></html>
