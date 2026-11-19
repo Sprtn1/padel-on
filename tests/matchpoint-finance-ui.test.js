@@ -105,6 +105,7 @@ test('when MatchPoint is authoritative, modal opens as local block and disables 
  assert.match(html,/data-cafe-save="schedule-reservation"/);
  assert.match(html,/value="block" selected>Block Court · Unavailable/);
  assert.match(html,/value="reservation" disabled>Reservation · Managed in MatchPoint/);
+ assert.match(html,/value="local_reservation">Local Reservation/);
  assert.match(html,/local block or training does not update MatchPoint/);
  assert.match(html,/value="private_training">Private Client Training/);
 });
@@ -276,4 +277,46 @@ test('Sync Issues shows an explicit empty state without disabling normal finance
  await finance.action({dataset:{action:'cafe-court-view',view:'sync-issues'}});
  assert.match(finance.page(),/No booking sync issues requiring review/);
  assert.match(finance.page(),/Payments &amp; expenses|Payments & expenses/);
+});
+
+test('Local reservation offers all 48 half-hour starts and saves after-hours income with MatchPoint active',async()=>{
+ const {finance,calls}=setup({allowWrites:true});await finance.load();
+ await finance.action(action('padel'));
+ const choice={name:'booking_type',value:'local_reservation',closest:()=>({querySelector:()=>null})};
+ assert.equal(finance.schedulerPreviewEnd(choice),true);
+ const html=finance.page();
+ assert.match(html,/value="local_reservation" selected>Local Reservation/);
+ const timeSelect=html.match(/<select name="start_time"[^>]*>([\s\S]*?)<\/select>/)[1];
+ assert.equal((timeSelect.match(/<option /g)||[]).length,48);
+ for(const t of ['01:00','01:30','02:00','06:30','08:30','23:30','00:30'])assert(timeSelect.includes('value="'+t+'"'));
+ await withScheduleData([
+  ['start_time','06:00'],['duration_minutes','90'],['court_number','C1'],
+  ['customer_name','Early customer'],['status','confirmed'],
+  ['booking_type','local_reservation'],['total_amount','32.00'],['cash_amount','22.00'],['whish_amount','10.00'],['check0','on']
+ ],()=>finance.submit({dataset:{cafeSave:'schedule-reservation'}}));
+ const write=calls.find(c=>c?.rpc==='club_court_reservation_priced_save');
+ assert(write);assert.equal(write.args.p_id,null);
+ assert.equal(write.args.p_booking_type,'reservation');assert.equal(write.args.p_start,'06:00');
+ assert.equal(write.args.p_payment_total_cents,3200);assert.equal(write.args.p_cash_cents,2200);
+ assert.equal(write.args.p_whish_cents,1000);assert.equal(write.args.p_checkmarks[0],true);
+ assert.equal(write.args.p_update_payments,true);
+});
+test('bulk resolution sends only imported issue snapshots after confirmation',async()=>{
+ const issue={...imported,id:'issue-uuid',revision:4,external_status:'CONFIRMED',external_alert:'Changed',
+  external_remote_snapshot:{business_date:'2026-11-16',sport:'padel',court_number:'C1',
+   booking_start_time:'19:00',booking_end_time:'20:30',duration_minutes:90,customer_name:'Guest',status:'confirmed'}};
+ const {finance,calls}=setup({allowWrites:true,issueRows:[issue]});await finance.load();
+ await finance.action({dataset:{action:'cafe-court-view',view:'sync-issues'}});
+ assert.match(finance.page(),/Resolve All — Use MatchPoint/);
+ const previous=globalThis.confirm;
+ try{
+  globalThis.confirm=()=>false;
+  await finance.action({dataset:{action:'cafe-sync-resolve-all'}});
+  assert.equal(calls.filter(c=>c?.rpc).length,0);
+  globalThis.confirm=()=>true;
+  await finance.action({dataset:{action:'cafe-sync-resolve-all'}});
+ }finally{if(previous===undefined)delete globalThis.confirm;else globalThis.confirm=previous;}
+ assert.deepEqual(calls.find(c=>c?.rpc==='matchpoint_resolve_all_remote').args,{p_issues:[{
+  id:issue.id,revision:4,alert:'Changed',remote_status:'CONFIRMED',snapshot:issue.external_remote_snapshot
+ }]});
 });
