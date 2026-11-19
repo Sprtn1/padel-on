@@ -12,6 +12,9 @@ test('Thick hour lines and lighter half-hour lines are defined in the scheduler 
  assert.match(css,/#929fa6 53px,#929fa6 56px/);
  assert.match(css,/touch-action:none/);
  assert.match(css,/cafe-scheduler-dragging/);
+ assert.match(css,/cafe-scheduler-move-preview/);
+ assert.match(read('../lib/court-scheduler-ui.js'),/dataset\.movePreview=court\+' · '\+start/);
+ assert.match(read('../lib/court-scheduler-ui.js'),/requestAnimationFrame\(\(\)=>window\.requestAnimationFrame/);
  assert.match(read('../bootstrap.js'),/styles\/court-scheduler\.css/);
 });
 

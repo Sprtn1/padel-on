@@ -77,6 +77,8 @@ test('Court Kinetic styles load last without adding a new frontend framework',()
  const bootstrap=repoFile('bootstrap.js'),css=repoFile('styles/court-kinetic-v2.css');
  assert.match(bootstrap,/styles\/court-kinetic-v2\.css/);
  assert.match(css,/\.ck-detail-drawer/);
+ assert.match(css,/\.ck-detail-overlay\.is-closing/);
+ assert.match(css,/@starting-style/);
  assert.match(css,/\.cafe-fold/);
  assert.match(css,/\[data-selected-court="C1"\]/);
  const app=repoFile('app.js');

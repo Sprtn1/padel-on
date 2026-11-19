@@ -33,11 +33,12 @@ test('Returning tab applies warm-start policy before dynamic styles and the appl
  const css=read('styles/startup-splash.css');
  assert.match(css,/#app > \.startup\{/);
  assert.match(css,/visibility:hidden/);
- assert.match(css,/animation:po-splash-reveal \.18s ease 650ms both/);
+ assert.match(css,/animation:po-splash-reveal \.12s cubic-bezier\(\.16,1,\.3,1\) 80ms both/);
  assert.match(css,/html\.po-startup-warm #app > \.startup/);
  assert.match(css,/html\.po-startup-warm #app > \.startup\{[\s\S]*?min-height:3px/);
  assert.match(css,/html\.po-startup-warm #app > \.startup > \*\{display:none!important\}/);
  assert.match(css,/@keyframes po-splash-reveal/);
+ assert.match(css,/html\.po-startup-warm #app > \.startup::after\{animation:none/);
  assert.match(css,/body:has\(#app > \.startup\)/);
 });
 test('Dashboard and login mark themselves ready only after replacing the splash markup',()=>{

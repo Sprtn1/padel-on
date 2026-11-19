@@ -28,6 +28,18 @@
  box-shadow:0 8px 22px rgba(15,44,27,.25);
  transition:none;pointer-events:none;
 }
+.cafe-scheduler .cafe-scheduler-move-preview{
+ opacity:1;z-index:12;pointer-events:none;
+ box-shadow:0 10px 26px rgba(15,44,27,.3),0 0 0 3px rgba(22,164,109,.2);
+ transition:transform .1s cubic-bezier(.16,1,.3,1),box-shadow .1s ease;
+}
+.cafe-scheduler .cafe-scheduler-move-preview::after{
+ content:attr(data-move-preview);position:absolute;left:50%;top:-27px;transform:translateX(-50%);
+ border-radius:999px;padding:5px 8px;background:#0b2b20;color:#fff;box-shadow:0 5px 15px rgba(0,0,0,.2);
+ font-size:10px;font-weight:800;line-height:1;white-space:nowrap;
+}
+.cafe-scheduler .cafe-scheduler-move-saving{cursor:progress!important;filter:saturate(.75)}
+.cafe-scheduler .cafe-scheduler-move-return{transition:transform .12s cubic-bezier(.7,0,.84,0)}
 .cafe-scheduler .cafe-timeboard-booking[data-schedule-locked="true"]{cursor:pointer;opacity:.82}
 .cafe-scheduler .cafe-timeboard-booking.schedule-confirmed{
  color:#135943;border-color:#59b799;background:#c8f2df;
@@ -104,6 +116,9 @@ body:has(.cafe-scheduler-overlay){overflow:hidden}
  .cafe-scheduler-date-controls>button:nth-of-type(n+3){grid-column:span 1}
  .cafe-scheduler-date-controls>.btn-primary{grid-column:1/-1}
  .cafe-scheduler .cafe-timeboard-booking{touch-action:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .cafe-scheduler .cafe-scheduler-move-preview,.cafe-scheduler .cafe-scheduler-move-return{transition:none!important}
 }
 @media(max-width:560px){
  .cafe-scheduler-toolbar{padding:11px}
