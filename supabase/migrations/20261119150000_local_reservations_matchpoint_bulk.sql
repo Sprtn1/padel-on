@@ -214,3 +214,103 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.matchpoint_resolve_all_remote(jsonb) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.matchpoint_resolve_all_remote(jsonb) TO authenticated;
+
+-- Private-training wrapper retains its existing operating-hours constraint.
+CREATE OR REPLACE FUNCTION public.club_private_training_save(p_id uuid, p_business_date date, p_sport text, p_court text, p_start text, p_duration integer, p_client_id uuid, p_coach_id uuid, p_session_fee_cents bigint, p_notes text, p_status text, p_expected_revision integer)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+DECLARE v_id uuid;v_client record;v_existing public.padel_court_reservations%rowtype;
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.is_staff() THEN RAISE EXCEPTION 'Staff authorization required'; END IF;
+ IF p_start IS NULL OR p_start !~ '^([01][0-9]|2[0-3]):[0-5][0-9]
+ SELECT id,name INTO v_client FROM public.private_clients WHERE id=p_client_id
+  AND active AND deleted_at IS NULL;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Select an active Private Sessions client'; END IF;
+ IF p_coach_id IS NOT NULL AND NOT EXISTS(
+  SELECT 1 FROM public.private_coaches WHERE id=p_coach_id AND active)
+ THEN RAISE EXCEPTION 'Select an active coach or leave coach unassigned'; END IF;
+ IF p_session_fee_cents IS NULL OR p_session_fee_cents<0 OR p_session_fee_cents>100000000000
+ THEN RAISE EXCEPTION 'Enter a valid session fee'; END IF;
+ -- Match the shared day lock order of existing court booking saves.
+ IF p_business_date IS NULL THEN RAISE EXCEPTION 'Choose a booking date'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtext('padelon_reservation_day'),p_business_date-date '2000-01-01');
+ IF p_id IS NOT NULL THEN
+  SELECT * INTO v_existing FROM public.padel_court_reservations WHERE id=p_id FOR UPDATE;
+  IF NOT FOUND OR (v_existing.private_client_id IS NULL
+     AND v_existing.external_source IS DISTINCT FROM 'matchpoint')
+    THEN RAISE EXCEPTION 'Private training booking not found'; END IF;
+  IF v_existing.external_source='matchpoint' AND EXISTS(
+   SELECT 1 FROM public.court_payment_splits
+    WHERE source_kind='reservation' AND source_id=p_id AND voided_at IS NULL)
+   THEN RAISE EXCEPTION 'Reverse existing court payments before converting to private training'; END IF;
+  IF v_existing.private_session_entry_id IS NOT NULL AND
+    (v_existing.private_client_id IS DISTINCT FROM p_client_id
+     OR v_existing.private_session_fee_cents<>p_session_fee_cents
+     OR v_existing.private_coach_id IS DISTINCT FROM p_coach_id)
+   THEN RAISE EXCEPTION 'The session is already recorded; edit financial details in Private Sessions'; END IF;
+ END IF;
+ v_id:=public.club_court_reservation_save(
+  p_id,p_business_date,p_sport,p_court,p_start,p_duration,v_client.name,
+  coalesce(p_notes,''),p_status,'reservation',p_expected_revision,
+  0,0,0,0,NULL,false);
+ UPDATE public.padel_court_reservations SET
+  private_client_id=p_client_id,private_coach_id=p_coach_id,
+  private_session_fee_cents=p_session_fee_cents,customer_name=v_client.name,
+  updated_at=now() WHERE id=v_id;
+ INSERT INTO public.audit_logs(actor,action,entity,entity_id,after_data)
+ VALUES(auth.uid(),CASE WHEN p_id IS NULL THEN 'CREATE' ELSE 'UPDATE' END,
+  'court_private_training',v_id::text,
+  jsonb_build_object('client_id',p_client_id,'coach_id',p_coach_id,
+    'fee_cents',p_session_fee_cents,'status',p_status));
+ RETURN v_id;
+END $function$ OR p_duration IS NULL
+ THEN RAISE EXCEPTION 'Choose a valid training time and duration'; END IF;
+ IF p_start::time > time '01:00' AND p_start::time < time '09:00'
+    OR (CASE WHEN p_start::time <= time '01:00' THEN 1440 ELSE 0 END
+         + extract(hour FROM p_start::time)::integer*60 + extract(minute FROM p_start::time)::integer
+         + p_duration > 1500)
+ THEN RAISE EXCEPTION 'Private training must fit from 09:00 through 01:00'; END IF;
+ SELECT id,name INTO v_client FROM public.private_clients WHERE id=p_client_id
+  AND active AND deleted_at IS NULL;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Select an active Private Sessions client'; END IF;
+ IF p_coach_id IS NOT NULL AND NOT EXISTS(
+  SELECT 1 FROM public.private_coaches WHERE id=p_coach_id AND active)
+ THEN RAISE EXCEPTION 'Select an active coach or leave coach unassigned'; END IF;
+ IF p_session_fee_cents IS NULL OR p_session_fee_cents<0 OR p_session_fee_cents>100000000000
+ THEN RAISE EXCEPTION 'Enter a valid session fee'; END IF;
+ -- Match the shared day lock order of existing court booking saves.
+ IF p_business_date IS NULL THEN RAISE EXCEPTION 'Choose a booking date'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtext('padelon_reservation_day'),p_business_date-date '2000-01-01');
+ IF p_id IS NOT NULL THEN
+  SELECT * INTO v_existing FROM public.padel_court_reservations WHERE id=p_id FOR UPDATE;
+  IF NOT FOUND OR (v_existing.private_client_id IS NULL
+     AND v_existing.external_source IS DISTINCT FROM 'matchpoint')
+    THEN RAISE EXCEPTION 'Private training booking not found'; END IF;
+  IF v_existing.external_source='matchpoint' AND EXISTS(
+   SELECT 1 FROM public.court_payment_splits
+    WHERE source_kind='reservation' AND source_id=p_id AND voided_at IS NULL)
+   THEN RAISE EXCEPTION 'Reverse existing court payments before converting to private training'; END IF;
+  IF v_existing.private_session_entry_id IS NOT NULL AND
+    (v_existing.private_client_id IS DISTINCT FROM p_client_id
+     OR v_existing.private_session_fee_cents<>p_session_fee_cents
+     OR v_existing.private_coach_id IS DISTINCT FROM p_coach_id)
+   THEN RAISE EXCEPTION 'The session is already recorded; edit financial details in Private Sessions'; END IF;
+ END IF;
+ v_id:=public.club_court_reservation_save(
+  p_id,p_business_date,p_sport,p_court,p_start,p_duration,v_client.name,
+  coalesce(p_notes,''),p_status,'reservation',p_expected_revision,
+  0,0,0,0,NULL,false);
+ UPDATE public.padel_court_reservations SET
+  private_client_id=p_client_id,private_coach_id=p_coach_id,
+  private_session_fee_cents=p_session_fee_cents,customer_name=v_client.name,
+  updated_at=now() WHERE id=v_id;
+ INSERT INTO public.audit_logs(actor,action,entity,entity_id,after_data)
+ VALUES(auth.uid(),CASE WHEN p_id IS NULL THEN 'CREATE' ELSE 'UPDATE' END,
+  'court_private_training',v_id::text,
+  jsonb_build_object('client_id',p_client_id,'coach_id',p_coach_id,
+    'fee_cents',p_session_fee_cents,'status',p_status));
+ RETURN v_id;
+END $function$;
