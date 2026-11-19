@@ -79,7 +79,12 @@ function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function initials(name){return String(name).split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase()}
 function tag(label,color='green'){return `<span class="tag tag-${color}">${esc(label)}</span>`}
 function btn(label,action,cls='btn-light',more=''){return `<button class="btn ${cls}" data-action="${action}" ${more}>${label}</button>`}
-function toast(message,bad=false){const host=document.getElementById('toast-host');const node=document.createElement('div');node.className=`toast ${bad?'bad':''}`;node.textContent=message;host.append(node);setTimeout(()=>node.remove(),4100)}
+function toast(message,bad=false){
+ const host=document.getElementById('toast-host'),node=document.createElement('div');
+ node.className=`toast ${bad?'bad':''}`;node.textContent=message;host.append(node);
+ requestAnimationFrame(()=>node.classList.add('is-visible'));
+ setTimeout(()=>{node.classList.remove('is-visible');node.classList.add('is-leaving');setTimeout(()=>node.remove(),150)},3950);
+}
 // 30-second all-page sync updates data in memory without discarding active drafts.
 let autoRefreshRunning=false;
 // Sync the data but do not replace table elements while someone is scrolling.
@@ -1445,7 +1450,19 @@ async function loadData(resetTab=false,{background=false}={}){
  }finally{state.loading=false;}
 }
 let working=false;
-async function runMutation(task,success='Saved successfully'){if(working)return;working=true;const b=document.getElementById('save-button');if(b){b.disabled=true;b.textContent='Saving…'}try{await task();state.modal=null;await loadData();toast(success)}catch(e){toast(e?.message||'Could not save. Try again.',true)}finally{working=false;if(b&&b.isConnected){b.disabled=false;b.textContent='Try again'}}}
+async function runMutation(task,success='Saved successfully'){if(working)return;working=true;const b=document.getElementById('save-button');if(b){b.disabled=true;b.textContent='Saving…'}try{await task();state.modal=null;toast(success);await loadData()}catch(e){toast(e?.message||'Could not save. Try again.',true)}finally{working=false;if(b&&b.isConnected){b.disabled=false;b.textContent='Try again'}}}
+function mutationSuccessMessage(form){
+ const messages={
+  'save-member':'Team member saved','save-quick':'Game recorded','save-other':'Benefit use recorded',
+  'save-other-player':'Player saved','save-finance':'Payment recorded','save-settlement':'Settlement recorded',
+  'save-private-client':'Private client saved','save-private-session':'Private session recorded',
+  'save-private-deposit':'Deposit recorded','close-private-balance':'Private balance closed',
+  'save-debt-person':'Cafeteria account saved','save-debt-charge':'Charge recorded',
+  'save-debt-payment':'Payment recorded','void-debt-entry':'Entry voided','void-private-entry':'Entry voided',
+  'confirm-delete':'Team member removed','save-admin-account-manage':'Account updated'
+ };
+ return form.dataset.save==='submit-reset'?'Weekly counter reset recorded':messages[form.dataset.save]||'Saved successfully';
+}
 function slugify(x){return x.trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Math.random().toString(36).slice(2,6)}
 async function saveForm(form){const f=new FormData(form),data=Object.fromEntries(f.entries()),m=state.modal;
  switch(form.dataset.save){
@@ -1951,7 +1968,7 @@ document.addEventListener('submit',async e=>{
  const form=e.target;
  if(form.dataset.save==='choose-member'){const sel=new FormData(form).get('member_id');openModal('edit-member',sel);return;}
  if(form.dataset.save==='submit-reset'&&state.modal?.id){const chosen=document.getElementById('reset-member')?.value;if(chosen)state.modal.id=chosen;}
- await runMutation(()=>saveForm(form),form.dataset.save==='submit-reset'?'Weekly counter reset recorded':'Saved successfully');
+ await runMutation(()=>saveForm(form),mutationSuccessMessage(form));
  }
 });
 document.addEventListener('input',e=>{

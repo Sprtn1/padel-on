@@ -11,6 +11,9 @@ test('Mobile drawer replaces the scrolling bottom bar and retains role-filtered 
  assert.match(nav,/isAdmin\|\|key!=='cafeteria-payments'/);
  assert.match(styles,/\.mobile-bar\{display:none!important\}/);
  assert.match(styles,/safe-area-inset-bottom/);
+ assert.match(styles,/width:44px;height:44px/);
+ assert.match(styles,/transition:visibility 0s linear \.11s/);
+ assert.match(styles,/transition-duration:\.22s/);
 });
 test('New responsive stylesheet follows existing tournament overrides',()=>{
  const boot=src('../bootstrap.js');
