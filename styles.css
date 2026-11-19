@@ -696,6 +696,8 @@
  .cafe-quick-entry{display:flex;position:fixed;bottom:calc(12px + env(safe-area-inset-bottom));right:14px;left:14px;z-index:60;align-items:flex-end;flex-direction:column;gap:8px;pointer-events:none}
  .cafe-quick-entry>*{pointer-events:auto}
  .cafe-quick-fab{border-radius:30px;box-shadow:0 8px 24px #185a3560;padding:13px 18px;min-height:45px}
+ /* Reserve clearance once at the page bottom, not inside each ledger card. */
+ .workspace[data-page="cafeteria-finances"]{padding-bottom:max(112px,calc(92px + env(safe-area-inset-bottom, 0px)))}
  .cafe-quick-sheet{width:100%;max-width:460px}
  .cafe-day-status{align-items:flex-start}
 }
@@ -805,7 +807,6 @@
  .cafe-matchpoint-entry .cafe-marks {
   display:flex; flex-wrap:wrap; gap:9px;
  }
- .cafe-entry-list {padding-bottom:92px;}
 }
 
 /* MatchPoint discrepancy review lives beside List and Timetable. */
