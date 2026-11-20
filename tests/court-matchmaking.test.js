@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createCourtScheduler} from '../lib/court-scheduler-ui.js';
+import {getMatchmakingFinance,getMatchmakingCurrentStreak} from '../lib/logic.js';
 
 const date='2026-11-20';
 const matchmakerId='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
@@ -129,4 +130,31 @@ test('Schema and pink styles are linked to existing reservation records',()=>{
  assert.match(sql,/REVOKE ALL ON FUNCTION public\.club_court_reservation_matchmaker_set/);
  assert.match(css,/\.schedule-matchmaking/);
  assert.match(css,/html\[data-theme="dark"\].*schedule-matchmaking/);
+});
+
+test('Linked timetable reservations increase monthly matchmaking quantity without increasing income',()=>{
+ const items=[
+  {id:'manual',matchmaker_id:matchmakerId,played_on:'2026-11-19',amount_cents:3000,created_at:'2026-11-19T18:00:00Z'},
+  {id:'linked',matchmaker_id:matchmakerId,played_on:'2026-11-20',amount_cents:0,source_reservation_id:rows[0].id,
+   players:'Matchmaking guest',created_at:'2026-11-20T18:00:00Z'}
+ ];
+ const total=getMatchmakingFinance(items,'2026-11');
+ assert.equal(total.games,2);
+ assert.equal(total.rows.length,2);
+ assert.equal(total.total,3000,'linked court booking adds no new matchmaking revenue');
+ assert.equal(total.rows.find(row=>row.id==='linked').commission_cents,0);
+ assert.equal(getMatchmakingCurrentStreak(items,'2026-11-20').currentStreak,2);
+});
+
+test('Database links matchmaking bookings exactly once and protects linked entries from manual editing',()=>{
+ const sql=readFileSync(new URL('../supabase/migrations/20261120203000_link_matchmaking_reservations_to_ledger.sql',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
+ assert.match(sql,/CREATE UNIQUE INDEX IF NOT EXISTS nazih_games_reservation_source_unique/);
+ assert.match(sql,/source_reservation_id IS NULL OR amount_cents = 0/);
+ assert.match(sql,/ON CONFLICT \(source_reservation_id\)/);
+ assert.match(sql,/UPDATE public\.nazih_games[\s\S]*deleted_at=now\(\)/);
+ assert.match(sql,/WHERE matchmaker_id IS NOT NULL[\s\S]*status <> 'cancelled'/);
+ assert.match(app,/source_reservation_id\)\.length\} from the court timetable/);
+ assert.match(app,/Edit in Court Timetable/);
+ assert.match(app,/state\.finance=await api\.listAll\('nazih_games'\)/);
 });
