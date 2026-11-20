@@ -12,8 +12,25 @@ Deno.serve(async(req:Request)=>{
  if(!service)return json({error:"Server credential unavailable"},503);
  const headers={apikey:service,Authorization:"Bearer "+service,"Content-Type":"application/json"};
  try{
-  const res=await fetch(root+"/rest/v1/rpc/matchpoint_get_cron_config",{method:"POST",headers,body:JSON.stringify({p_timestamp:timestamp,p_signature:signature}),redirect:"error"});
-  if(!res.ok)return json({error:"Server configuration unavailable"},503);
+  // Retry only transient configuration-fetch failures, BEFORE making any MatchPoint API request.
+  // Retrying here never consumes another MatchPoint query claim or reservation write.
+  let res:Response|null=null;
+  for(let attempt=1;attempt<=3;attempt++){
+    if(attempt>1)await new Promise<void>(resolve=>setTimeout(resolve,attempt===2?1000:3000));
+    try{
+      res=await fetch(root+"/rest/v1/rpc/matchpoint_get_cron_config",{
+        method:"POST",headers,body:JSON.stringify({p_timestamp:timestamp,p_signature:signature}),redirect:"error"
+      });
+    }catch{
+      res=null;
+    }
+    // Successful or non-transient responses (e.g. invalid authentication) are not retried.
+    if(res?.ok||(res&&res.status<500))break;
+    if(attempt<3)console.warn("MatchPoint sync configuration fetch retry",{
+      attempt,status:res?.status??"network"
+    });
+  }
+  if(!res?.ok)return json({error:"Server configuration unavailable"},503);
   const cfg=await res.json();
   if(!cfg)return json({error:"Unauthorized or not configured"},401);
   if(cfg.paused!==false)return json({skipped:true,reason:"paused"});
