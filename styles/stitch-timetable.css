@@ -147,6 +147,9 @@ html[data-theme="dark"] .cafe-scheduler-legend .schedule-paid::before{background
 .cafe-scheduler-form .cafe-matchmaker-field{
  padding:12px;border:1px solid #e7a4c9;border-radius:12px;background:#fff4fa;
 }
+/* Form label display:grid overrides the browser's default [hidden] display:none.
+   Keep the entire matchmaker selector invisible until Matchmaking Match is selected. */
+.cafe-scheduler-form .cafe-matchmaker-field[hidden]{display:none!important}
 .cafe-scheduler-form .cafe-matchmaker-field small{font-size:12px;color:#875474;line-height:1.45}
 .cafe-matchmaking-entry{border-left:3px solid #ce5599}
 .cafe-matchmaking-note{color:#b12f77;font-weight:700}
