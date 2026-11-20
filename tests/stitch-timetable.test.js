@@ -89,7 +89,7 @@ test('fully marked bookings use distinct color with a matching legend and dark t
  const js=readFileSync(new URL('../lib/court-scheduler-ui.js',import.meta.url),'utf8');
  const css=readFileSync(new URL('../styles/stitch-timetable.css',import.meta.url),'utf8');
  assert.match(js,/const allMarked=!isTraining&&!isBlock&&courtBookingAllPlayersMarked\(row,sport/);
- assert.match(js,/isTraining\?'schedule-training':isBlock\?'schedule-block':allMarked\?'schedule-paid':planned/);
+ assert.match(js,/isTraining\?'schedule-training':isBlock\?'schedule-block':isMatchmaking\?'schedule-matchmaking':allMarked\?'schedule-paid':planned/);
  assert.match(js,/class="schedule-paid">All players marked paid/);
  assert.match(css,/\.cafe-timeboard-booking\.schedule-paid\{background:#176847/);
  assert.match(css,/html\[data-theme="dark"\] \.cafe-scheduler \.cafe-timeboard-booking\.schedule-paid\{background:#087447/);
