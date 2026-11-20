@@ -146,6 +146,19 @@ test('Linked timetable reservations add their full court value to game revenue a
  assert.equal(getMatchmakingCurrentStreak(items,'2026-11-20').currentStreak,2);
 });
 
+test('Matchmaking uses an unused, distinct turquoise palette in both themes',()=>{
+ const css=readFileSync(new URL('../styles/stitch-timetable.css',import.meta.url),'utf8');
+ const editor=readFileSync(new URL('../lib/court-scheduler-ui.js',import.meta.url),'utf8');
+ assert.match(css,/\.cafe-timeboard-booking\.schedule-matchmaking\{\s*background:#d5f4f5;border-color:#35a5b0;color:#11535e/);
+ assert.match(css,/html\[data-theme="dark"\] \.cafe-scheduler \.cafe-timeboard-booking\.schedule-matchmaking\{\s*background:#124c59;border-color:#56c8d4/);
+ assert.match(css,/\.cafe-scheduler-legend \.schedule-matchmaking::before\{\s*background:#d5f4f5;border-color:#35a5b0/);
+ assert.match(css,/\.cafe-matchmaker-field\{\s*padding:12px;border:1px solid #72c8cf/);
+ assert.match(editor,/Turquoise timetable label/);
+ assert.doesNotMatch(css,/fbe1f0|da78ae|cf4c93|f6b5da|662c51|e782bc|f093c7/);
+ const otherStatuses=css.split('/* Matchmaking is an in-app reservation attribute')[0];
+ assert.doesNotMatch(otherStatuses,/#d5f4f5|#35a5b0|#124c59|#56c8d4/);
+});
+
 test('Full court price mirror follows Cash or Whish edits without creating another receipt',()=>{
  const sql=readFileSync(new URL('../supabase/migrations/20261120214500_matchmaking_court_amount_mirror.sql',import.meta.url),'utf8');
  const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
