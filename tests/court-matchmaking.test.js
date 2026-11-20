@@ -132,18 +132,34 @@ test('Schema and pink styles are linked to existing reservation records',()=>{
  assert.match(css,/html\[data-theme="dark"\].*schedule-matchmaking/);
 });
 
-test('Linked timetable reservations increase monthly matchmaking quantity without increasing income',()=>{
+test('Linked timetable reservations add their full court value to game revenue and commissions',()=>{
  const items=[
   {id:'manual',matchmaker_id:matchmakerId,played_on:'2026-11-19',amount_cents:3000,created_at:'2026-11-19T18:00:00Z'},
-  {id:'linked',matchmaker_id:matchmakerId,played_on:'2026-11-20',amount_cents:0,source_reservation_id:rows[0].id,
+  {id:'linked',matchmaker_id:matchmakerId,played_on:'2026-11-20',amount_cents:2200,source_reservation_id:rows[0].id,
    players:'Matchmaking guest',created_at:'2026-11-20T18:00:00Z'}
  ];
  const total=getMatchmakingFinance(items,'2026-11');
  assert.equal(total.games,2);
  assert.equal(total.rows.length,2);
- assert.equal(total.total,3000,'linked court booking adds no new matchmaking revenue');
- assert.equal(total.rows.find(row=>row.id==='linked').commission_cents,0);
+ assert.equal(total.total,5200,'the full court booking price is reflected in matchmaking revenue');
+ assert.equal(total.rows.find(row=>row.id==='linked').commission_cents,330,'the linked $22 booking earns 15% on streak day two');
  assert.equal(getMatchmakingCurrentStreak(items,'2026-11-20').currentStreak,2);
+});
+
+test('Full court price mirror follows Cash or Whish edits without creating another receipt',()=>{
+ const sql=readFileSync(new URL('../supabase/migrations/20261120214500_matchmaking_court_amount_mirror.sql',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
+ assert.match(sql,/DROP CONSTRAINT IF EXISTS nazih_linked_reservation_no_extra_revenue/);
+ assert.match(sql,/SELECT s\.amount_cents FROM public\.court_payment_splits s/);
+ assert.match(sql,/s\.source_kind='reservation' AND s\.source_id=NEW\.id/);
+ assert.match(sql,/amount_cents=EXCLUDED\.amount_cents/);
+ assert.match(sql,/AFTER INSERT OR UPDATE OR DELETE ON public\.court_payment_splits/);
+ assert.match(sql,/AND s\.voided_at IS NULL/);
+ assert.doesNotMatch(sql,/INSERT INTO public\.court_payment_cash_movements/);
+ assert.doesNotMatch(sql,/INSERT INTO public\.whish_ledger_entries/);
+ assert.match(app,/const matchmakingStandaloneCollected=sum\(matchmaking\.filter\(row=>!row\.source_reservation_id\)/);
+ assert.match(app,/privatePaid\+privateTopups\+cafeteriaPaid\+matchmakingStandaloneCollected/);
+ assert.match(app,/Timetable \(full court amount\)/);
 });
 
 test('Database links matchmaking bookings exactly once and protects linked entries from manual editing',()=>{
