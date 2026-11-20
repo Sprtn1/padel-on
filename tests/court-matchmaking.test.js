@@ -94,6 +94,27 @@ test('Matchmaking cannot be saved without a matchmaker',async()=>{
  assert.equal(calls.filter(x=>x.rpc).length,0);
 });
 
+test('Normal reservations keep matchmaker field hidden; selecting matchmaking reveals it',async()=>{
+ const {ui,bookings}=setup();
+ await ui.load();await ui.openPlanned(bookings[0].id,'padel',date);
+ const normal=ui.dialog();
+ assert.match(normal, /<label class="cafe-matchmaker-field" hidden>/);
+ assert.doesNotMatch(normal, /<label class="cafe-matchmaker-field">/);
+ const css=readFileSync(new URL('../styles/stitch-timetable.css',import.meta.url),'utf8');
+ assert.match(css, /\.cafe-scheduler-form \.cafe-matchmaker-field\[hidden\]\{display:none!important\}/);
+
+ const field={hidden:true,querySelector:()=>({required:false})};
+ const form={querySelector:selector=>selector==='.cafe-matchmaker-field'?field:null};
+ const choice={name:'booking_type',value:'matchmaking',closest:()=>form};
+ assert.equal(ui.previewEnd(choice),true);
+ assert.equal(field.hidden,false);
+ assert.match(ui.dialog(), /<label class="cafe-matchmaker-field">/);
+ choice.value='reservation';
+ assert.equal(ui.previewEnd(choice),true);
+ assert.equal(field.hidden,true);
+ assert.match(ui.dialog(), /<label class="cafe-matchmaker-field" hidden>/);
+});
+
 test('Other sports do not get a matchmaking booking type',async()=>{
  const {ui}=setup();
  await ui.load();await ui.openFromFinance('reservation','pickleball',date);
