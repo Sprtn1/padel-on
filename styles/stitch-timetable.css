@@ -164,3 +164,9 @@ html[data-theme="dark"] .cafe-scheduler-form .cafe-matchmaker-field{
 }
 html[data-theme="dark"] .cafe-scheduler-form .cafe-matchmaker-field small{color:#f2c3de}
 html[data-theme="dark"] .cafe-matchmaking-note{color:#ffa8d6}
+
+.cafe-scheduler .cafe-timeboard-booking .ck-booking-matchmaker{
+ display:block;font-size:9px;font-weight:750;white-space:nowrap;overflow:hidden;
+ text-overflow:ellipsis;opacity:.92;
+}
+.cafe-scheduler .cafe-timeboard-booking.ck-short-event .ck-booking-matchmaker{display:none}
