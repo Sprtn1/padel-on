@@ -133,40 +133,40 @@ html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.schedule-paid{ba
 html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.schedule-paid .ck-booking-badge{background:rgba(255,255,255,.19);color:#fff}
 html[data-theme="dark"] .cafe-scheduler-legend .schedule-paid::before{background:#087447;border-color:#68daa1}
 
-/* Matchmaking is an in-app reservation attribute; pink takes precedence over paid markers. */
+/* Matchmaking is an in-app reservation attribute. Distinct turquoise takes precedence over paid markers. */
 .cafe-scheduler .cafe-timeboard-booking.schedule-matchmaking{
- background:#fbe1f0;border-color:#da78ae;color:#7b2452;
- box-shadow:inset 3px 0 0 #cf4c93;
+ background:#d5f4f5;border-color:#35a5b0;color:#11535e;
+ box-shadow:inset 4px 0 0 #087e90;
 }
 .cafe-scheduler .cafe-timeboard-booking.schedule-matchmaking .ck-booking-badge{
- background:#f6b5da;color:#72204d;
+ background:#8cdae0;color:#134b55;
 }
 .cafe-scheduler-legend .schedule-matchmaking::before{
- background:#fbe1f0;border-color:#da78ae;
+ background:#d5f4f5;border-color:#35a5b0;
 }
 .cafe-scheduler-form .cafe-matchmaker-field{
- padding:12px;border:1px solid #e7a4c9;border-radius:12px;background:#fff4fa;
+ padding:12px;border:1px solid #72c8cf;border-radius:12px;background:#f0fcfc;
 }
 /* Form label display:grid overrides the browser's default [hidden] display:none.
    Keep the entire matchmaker selector invisible until Matchmaking Match is selected. */
 .cafe-scheduler-form .cafe-matchmaker-field[hidden]{display:none!important}
-.cafe-scheduler-form .cafe-matchmaker-field small{font-size:12px;color:#875474;line-height:1.45}
-.cafe-matchmaking-entry{border-left:3px solid #ce5599}
-.cafe-matchmaking-note{color:#b12f77;font-weight:700}
+.cafe-scheduler-form .cafe-matchmaker-field small{font-size:12px;color:#28666e;line-height:1.45}
+.cafe-matchmaking-entry{border-left:3px solid #078597}
+.cafe-matchmaking-note{color:#0c7888;font-weight:700}
 html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.schedule-matchmaking{
- background:#662c51;border-color:#e782bc;color:#ffe8f5;box-shadow:inset 3px 0 0 #f093c7;
+ background:#124c59;border-color:#56c8d4;color:#e7fbff;box-shadow:inset 4px 0 0 #4edce8;
 }
 html[data-theme="dark"] .cafe-scheduler .cafe-timeboard-booking.schedule-matchmaking .ck-booking-badge{
- background:#9d4278;color:#fff0f9;
+ background:#176d7e;color:#f1fdff;
 }
 html[data-theme="dark"] .cafe-scheduler-legend .schedule-matchmaking::before{
- background:#662c51;border-color:#e782bc;
+ background:#124c59;border-color:#56c8d4;
 }
 html[data-theme="dark"] .cafe-scheduler-form .cafe-matchmaker-field{
- background:#39233a;border-color:#a45d8c;
+ background:#183942;border-color:#419baa;
 }
-html[data-theme="dark"] .cafe-scheduler-form .cafe-matchmaker-field small{color:#f2c3de}
-html[data-theme="dark"] .cafe-matchmaking-note{color:#ffa8d6}
+html[data-theme="dark"] .cafe-scheduler-form .cafe-matchmaker-field small{color:#bceaf0}
+html[data-theme="dark"] .cafe-matchmaking-note{color:#70e4ec}
 
 .cafe-scheduler .cafe-timeboard-booking .ck-booking-matchmaker{
  display:block;font-size:9px;font-weight:750;white-space:nowrap;overflow:hidden;
