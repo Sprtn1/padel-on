@@ -31,6 +31,53 @@
 .ob-mobile-meta{display:flex;justify-content:space-between;gap:10px;color:var(--muted,#718177);font-size:11px;flex-wrap:wrap}
 .ob-mobile-card .ob-actions{padding-top:9px;border-top:1px solid var(--stroke,#dce7e0)}
 .ob-empty{min-height:220px}
+
+/* Special Benefit edit form: keep all fields and actions in one clipped, scrollable dialog. */
+.ob-edit-modal{
+  display:flex;
+  flex-direction:column;
+  width:min(100%,540px);
+  max-height:min(90dvh,820px);
+  overflow:hidden;
+}
+.ob-edit-modal .modal-head{
+  flex:0 0 auto;
+  padding-bottom:17px;
+  border-bottom:1px solid var(--stroke,#dce7e0);
+}
+.ob-edit-modal .modal-body{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+.ob-edit-modal #modal-form{display:block}
+.ob-edit-modal .form-field{min-width:0}
+.ob-edit-modal .form-input{max-width:100%;box-sizing:border-box}
+.ob-edit-modal .notice{
+  max-width:100%;
+  box-sizing:border-box;
+  overflow-wrap:anywhere;
+}
+.ob-edit-modal .modal-actions{
+  position:sticky;
+  bottom:-1px;
+  z-index:2;
+  margin-top:18px;
+  padding:14px 0 2px;
+  border-top:1px solid var(--stroke,#dce7e0);
+  background:var(--card,#fff);
+}
+html[data-theme="dark"] .ob-edit-modal .modal-actions{
+  background:var(--dm-card,#1b2a29);
+}
+@media(max-width:600px){
+  .ob-edit-modal{max-height:calc(100dvh - 28px)}
+  .ob-edit-modal .modal-head{padding:18px 18px 15px}
+  .ob-edit-modal .modal-body{padding:16px 18px 18px}
+  .ob-edit-modal .modal-actions{flex-wrap:wrap}
+}
+
 .ob-form-hint{font-size:11px;color:var(--muted,#718177);line-height:1.5;margin:-6px 0 15px}
 #other-counter-fields[hidden],#other-threshold-fields[hidden]{display:none!important}
 .ob-history-backdrop{display:flex;align-items:stretch;justify-content:flex-end;padding:0}

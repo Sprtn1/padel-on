@@ -5,6 +5,8 @@ on:
       - 'styles/**'
       - 'bootstrap.js'
       - 'scripts/theme-contrast-browser.mjs'
+      - 'scripts/other-benefits-modal-browser.mjs'
+      - 'app.js'
       - 'tests/theme-contrast-fixture.html'
       - '.github/workflows/theme-contrast-browser.yml'
   workflow_dispatch:
@@ -25,6 +27,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Compare computed styles in both themes at desktop and mobile widths
         run: node scripts/theme-contrast-browser.mjs
+      - name: Check Special Benefit modal form at desktop and mobile sizes
+        run: node scripts/other-benefits-modal-browser.mjs
       - name: Archive privacy-safe screenshots
         if: always()
         uses: actions/upload-artifact@v4
