@@ -2,7 +2,7 @@
 // top-level await imports unnecessarily multiplied network round-trip time.
 const assetVersion = new URL(import.meta.url).searchParams.get('v') || Date.now().toString(36);
 const [
- themePreference, startupReadiness, iconsModule, navigationModule, sidebarModule, routeModule, api, orderCounter, reemItems, cafeteriaFinanceModule, cafeteriaPaymentsModule, cafeteriaTodoModule, shiftHandoverModule, consignmentModule, clubInsightsModule, activityModule, reportComparison, debtDailyModule, privateSelectionModule, refreshPolicy, scrollPreservation, tournamentModule, arabicDailyPdf, logicModule, dateModule
+ themePreference, startupReadiness, iconsModule, navigationModule, sidebarModule, routeModule, api, orderCounter, reemItems, cafeteriaFinanceModule, cafeteriaPaymentsModule, cafeteriaTodoModule, shiftHandoverModule, consignmentModule, clubInsightsModule, activityModule, reportComparison, debtDailyModule, privateSelectionModule, refreshPolicy, scrollPreservation, tournamentModule, arabicDailyPdf, logicModule, dateModule, otherBenefitsModule
 ] = await Promise.all([
  import(`./lib/theme-preference.js?v=${assetVersion}`),
  import(`./lib/startup-readiness.js?v=${assetVersion}`),
@@ -28,7 +28,8 @@ const [
  import(`./lib/tournament-management.js?v=${assetVersion}`),
  import(`./lib/arabic-daily-pdf.js?v=${assetVersion}`),
  import(`./lib/logic.js?v=${assetVersion}`),
- import(`./lib/date.js?v=${assetVersion}`)
+ import(`./lib/date.js?v=${assetVersion}`),
+ import(`./lib/other-benefits.js?v=${assetVersion}`)
 ]);
 const {readTheme,writeTheme,nextTheme,themeActionLabel} = themePreference;
 const {noteAppReadyInThisTab} = startupReadiness;
@@ -41,6 +42,7 @@ const {getDebtDayEntries,summarizeDebtDay} = debtDailyModule;
 const {visiblePrivateClientSelection} = privateSelectionModule;
 const {getWeeklyStatus,getMonthFinance,getWeeklyFreeGameStatus,getMatchmakingFinance,getMatchmakingStreakLedger,getMatchmakingCurrentStreak} = logicModule;
 const {todayBeirut,addDays,weekStart,weekEnd,weekLabel,niceDay,monthKey,monthLabel,shiftMonth,amount,parseUSD} = dateModule;
+const {OTHER_RULES,otherBenefitsView,normalizeOtherPlayerInput} = otherBenefitsModule;
 const app=document.getElementById('app');
 let initialViewRendered=false;
 function noteInitialViewRendered(){
@@ -101,7 +103,7 @@ function canAutoRender(){
 const TEAM_GROUPS=[['top_team','Top Team'],['team','Team'],['rising_stars','Rising Stars Team'],['ladies_team','Ladies Team']];
 function groupLabel(value){return TEAM_GROUPS.find(([id])=>id===value)?.[1]||'Team';}
 const LEGACY_MATCHMAKER_ID='75b8dc1b-0529-489f-8aa1-9a464d9d61a1';
-const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,reportCompare:false,reportCompareDay:addDays(todayBeirut(),-1),reportCompareWeek:addDays(weekStart(todayBeirut()),-7),reportCompareMonth:shiftMonth(monthKey(todayBeirut()),-1),reportCompareData:null,reportCompareKey:'',privateClients:[],privateCoaches:[],privateEntries:[],privateBookings:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateNotesOpen:false,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',debtDay:todayBeirut(),settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false};
+const state={tab:'dashboard',members:[],balances:[],matches:[],games:[],resets:[],special:[],specialGames:[],finance:[],settlements:[],matchmakers:[],matchmakerId:LEGACY_MATCHMAKER_ID,audit:[],staff:null,month:monthKey(todayBeirut()),teamSearch:'',teamSort:'name',teamFilter:'all',teamCategoryFilter:'all',activitySearch:'',loading:false,modal:null,historyWeek:weekStart(todayBeirut()),historyData:null,historyLoading:false,reportMode:'week',reportWeek:weekStart(todayBeirut()),reportMonth:monthKey(todayBeirut()),reportDay:todayBeirut(),reportData:null,reportKey:'',reportLoading:false,reportCompare:false,reportCompareDay:addDays(todayBeirut(),-1),reportCompareWeek:addDays(weekStart(todayBeirut()),-7),reportCompareMonth:shiftMonth(monthKey(todayBeirut()),-1),reportCompareData:null,reportCompareKey:'',privateClients:[],privateCoaches:[],privateEntries:[],privateBookings:[],privateLoaded:false,privateLoading:false,privateError:null,privateSearch:'',privateSelected:null,privateNotesOpen:false,privateShowArchived:false,privateListFilter:'all',privateSort:'name',privateDay:todayBeirut(),debtPeople:[],debtEntries:[],debtLoaded:false,debtLoading:false,debtError:null,debtSearch:'',debtSelected:null,debtFilter:'all',debtDay:todayBeirut(),settingsPrivateAccountId:'',settingsCafeteriaAccountId:'',globalSearchOpen:false,globalSearchQuery:'',alertExpanded:false,otherSearch:'',otherFilter:'active',otherSort:'name',otherHistoryRows:[],otherHistoryId:null,otherHistoryLoading:false,otherHistoryError:''};
 // The daily cashbook owns its own dated Supabase query and does not mix with other ledgers.
 const consignmentInventory=consignmentModule.createConsignmentInventory({
  api,heading,icon,toast,
