@@ -758,13 +758,49 @@ function downloadCSV(rows,filename){
 function alternatingBenefitNext(player){
  return Number(player?.current_counter||0)%2===0?'free':'paid';
 }
-function otherPage(){const active=state.special.filter(p=>p.active);return `${heading('Special arrangements','Other Benefits','Track free-game eligibility outside the regular team allowances.',state.staff?.role==='admin'?btn(`${icon('plus')} Add Player`,'new-other','btn-primary'):'')}
-${active.length?'':`<article class="panel other-first-use"><div class="empty-prompt">${icon('gift')}<strong>No special benefit players yet</strong><span>Add a player when their free-game rule sits outside the regular team allowance.</span>${state.staff?.role==='admin'?btn(`${icon('plus')} Add First Player`,'new-other','btn-primary'):''}</div></article>`}<div class="other-grid">${active.map(p=>{
- const weekly=p.status==='one_free_per_week'?getWeeklyFreeGameStatus(p,today(),state.specialGames):null;
- const info=p.status==='one_free_per_week'?[weekly.available?'1 Free Game Available':'Free Game Used This Week',weekly.available?'green':'amber']:p.status==='alternating_free_paid'?[alternatingBenefitNext(p)==='free'?'Next Game Free':'Next Game Paid',alternatingBenefitNext(p)==='free'?'green':'amber']:p.status==='next_free'?['Next Game Free','green']:p.status==='rule_not_configured'?['Rule Not Configured','gray']:p.status==='counting'?[p.threshold?`${Math.max(0,p.threshold-p.current_counter)} Until Free`:'Counting','amber']:['Needs Confirmation','amber'];
- const note=p.status==='one_free_per_week'?(weekly.available?`One free game is available for ${weekLabel(today())}.`:`The free game for ${weekLabel(today())} has already been used.`):p.status==='alternating_free_paid'?`Alternating benefit: free game → paid game → free game. ${p.current_counter} game(s) recorded in this cycle.`:p.status==='next_free'?'This player has a free game waiting.':p.slug==='rami-al-rifai'&&p.status==='counting'?`${Math.max(0,5-p.current_counter)} more paid game(s) before a free game.`:p.status==='rule_not_configured'?'Eligibility conditions have not been set.':'Confirm the player’s next-game benefit.';
- return `<article class="other-card"><div class="member-top"><div class="player-avatar">${esc(initials(p.name))}</div><div class="player-title"><strong>${esc(p.name)}</strong><small>Special benefit</small></div></div>${tag(info[0],info[1])}<div class="other-note">${note}</div><div class="player-row" style="margin-bottom:18px"><span class="game-caption">${p.status==='alternating_free_paid'?'Games in cycle':'Games counter'}</span><span class="other-count num">${p.current_counter}</span></div><div class="card-bottom">${btn(`${icon('plus')} Record Game`,'record-other','btn-soft',`data-id="${p.id}"`)}${state.staff?.role==='admin'?btn(icon('edit'),'edit-other','btn-light btn-icon history-button',`data-id="${p.id}" title="Edit player"`):''}</div></article>`
- }).join('')}</div>`}
+
+function otherPage(){
+ const {summary,rows}=otherBenefitsView(state.special,state.specialGames,weekStart(today()),weekEnd(today()),state.otherSearch,state.otherFilter,state.otherSort);
+ const admin=state.staff?.role==='admin';
+ const filterOptions=[['active','Active'],['available','Free available'],['review','Needs review'],['inactive','Inactive'],['all','All players']];
+ const playerActions=p=>`<div class="ob-actions">${btn(`${icon('history')} History`,'view-other-history','btn-light btn-xs',`data-id="${esc(p.id)}" aria-label="View history for ${esc(p.name)}"`)}${p.active?btn(`${icon('plus')} Record`,'record-other','btn-soft btn-xs',`data-id="${esc(p.id)}"`):''}${admin?btn(icon('edit'),'edit-other','btn-light btn-icon btn-xs',`data-id="${esc(p.id)}" title="Edit ${esc(p.name)}" aria-label="Edit ${esc(p.name)}"`):''}</div>`;
+ const tableRows=rows.map(r=>{
+  const p=r.player,last=r.lastGame?niceDay(r.lastGame.played_on):'No recent games';
+  return `<tr><td><div class="ob-person"><span class="ob-avatar">${esc(initials(p.name))}</span><span><strong>${esc(p.name)}</strong><small>${p.active?'Active':'Inactive'}</small></span></div></td><td>${esc(r.rule)}<small class="ob-progress">${esc(r.progress)}</small></td><td>${tag(r.label,r.tone)}</td><td>${esc(last)}</td><td>${playerActions(p)}</td></tr>`;
+ }).join('');
+ const mobileCards=rows.map(r=>{
+  const p=r.player,last=r.lastGame?niceDay(r.lastGame.played_on):'No recent games';
+  return `<article class="ob-mobile-card"><div class="ob-mobile-head"><div class="ob-person"><span class="ob-avatar">${esc(initials(p.name))}</span><span><strong>${esc(p.name)}</strong><small>${esc(r.rule)}</small></span></div>${tag(r.label,r.tone)}</div><div class="ob-mobile-meta"><span>${esc(r.progress)}</span><span>Last game: ${esc(last)}</span></div>${playerActions(p)}</article>`;
+ }).join('');
+ return `${heading('Special arrangements','Other Benefits','Manage special players, eligibility and recorded games.',admin?btn(`${icon('plus')} Add Player`,'new-other','btn-primary'):'')}
+ <section class="summary ob-summary" aria-label="Other benefits overview">
+  ${summaryCard('Active special players',summary.active,'Currently active','users',true)}
+  ${summaryCard('Free game ready',summary.ready,'Eligible for a free game','gift')}
+  ${summaryCard('Free games used',summary.usedThisWeek,`${weekLabel(today())} · this week`,'calendar')}
+  ${summaryCard('Needs review',summary.review,'Rules requiring attention','alert')}
+ </section>
+ <section class="panel ob-roster-panel">
+  <div class="panel-head ob-roster-heading"><div><h2>Special players</h2><p>Search, filter and open complete individual histories.</p></div><small>${rows.length} shown</small></div>
+  <div class="ob-toolbar"><label class="search ob-search">${icon('search')}<input id="other-search" type="search" value="${esc(state.otherSearch)}" placeholder="Search players or benefit rules" aria-label="Search special benefit players"/></label>
+  <label class="ob-field"><span>Filter</span><select id="other-filter" class="select" aria-label="Filter special benefit players">${filterOptions.map(([id,label])=>`<option value="${id}" ${state.otherFilter===id?'selected':''}>${label}</option>`).join('')}</select></label>
+  <label class="ob-field"><span>Sort</span><select id="other-sort" class="select" aria-label="Sort special benefit players"><option value="name" ${state.otherSort==='name'?'selected':''}>Name</option><option value="recent" ${state.otherSort==='recent'?'selected':''}>Recent activity</option></select></label></div>
+  ${rows.length?`<div class="ob-desktop-table data-table-wrap"><table class="data-table ob-table"><thead><tr><th>Player</th><th>Benefit rule</th><th>Eligibility</th><th>Last recorded</th><th>Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div><div class="ob-mobile-list">${mobileCards}</div>`:`<div class="empty-prompt ob-empty">${icon('users')}<strong>${state.special.length?'No matching players':'No special benefit players yet'}</strong><span>${state.special.length?'Try another search or filter.':'Add a player and assign a benefit rule to get started.'}</span>${!state.special.length&&admin?btn(`${icon('plus')} Add First Player`,'new-other','btn-primary'):''}</div>`}
+ </section>`;
+}
+async function openOtherHistory(id){
+ const player=state.special.find(p=>p.id===id);
+ if(!player)throw Error('Player not found.');
+ state.otherHistoryId=id;state.otherHistoryRows=[];state.otherHistoryLoading=true;state.otherHistoryError='';
+ openModal('other-history',id);
+ try{
+  const history=await api.listAll('other_games',`player_id=eq.${encodeURIComponent(id)}&order=played_on.desc,created_at.desc`);
+  if(state.modal?.type!=='other-history'||state.modal.id!==id)return;
+  state.otherHistoryRows=history;state.otherHistoryLoading=false;render();
+ }catch(error){
+  if(state.modal?.type!=='other-history'||state.modal.id!==id)return;
+  state.otherHistoryLoading=false;state.otherHistoryError=error.message||'Could not load game history.';render();
+ }
+}
 
 function debtPersonTransactions(id){
  return state.debtEntries.filter(e=>e.person_id===id&&!e.voided_at)
@@ -1875,6 +1911,7 @@ async function handleAction(target,event){const act=target.dataset.action,id=tar
  case 'print-report':window.print();break;
  case 'record-team':openModal('team',id);break;
  case 'record-other':openModal('other-game',id);break;
+  case 'view-other-history':await openOtherHistory(id);break;
  case 'select-matchmaker':if(!state.matchmakers.some(p=>p.id===id))throw Error('Unknown matchmaker.');state.matchmakerId=id;render();break;
  case 'add-nazih':openModal('finance');break;
  case 'edit-nazih':if(state.finance.some(row=>row.id===id&&row.source_reservation_id))throw Error('Edit this game in the Court Timetable.');openModal('finance',id);break;
