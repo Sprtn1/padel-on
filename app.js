@@ -2062,6 +2062,15 @@ document.addEventListener('submit',async e=>{
  }
 });
 document.addEventListener('input',e=>{
+ if(e.target.id==='other-search'&&state.tab==='other'){
+  const caret=e.target.selectionStart;
+  state.otherSearch=e.target.value;
+  render();
+  const input=document.getElementById('other-search');
+  input?.focus({preventScroll:true});
+  if(caret!==null)input?.setSelectionRange(caret,caret);
+  return;
+ }
   if(e.target.id==='consign-search'&&state.tab==='consignment'&&state.staff){
    const cursor=e.target.selectionStart;
    consignmentInventory.setSearch(e.target.value);
@@ -2176,6 +2185,22 @@ document.addEventListener('toggle',e=>{
   cafeteriaFinances.rememberNote(e.target.dataset.cafeNote,e.target.open);
 },true);
 document.addEventListener('change',e=>{
+ if(state.tab==='other'&&e.target.id==='other-filter'){
+  state.otherFilter=e.target.value;render();return;
+ }
+ if(state.tab==='other'&&e.target.id==='other-sort'){
+  state.otherSort=e.target.value;render();return;
+ }
+ if(e.target.name==='status'&&e.target.closest('form[data-save="save-other-player"]')){
+  const form=e.target.closest('form'),rule=e.target.value;
+  const counter=form?.querySelector('#other-counter-fields');
+  const threshold=form?.querySelector('#other-threshold-fields');
+  if(counter)counter.hidden=!['counting','alternating_free_paid','next_free'].includes(rule);
+  if(threshold)threshold.hidden=!['counting','next_free'].includes(rule);
+  const counterLabel=counter?.querySelector('.form-field>span');
+  if(counterLabel)counterLabel.textContent=rule==='alternating_free_paid'?'Games recorded in cycle':'Paid games already counted';
+  return;
+ }
  if(['cafeteria-finances','court-timetable'].includes(state.tab)&&cafeteriaFinances.schedulerPreviewEnd(e.target))return;
  if(state.tab==='cafeteria-finances'&&cafeteriaFinances.courtPricePreview(e.target))return;
  if(state.tab==='tournament'&&state.staff&&e.target.id==='tm-list-status'){
